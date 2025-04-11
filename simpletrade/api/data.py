@@ -21,6 +21,12 @@ from simpletrade.core.data import DataManager
 # 创建数据管理器实例
 data_manager = DataManager()
 
+# 配置日志记录
+import logging
+import traceback # 导入 traceback 模块
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 # 创建路由器
 router = APIRouter(prefix="/api/data", tags=["data"])
 
@@ -126,12 +132,19 @@ async def get_symbols():
 @router.get("/overview", response_model=ApiResponseModel)
 async def get_data_overview():
     """获取数据概览"""
+    logger.info("Entering get_data_overview function...")
     try:
+        logger.info("获取数据概览请求开始...")
+        
         # 获取K线数据概览
+        logger.info("正在获取K线数据概览...")
         bar_overviews = data_manager.get_bar_overview()
+        logger.info(f"获取K线数据概览完成，共 {len(bar_overviews)} 条.")
 
         # 获取Tick数据概览
+        logger.info("正在获取Tick数据概览...")
         tick_overviews = data_manager.get_tick_overview()
+        logger.info(f"获取Tick数据概览完成，共 {len(tick_overviews)} 条.")
 
         # 转换为API模型
         result = []
@@ -156,16 +169,24 @@ async def get_data_overview():
                 "end": overview.end.strftime("%Y-%m-%d %H:%M:%S.%f"),
                 "type": "tick"
             })
-
+        
+        logger.info("数据概览转换完成，准备返回响应.")
         return {
             "success": True,
             "message": "获取数据概览成功",
             "data": result
         }
     except Exception as e:
+        # 记录详细的错误信息和堆栈跟踪
+        logger.error(f"获取数据概览时捕获到异常: {e}") # 使用 logger.error
+        traceback.print_exc() # 强制打印堆栈信息到 stderr
+        # 重新抛出异常，让 FastAPI 的默认错误处理也能捕获并可能记录（可选）
+        # raise e 
+        # 或者直接返回错误响应
         return {
             "success": False,
-            "message": f"获取数据概览失败: {str(e)}"
+            # 返回更通用的错误信息给前端，避免泄露过多细节
+            "message": "获取数据概览失败，服务器内部错误。"
         }
 
 @router.get("/bars", response_model=ApiResponseModel)

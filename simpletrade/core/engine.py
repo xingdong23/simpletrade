@@ -6,6 +6,7 @@ SimpleTrade主引擎模块
 
 from vnpy.trader.engine import MainEngine
 from vnpy.event import EventEngine, Event
+from vnpy.trader.app import BaseApp
 
 class STMainEngine(MainEngine):
     """
@@ -94,3 +95,39 @@ class STMainEngine(MainEngine):
             print(f"Failed to connect to {gateway_name}.")
 
         return result
+
+    def add_app(self, app_class: type[BaseApp] | str):
+        """添加应用模块"""
+        # --- 处理字符串形式的 vnpy 内置 App ---
+        if isinstance(app_class, str):
+            app_name_str = app_class
+            print(f"Adding built-in app (str) {app_name_str} using superclass method...")
+            try:
+                super().add_app(app_name_str)
+            except Exception as e:
+                print(f"Failed to add built-in app {app_name_str}: {e}")
+            return
+        # --- 结束处理字符串 ---
+            
+        # --- 处理类形式的自定义 App ---
+        # 检查是否是我们的自定义 App 类 (假设它们都有特定的基类或标识)
+        app_name = app_class.__name__
+        if app_name in self.apps:
+            print(f"{app_name} app already added.")
+            return
+        
+        try:
+            # 尝试使用 main_engine 和 event_engine 初始化
+            # 假设我们的 App 都需要这两个参数
+            if hasattr(app_class, "__init__") and 'main_engine' in app_class.__init__.__code__.co_varnames and 'event_engine' in app_class.__init__.__code__.co_varnames:
+                 print(f"Initializing custom app {app_name} with engines...")
+                 app: BaseApp = app_class(main_engine=self, event_engine=self.event_engine)
+                 self.apps[app_name] = app
+                 self.engines[app_name] = app # 兼容 get_engine
+            # else:
+                 # 如果不是我们的自定义 App，调用父类的方法处理（适用于 vnpy 内置 App）
+                 # print(f"Adding app {app_name} using superclass method...")
+                 # super().add_app(app_class) # 这部分逻辑已移到字符串处理部分
+                 
+        except Exception as e:
+            print(f"Failed to add app {app_name}: {e}")

@@ -15,6 +15,10 @@ from vnpy.trader.object import BarData, TickData
 from vnpy.trader.constant import Exchange, Interval
 from vnpy.trader.database import get_database
 
+# 获取日志记录器
+import logging
+logger = logging.getLogger(__name__)
+
 
 class DataManager:
     """数据管理器
@@ -155,33 +159,57 @@ class DataManager:
         返回:
             List[Dict[str, Any]]: K线数据概览列表
         """
-        # 获取所有可用的周期
+        logger.info("开始获取K线数据概览...")
         overviews = []
+        try:
+            all_intervals = list(Interval) # 获取所有 Interval 枚举成员
+            logger.info(f"检查周期: {all_intervals}")
+        except Exception as e:
+            logger.exception("获取 Interval 列表时出错")
+            all_intervals = []
+            
+        for interval in all_intervals:
+            logger.info(f"正在处理周期: {interval}")
+            try:
+                # 获取该周期的所有合约
+                symbols = self.database_manager.get_bar_symbols(interval)
+                logger.info(f"周期 {interval} 找到合约: {symbols}")
 
-        # 遍历所有周期
-        for interval in Interval:
-            # 获取该周期的所有合约
-            symbols = self.database_manager.get_bar_symbols(interval)
+                # 遍历所有合约
+                for vt_symbol in symbols:
+                    logger.info(f"处理合约: {vt_symbol}")
+                    try:
+                        symbol, exchange_str = vt_symbol.split('.')
+                        exchange_obj = Exchange(exchange_str)
 
-            # 遍历所有合约
-            for vt_symbol in symbols:
-                # 解析合约代码
-                symbol, exchange = vt_symbol.split('.')
-                exchange_obj = Exchange(exchange)
+                        # 获取数据概览
+                        logger.info(f"调用 database_manager.get_bar_overview for {symbol=}, {exchange_obj=}, {interval=}")
+                        overview = self.database_manager.get_bar_overview(symbol, exchange_obj, interval)
+                        logger.info(f"database_manager.get_bar_overview 调用完成，返回: {overview}")
 
-                # 获取数据概览
-                overview = self.database_manager.get_bar_overview(symbol, exchange_obj, interval)
-
-                if overview:
-                    overviews.append({
-                        "symbol": symbol,
-                        "exchange": exchange,
-                        "interval": interval.value,
-                        "count": overview.count,
-                        "start": overview.start,
-                        "end": overview.end
-                    })
-
+                        if overview:
+                            overviews.append({
+                                "symbol": symbol,
+                                "exchange": exchange_str,
+                                "interval": interval.value,
+                                "count": overview.count,
+                                "start": overview.start,
+                                "end": overview.end
+                            })
+                        else:
+                            logger.warning(f"database_manager.get_bar_overview 返回了 None 或 Falsy 值 for {symbol=}, {exchange_obj=}, {interval=}")
+                            
+                    except AttributeError as ae:
+                        logger.exception(f"处理合约 {vt_symbol} (周期 {interval}) 时发生 AttributeError: {ae}")
+                        # 可以选择继续处理下一个合约或直接抛出
+                        # raise # 如果希望API调用失败，可以取消注释这行
+                    except Exception as ex:
+                        logger.exception(f"处理合约 {vt_symbol} (周期 {interval}) 时发生未知错误: {ex}")
+                        
+            except Exception as e:
+                logger.exception(f"获取周期 {interval} 的合约列表时出错: {e}")
+                
+        logger.info(f"K线数据概览获取完成，共 {len(overviews)} 条.")
         return overviews
 
     def get_tick_overview(self) -> List[Dict[str, Any]]:
@@ -190,30 +218,46 @@ class DataManager:
         返回:
             List[Dict[str, Any]]: Tick数据概览列表
         """
-        # 获取所有可用的合约
+        logger.info("开始获取Tick数据概览...")
         overviews = []
+        try:
+            # 获取所有Tick数据的合约
+            symbols = self.database_manager.get_tick_symbols()
+            logger.info(f"找到Tick数据合约: {symbols}")
 
-        # 获取所有Tick数据的合约
-        symbols = self.database_manager.get_tick_symbols()
+            # 遍历所有合约
+            for vt_symbol in symbols:
+                logger.info(f"处理Tick合约: {vt_symbol}")
+                try:
+                    symbol, exchange_str = vt_symbol.split('.')
+                    exchange_obj = Exchange(exchange_str)
 
-        # 遍历所有合约
-        for vt_symbol in symbols:
-            # 解析合约代码
-            symbol, exchange = vt_symbol.split('.')
-            exchange_obj = Exchange(exchange)
+                    # 获取数据概览
+                    logger.info(f"调用 database_manager.get_tick_overview for {symbol=}, {exchange_obj=}")
+                    overview = self.database_manager.get_tick_overview(symbol, exchange_obj)
+                    logger.info(f"database_manager.get_tick_overview 调用完成，返回: {overview}")
 
-            # 获取数据概览
-            overview = self.database_manager.get_tick_overview(symbol, exchange_obj)
-
-            if overview:
-                overviews.append({
-                    "symbol": symbol,
-                    "exchange": exchange,
-                    "count": overview.count,
-                    "start": overview.start,
-                    "end": overview.end
-                })
-
+                    if overview:
+                        overviews.append({
+                            "symbol": symbol,
+                            "exchange": exchange_str,
+                            "count": overview.count,
+                            "start": overview.start,
+                            "end": overview.end
+                        })
+                    else:
+                       logger.warning(f"database_manager.get_tick_overview 返回了 None 或 Falsy 值 for {symbol=}, {exchange_obj=}")
+                       
+                except AttributeError as ae:
+                    logger.exception(f"处理Tick合约 {vt_symbol} 时发生 AttributeError: {ae}")
+                    # raise
+                except Exception as ex:
+                    logger.exception(f"处理Tick合约 {vt_symbol} 时发生未知错误: {ex}")
+                    
+        except Exception as e:
+            logger.exception(f"获取Tick合约列表时出错: {e}")
+            
+        logger.info(f"Tick数据概览获取完成，共 {len(overviews)} 条.")
         return overviews
 
     # ---- 数据删除功能 ----

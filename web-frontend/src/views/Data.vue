@@ -128,6 +128,17 @@ export default {
   methods: {
     ...mapActions(['fetchDataOverview', 'fetchBarData']),
     
+    async fetchData() {
+      this.loading = true
+      try {
+        await this.fetchDataOverview()
+      } catch (error) {
+        this.$message.error('获取数据概览失败: ' + (error.message || error))
+      } finally {
+        this.loading = false
+      }
+    },
+    
     async viewData(row) {
       this.loading = true
       
@@ -152,22 +163,59 @@ export default {
     },
     
     deleteData(row) {
-      this.$confirm(`确定删除 ${row.symbol} (${row.interval}) 的数据吗?`, '提示', {
-        confirmButtonText: '确定',
+      this.$confirm(`确定删除 ${row.symbol} (${row.exchange} - ${row.interval || 'tick'}) 的数据吗? 数据删除后不可恢复！`, '警告', {
+        confirmButtonText: '确定删除',
         cancelButtonText: '取消',
         type: 'warning'
-      }).then(() => {
-        console.log('Delete data:', row)
-        this.$message({
-          type: 'success',
-          message: '删除请求已发送!'
-        })
+      }).then(async () => {
+        this.loading = true; // 开始加载状态
+        try {
+          const payload = {
+            symbol: row.symbol,
+            exchange: row.exchange,
+            interval: row.interval // 如果是 tick 类型，后端 API 会忽略 interval
+          };
+          // 假设 Vuex store 中会有一个 deleteDataAction
+          // const result = await this.$store.dispatch('deleteDataAction', payload);
+          
+          // **临时直接调用 API** (稍后移至 Vuex store)
+          const response = await fetch('http://localhost:8000/api/data/delete', {
+             method: 'POST',
+             headers: {
+               'Content-Type': 'application/json'
+             },
+             body: JSON.stringify(payload)
+           });
+           const result = await response.json();
+
+
+          if (result.success) {
+            this.$message({
+              type: 'success',
+              message: '删除成功!'
+            });
+            // 删除成功后重新加载数据概览
+            await this.fetchData(); 
+          } else {
+            this.$message({
+              type: 'error',
+              message: '删除失败: ' + (result.message || '未知错误')
+            });
+          }
+        } catch (error) {
+          this.$message({
+            type: 'error',
+            message: '删除操作失败: ' + (error.message || error)
+          });
+        } finally {
+           this.loading = false; // 结束加载状态
+        }
       }).catch(() => {
         this.$message({
           type: 'info',
           message: '已取消删除'
-        })
-      })
+        });
+      });
     },
     
     renderKlineChart() {
@@ -328,19 +376,9 @@ export default {
       })
     },
     
-    loadDataOverview() {
-      this.loading = true
-      this.fetchDataOverview()
-        .catch(error => {
-          this.$message.error('加载数据概览失败: ' + (error.message || error))
-        })
-        .finally(() => {
-          this.loading = false
-        })
+    mounted() {
+      this.fetchData(); // 组件挂载后获取数据
     }
-  },
-  created() {
-    this.loadDataOverview()
   }
 }
 </script>

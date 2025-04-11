@@ -62,7 +62,7 @@
 
 只需告诉AI：
 ```
-请查看AI_COLLABORATION_GUIDE.md
+请查看 ai_context/AI_COLLABORATION_GUIDE.md
 ```
 
 AI会自动查看以下核心文档：

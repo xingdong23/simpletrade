@@ -12,6 +12,11 @@ from pydantic import BaseModel, Field
 
 from vnpy.trader.constant import Exchange, Interval
 
+import logging
+import traceback
+
+from simpletrade.apps.st_datamanager import STDataManagerApp # 导入 App 类
+
 # 创建路由器
 router = APIRouter(prefix="/api/data", tags=["data"])
 
@@ -84,12 +89,17 @@ class ApiResponse(BaseModel):
     data: Optional[Any] = None
 
 # 依赖注入：获取数据管理引擎
+logger = logging.getLogger(__name__)
+
 def get_data_manager_engine():
     """获取数据管理引擎"""
     # 这里需要从全局获取引擎实例
     # 实际实现时需要根据SimpleTrade的架构调整
     from simpletrade.main import main_engine
-    return main_engine.get_engine("st_datamanager")
+    # 使用 App 类的 __name__ 属性来获取实例
+    engine_instance = main_engine.get_engine(STDataManagerApp.__name__)
+    logger.info(f"get_data_manager_engine called. Requested engine name: {STDataManagerApp.__name__}, got instance: {engine_instance}")
+    return engine_instance
 
 # API路由
 @router.get("/overview", response_model=ApiResponse)
@@ -97,15 +107,23 @@ async def get_data_overview(
     engine = Depends(get_data_manager_engine)
 ):
     """获取数据概览"""
+    logger.info(f"Entering st_datamanager get_data_overview. Engine instance: {engine}")
+    if not engine:
+        logger.error("Dependency injection returned None for engine!")
+        raise HTTPException(status_code=500, detail="Data manager engine not available.")
     try:
+        logger.info(f"Calling engine.get_available_data() on {engine}...")
         data = engine.get_available_data()
+        logger.info(f"engine.get_available_data() returned: {data}")
         return {
             "success": True,
             "message": "获取数据概览成功",
             "data": data
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error in st_datamanager get_data_overview: {e}")
+        traceback.print_exc()  # 强制打印堆栈
+        raise HTTPException(status_code=500, detail="获取数据概览时发生服务器内部错误。")  # 返回通用错误信息
 
 @router.get("/bars", response_model=ApiResponse)
 async def get_bars(
