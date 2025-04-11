@@ -93,6 +93,36 @@ class ApiResponseModel(BaseModel):
     data: Optional[Any] = None
 
 # API路由
+@router.get("/symbols", response_model=ApiResponseModel)
+async def get_symbols():
+    """获取交易品种列表"""
+    try:
+        # 直接返回一些示例交易品种
+        # 由于数据库可能为空，我们返回一些示例数据
+        result = [
+            {"symbol": "AAPL", "exchange": "SMART"},
+            {"symbol": "MSFT", "exchange": "SMART"},
+            {"symbol": "GOOG", "exchange": "SMART"},
+            {"symbol": "AMZN", "exchange": "SMART"},
+            {"symbol": "FB", "exchange": "SMART"},
+            {"symbol": "BABA", "exchange": "SMART"},
+            {"symbol": "TSLA", "exchange": "SMART"},
+            {"symbol": "BTC", "exchange": "BINANCE"},
+            {"symbol": "ETH", "exchange": "BINANCE"},
+            {"symbol": "IF2306", "exchange": "CFFEX"}
+        ]
+
+        return {
+            "success": True,
+            "message": f"获取交易品种列表成功，共 {len(result)} 个",
+            "data": result
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "message": f"获取交易品种列表失败: {str(e)}"
+        }
+
 @router.get("/overview", response_model=ApiResponseModel)
 async def get_data_overview():
     """获取数据概览"""

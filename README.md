@@ -13,6 +13,7 @@ SimpleTrade是一个为个人投资者设计的量化交易平台，旨在让普
 - 策略管理与回测功能
 - AI分析和决策支持
 - 实时监控和通知
+- 支持多种交易接口，包括IB和老虎证券
 
 ## 技术栈
 
@@ -45,7 +46,10 @@ simpletrade/
 │   ├── scripts/           # 测试脚本
 │   └── conftest.py        # 测试配置
 ├── examples/              # 示例代码
+├── scripts/               # 脚本工具
 ├── vnpy/                  # vnpy子模块
+├── vnpy_tiger/            # 老虎证券Gateway
+├── web-frontend/          # Web前端
 ├── ai_context/            # AI协作上下文
 ├── setup.py               # 包安装配置
 └── README.md              # 项目说明
@@ -142,6 +146,8 @@ pip install pytest black isort
 - [技术规格文档](docs/technical_specification.md)
 - [vnpy集成指南](docs/vnpy_integration_guide.md)
 - [架构设计](docs/architecture_diagram.md)
+- [老虎证券Gateway集成指南](docs/tiger_gateway_integration.md)
+- [老虎证券Gateway使用指南](docs/tiger_gateway_usage.md)
 
 ## 许可证
 

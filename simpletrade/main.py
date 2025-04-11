@@ -27,6 +27,13 @@ except ImportError:
     print("Warning: vnpy_ib not found. Please install it first.")
     IbGateway = None
 
+try:
+    from vnpy_tiger import TigerGateway
+    print("vnpy_tiger imported successfully.")
+except ImportError:
+    print("Warning: vnpy_tiger not found. Please install it first.")
+    TigerGateway = None
+
 def main():
     """SimpleTrade主程序入口"""
     print("Starting SimpleTrade...")
@@ -43,6 +50,11 @@ def main():
     if IbGateway:
         main_engine.add_gateway(IbGateway)
         print("IB Gateway registered.")
+
+    # 注册老虎证券网关
+    if TigerGateway:
+        main_engine.add_gateway(TigerGateway)
+        print("Tiger Gateway registered.")
 
     # 加载消息系统应用（先加载，便于其他应用注册消息处理器）
     main_engine.add_app(STMessageApp)

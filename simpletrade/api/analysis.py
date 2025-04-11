@@ -54,6 +54,72 @@ class ApiResponse(BaseModel):
     data: Optional[Any] = None
 
 # API路由
+@router.get("/indicators", response_model=ApiResponse)
+async def get_available_indicators():
+    """获取可用的技术指标列表"""
+    try:
+        # 这里列出所有可用的技术指标
+        available_indicators = [
+            {
+                "name": "SMA",
+                "description": "简单移动平均线",
+                "parameters": [
+                    {"name": "period", "type": "int", "default": 20, "description": "周期"}
+                ]
+            },
+            {
+                "name": "EMA",
+                "description": "指数移动平均线",
+                "parameters": [
+                    {"name": "period", "type": "int", "default": 20, "description": "周期"}
+                ]
+            },
+            {
+                "name": "RSI",
+                "description": "相对强弱指数",
+                "parameters": [
+                    {"name": "period", "type": "int", "default": 14, "description": "周期"}
+                ]
+            },
+            {
+                "name": "MACD",
+                "description": "平滑异同移动平均线",
+                "parameters": [
+                    {"name": "fast_period", "type": "int", "default": 12, "description": "快线周期"},
+                    {"name": "slow_period", "type": "int", "default": 26, "description": "慢线周期"},
+                    {"name": "signal_period", "type": "int", "default": 9, "description": "信号周期"}
+                ]
+            },
+            {
+                "name": "BOLL",
+                "description": "布林线",
+                "parameters": [
+                    {"name": "period", "type": "int", "default": 20, "description": "周期"},
+                    {"name": "std_dev", "type": "float", "default": 2.0, "description": "标准差倍数"}
+                ]
+            },
+            {
+                "name": "KDJ",
+                "description": "KDJ随机指标",
+                "parameters": [
+                    {"name": "k_period", "type": "int", "default": 9, "description": "K线周期"},
+                    {"name": "d_period", "type": "int", "default": 3, "description": "D线周期"},
+                    {"name": "j_period", "type": "int", "default": 3, "description": "J线周期"}
+                ]
+            }
+        ]
+
+        return {
+            "success": True,
+            "message": f"获取可用指标成功，共 {len(available_indicators)} 个",
+            "data": available_indicators
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "message": f"获取可用指标失败: {str(e)}"
+        }
+
 @router.post("/indicators", response_model=ApiResponse)
 async def calculate_technical_indicators(request: IndicatorRequest):
     """计算技术指标"""

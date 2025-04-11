@@ -6,6 +6,7 @@ SimpleTrade API服务
 
 from fastapi import FastAPI, APIRouter
 import uvicorn
+from fastapi.middleware.cors import CORSMiddleware
 
 class APIServer:
     """SimpleTrade API服务"""
@@ -15,6 +16,16 @@ class APIServer:
         self.host = host
         self.port = port
         self.app = FastAPI(title="SimpleTrade API", version="0.1.0")
+
+        # 添加CORS中间件，允许所有来源的跨域请求
+        self.app.add_middleware(
+            CORSMiddleware,
+            allow_origins=["*"],  # 允许所有来源
+            allow_credentials=True,
+            allow_methods=["*"],  # 允许所有方法
+            allow_headers=["*"],  # 允许所有头
+        )
+
         self.routers = []
 
     def add_router(self, router: APIRouter):
