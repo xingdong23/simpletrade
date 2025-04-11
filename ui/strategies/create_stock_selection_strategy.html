@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VeighNa 交易平台 - 新建选股策略</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .sidebar-link.active { background-color: #3b82f6; color: white; }
+        /* Hide elements by default */
+        .hidden-by-default { display: none; }
+    </style>
+    <link rel="preconnect" href="https://rsms.me/">
+    <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
+</head>
+<body class="bg-gray-100">
+    <div class="flex h-screen bg-gray-200">
+        <!-- Sidebar Placeholder -->
+        <div id="sidebar-placeholder"></div>
+
+        <!-- Main content -->
+        <div class="flex-1 flex flex-col overflow-hidden ml-64">
+            <!-- 头部 -->
+            <header class="bg-white shadow p-4">
+                <h1 class="text-xl font-semibold text-gray-800">新建选股策略</h1>
+            </header>
+
+            <!-- 内容区域 -->
+            <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 p-6">
+                <div class="container mx-auto">
+                    <form action="#" method="POST"> <!-- Needs proper backend endpoint -->
+
+                        <!-- 基本信息 -->
+                        <div class="bg-white p-6 rounded-lg shadow mb-6">
+                            <h2 class="text-lg font-semibold text-gray-700 mb-4 border-b pb-2">基本信息</h2>
+                            <div class="mb-4">
+                                <label for="strategy_name" class="block text-sm font-medium text-gray-700">策略名称 <span class="text-red-500">*</span></label>
+                                <input type="text" name="strategy_name" id="strategy_name" required class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                            </div>
+                            <div>
+                                <label for="strategy_description" class="block text-sm font-medium text-gray-700">策略描述</label>
+                                <textarea name="strategy_description" id="strategy_description" rows="3" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"></textarea>
+                            </div>
+                        </div>
+
+                        <!-- 运行配置 -->
+                        <div class="bg-white p-6 rounded-lg shadow mb-6">
+                            <h2 class="text-lg font-semibold text-gray-700 mb-4 border-b pb-2">运行配置</h2>
+                            <div class="mb-4">
+                                <label for="run_frequency" class="block text-sm font-medium text-gray-700">运行频率 <span class="text-red-500">*</span></label>
+                                <select id="run_frequency" name="run_frequency" required class="mt-1 block w-full pl-3 pr-10 py-2 text-base border border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
+                                    <option value="manual">手动执行</option>
+                                    <option value="daily">每日</option>
+                                    <option value="weekly">每周</option>
+                                </select>
+                            </div>
+
+                            <!-- 每日运行时间 -->
+                            <div id="daily_run_time_config" class="mb-4 hidden-by-default">
+                                <label for="daily_run_time" class="block text-sm font-medium text-gray-700">每日运行时间</label>
+                                <input type="time" id="daily_run_time" name="daily_run_time" class="mt-1 block w-auto border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                                <p class="mt-1 text-xs text-gray-500">请选择策略每天自动运行的时间。</p>
+                            </div>
+
+                            <!-- 每周运行时间 -->
+                            <div id="weekly_run_time_config" class="mb-4 hidden-by-default">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label for="weekly_run_day" class="block text-sm font-medium text-gray-700">每周运行日</label>
+                                        <select id="weekly_run_day" name="weekly_run_day" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
+                                            <option value="1">星期一</option>
+                                            <option value="2">星期二</option>
+                                            <option value="3">星期三</option>
+                                            <option value="4">星期四</option>
+                                            <option value="5">星期五</option>
+                                            <option value="6">星期六</option>
+                                            <option value="0">星期日</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label for="weekly_run_time" class="block text-sm font-medium text-gray-700">运行时间</label>
+                                        <input type="time" id="weekly_run_time" name="weekly_run_time" class="mt-1 block w-auto border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                                    </div>
+                                </div>
+                                <p class="mt-1 text-xs text-gray-500">请选择策略每周自动运行的日期和时间。</p>
+                            </div>
+                            <div class="mt-4">
+                                <label class="inline-flex items-center">
+                                    <input type="checkbox" name="is_enabled" value="true" class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+                                    <span class="ml-2 text-sm text-gray-700">立即启用策略</span>
+                                </label>
+                            </div>
+                        </div>
+
+                         <!-- 选股逻辑配置 -->
+                        <div class="bg-white p-6 rounded-lg shadow mb-6">
+                            <h2 class="text-lg font-semibold text-gray-700 mb-4 border-b pb-2">选股逻辑配置</h2>
+                            <p class="text-sm text-gray-500 mt-1 mb-3">定义如何进行选股。 (此部分为界面设计占位符，具体实现待定)</p>
+                            <div class="space-y-4">
+                                <div>
+                                    <label for="selection_method" class="block text-sm font-medium text-gray-700">选股方法</label>
+                                     <select id="selection_method" name="selection_method" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
+                                        <option value="placeholder_method_1">因子选股 (示例)</option>
+                                        <option value="placeholder_method_2">模型预测选股 (示例)</option>
+                                        <option value="placeholder_method_3">自定义脚本 (示例)</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="selection_params" class="block text-sm font-medium text-gray-700">参数配置</label>
+                                    <textarea name="selection_params" id="selection_params" rows="5" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" placeholder="根据所选方法输入相关配置 (例如：因子表达式，模型路径，脚本参数等)"></textarea>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 操作按钮 -->
+                        <div class="flex justify-end space-x-3 mt-8">
+                            <a href="stock_selection_strategies.html" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded inline-flex items-center">
+                                取消
+                            </a>
+                            <button type="submit" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded inline-flex items-center">
+                                保存选股策略
+                            </button>
+                        </div>
+
+                    </form>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script>
+        const frequencySelect = document.getElementById('run_frequency');
+        const dailyConfig = document.getElementById('daily_run_time_config');
+        const weeklyConfig = document.getElementById('weekly_run_time_config');
+
+        function toggleTimeConfigs() {
+            const selectedFrequency = frequencySelect.value;
+
+            // Hide all conditional configs first
+            dailyConfig.style.display = 'none';
+            weeklyConfig.style.display = 'none';
+
+            // Show the relevant config based on selection
+            if (selectedFrequency === 'daily') {
+                dailyConfig.style.display = 'block';
+            } else if (selectedFrequency === 'weekly') {
+                weeklyConfig.style.display = 'block';
+            }
+        }
+
+        // Add event listener to the frequency select dropdown
+        frequencySelect.addEventListener('change', toggleTimeConfigs);
+
+        // Initial check in case the page loads with a non-default value (e.g., editing an existing strategy)
+        // toggleTimeConfigs(); // Uncomment if you need this behavior on page load
+
+    </script>
+
+    <!-- Load Sidebar Script -->
+    <script src="../js/load_sidebar.js"></script>
+
+</body>
+</html>

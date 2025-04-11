@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VeighNa 交易平台 - 选股策略</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            overflow-x: hidden; /* 防止水平滚动条 */
+        }
+        .sidebar-link.active {
+            background-color: #3b82f6;
+            color: white;
+        }
+
+        /* 侧边栏样式优化 */
+        @media (max-width: 1023px) {
+            .sidebar {
+                transform: translateX(-100%);
+                transition: transform 0.3s ease-in-out;
+                position: fixed;
+                z-index: 50;
+                top: 0;
+                left: 0;
+                bottom: 0;
+            }
+            .sidebar.show {
+                transform: translateX(0);
+            }
+            .ml-64 {
+                margin-left: 0 !important;
+            }
+        }
+
+        /* 卡片样式优化 */
+        .card {
+            transition: all 0.2s ease;
+            border: 1px solid transparent;
+        }
+
+        .card:hover {
+            border-color: #e5e7eb;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+    </style>
+    <link rel="preconnect" href="https://rsms.me/">
+    <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
+</head>
+<body class="bg-gray-100">
+    <div class="flex h-screen bg-gray-200">
+        <!-- Sidebar -->
+        <div class="w-64 bg-gray-800 text-white flex flex-col fixed h-full sidebar">
+            <!-- Logo/Brand -->
+            <div class="h-16 flex items-center justify-center text-xl font-bold border-b border-gray-700">
+                VeighNa 交易平台
+            </div>
+            <!-- Navigation Links -->
+            <nav class="flex-1 px-4 py-4 space-y-2 overflow-y-auto">
+                <a href="../dashboard/dashboard.html" class="sidebar-link flex items-center px-4 py-2 rounded hover:bg-gray-700">
+                    <svg class="h-5 w-5 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>
+                    仪表盘
+                </a>
+
+                <!-- 交易中心 -->
+                <a href="../trading/live_trading.html" class="sidebar-link flex items-center px-4 py-2 rounded hover:bg-gray-700">
+                    <svg class="h-5 w-5 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01" />
+                    </svg>
+                    交易中心
+                </a>
+
+                <!-- 数据管理 -->
+                <a href="../data/data_management.html" class="sidebar-link flex items-center px-4 py-2 rounded hover:bg-gray-700">
+                    <svg class="h-5 w-5 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4M4 7l8 5m0 0l8-5m-8 5v10"/> </svg>
+                    数据管理
+                </a>
+
+                 <!-- AI 分析 -->
+                <a href="../ai_analysis/ai_analysis.html" class="sidebar-link flex items-center px-4 py-2 rounded hover:bg-gray-700">
+                    <svg class="h-5 w-5 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg> <!-- Placeholder Icon -->
+                    AI 分析
+                </a>
+
+                <!-- 策略管理 -->
+                <div class="pt-2 pb-1">
+                    <p class="px-4 text-xs font-semibold text-gray-400 uppercase">策略管理</p>
+                </div>
+
+                <a href="cta_strategies.html" class="sidebar-link flex items-center px-4 py-2 rounded hover:bg-gray-700">
+                     <svg class="h-5 w-5 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/> </svg>
+                    CTA策略
+                </a>
+
+
+                <a href="../strategies/stock_selection_strategies.html" class="sidebar-link active flex items-center px-4 py-2 rounded hover:bg-gray-700">
+                    <svg class="h-5 w-5 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.5 14.25l-2.635-2.635a.937.937 0 00-1.326 0l-2.635 2.635m5.27 0l-2.635 2.635a.937.937 0 01-1.326 0l-2.635-2.635M15.75 7.5l-2.635 2.635a.937.937 0 01-1.326 0L9.155 7.5" /> </svg>
+                    选股策略
+                </a>
+
+                <!-- 执行与结果 -->
+                <div class="pt-2 pb-1">
+                    <p class="px-4 text-xs font-semibold text-gray-400 uppercase">执行与结果</p>
+                </div>
+
+                <a href="../backtest/backtest.html" class="sidebar-link flex items-center px-4 py-2 rounded hover:bg-gray-700">
+                    <svg class="h-5 w-5 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    策略回测
+                </a>
+            </nav>
+            <!-- User Area/Logout -->
+            <div class="border-t border-gray-700 p-4 flex-shrink-0">
+                <a href="../common/settings.html" class="sidebar-link flex items-center px-4 py-2 rounded hover:bg-gray-700">
+                    <svg class="h-5 w-5 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/> <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/> </svg>
+                    设置
+                </a>
+                <a href="../common/login.html" class="sidebar-link flex items-center px-4 py-2 mt-2 text-red-400 rounded hover:bg-gray-700">
+                     <svg class="h-5 w-5 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/> </svg>
+                    登出
+                </a>
+            </div>
+        </div>
+
+        <!-- Main content -->
+        <div class="flex-1 flex flex-col overflow-hidden ml-64">
+            <!-- 头部 -->
+            <header class="bg-white shadow p-4 flex justify-between items-center">
+                <h1 class="text-xl font-semibold text-gray-800">选股策略</h1>
+                <div class="flex items-center space-x-2">
+                    <a href="create_stock_selection_strategy.html" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded">
+                        + 新建选股策略
+                    </a>
+                    <!-- Hamburger Button (Visible only on small screens) -->
+                    <button id="hamburger-button" class="lg:hidden text-gray-600 hover:text-gray-800 focus:outline-none">
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                        </svg>
+                    </button>
+                </div>
+            </header>
+
+            <!-- 内容区域 -->
+            <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 p-6">
+                <div class="container mx-auto">
+                    <div class="bg-white p-6 rounded-lg shadow card">
+                        <h2 class="text-lg font-semibold text-gray-700 mb-4">选股策略列表</h2>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">策略名称</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">运行频率</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">运行状态</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">下次运行时间</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">上次运行时间</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">上次结果</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-gray-200">
+                                    <!-- Example Row 1: Daily -->
+                                    <tr>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">每日市值因子选股</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">每日 08:00</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">已启用</span></td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">2024-07-27 08:00</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">2024-07-26 08:05</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">成功 (选出 50 支)</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                                            <a href="#" class="text-indigo-600 hover:text-indigo-900">详情</a>
+                                            <button onclick="alert('手动执行: 每日市值因子选股')" class="text-blue-600 hover:text-blue-900">手动执行</button>
+                                            <a href="#" class="text-yellow-600 hover:text-yellow-900">编辑</a>
+                                            <button onclick="alert('删除: 每日市值因子选股')" class="text-red-600 hover:text-red-900">删除</button>
+                                        </td>
+                                    </tr>
+                                    <!-- Example Row 2: Weekly -->
+                                    <tr>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">每周动量反转</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">每周一 09:00</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">已禁用</span></td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">-</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">2024-07-22 09:10</td>
+                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-red-500">失败 (配置错误)</td>
+                                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                                            <a href="#" class="text-indigo-600 hover:text-indigo-900">详情</a>
+                                            <button onclick="alert('手动执行: 每周动量反转')" class="text-blue-600 hover:text-blue-900">手动执行</button>
+                                            <a href="#" class="text-yellow-600 hover:text-yellow-900">编辑</a>
+                                            <button onclick="alert('删除: 每周动量反转')" class="text-red-600 hover:text-red-900">删除</button>
+                                        </td>
+                                    </tr>
+                                     <!-- Example Row 3: Manual -->
+                                    <tr>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">手动价值选股</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">手动</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">就绪</span></td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">-</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">2024-07-25 14:30</td>
+                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">成功 (选出 25 支)</td>
+                                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                                            <a href="#" class="text-indigo-600 hover:text-indigo-900">详情</a>
+                                            <button onclick="alert('手动执行: 手动价值选股')" class="text-blue-600 hover:text-blue-900">手动执行</button>
+                                            <a href="#" class="text-yellow-600 hover:text-yellow-900">编辑</a>
+                                            <button onclick="alert('删除: 手动价值选股')" class="text-red-600 hover:text-red-900">删除</button>
+                                        </td>
+                                    </tr>
+                                    <!-- Add more rows as needed -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Any existing scripts -->
+    <script>
+        // ... existing page script if any ...
+    </script>
+
+    <!-- Sidebar is now directly embedded in the page -->
+    <script>
+        // Sidebar Toggle Script for Mobile
+        document.addEventListener('DOMContentLoaded', () => {
+            const hamburgerButton = document.getElementById('hamburger-button');
+            const sidebar = document.querySelector('.sidebar'); // 选择侧边栏
+
+            // 创建遮罩元素
+            const backdrop = document.createElement('div');
+            backdrop.id = 'sidebar-backdrop';
+            backdrop.className = 'fixed inset-0 bg-black bg-opacity-50 z-30 hidden lg:hidden';
+            document.body.appendChild(backdrop);
+
+            const toggleSidebar = () => {
+                if (sidebar) {
+                    const isOpen = sidebar.classList.contains('show');
+                    if (isOpen) {
+                        sidebar.classList.remove('show');
+                        backdrop.classList.add('hidden');
+                    } else {
+                        sidebar.classList.add('show');
+                        backdrop.classList.remove('hidden');
+                    }
+                }
+            };
+
+            if (hamburgerButton) {
+                hamburgerButton.addEventListener('click', toggleSidebar);
+            }
+
+            if (backdrop) {
+                backdrop.addEventListener('click', toggleSidebar);
+            }
+        });
+    </script>
+
+</body>
+</html>

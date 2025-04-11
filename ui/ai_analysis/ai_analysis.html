@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VeighNa 交易平台 - AI 分析</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            overflow-x: hidden; /* 防止水平滚动条 */
+        }
+        .sidebar-link.active {
+            background-color: #3b82f6;
+            color: white;
+        }
+
+        /* 侧边栏样式优化 */
+        @media (max-width: 1023px) {
+            .sidebar {
+                transform: translateX(-100%);
+                transition: transform 0.3s ease-in-out;
+                position: fixed;
+                z-index: 50;
+                top: 0;
+                left: 0;
+                bottom: 0;
+            }
+            .sidebar.show {
+                transform: translateX(0);
+            }
+            .ml-64 {
+                margin-left: 0 !important;
+            }
+        }
+
+        /* 卡片样式优化 */
+        .card {
+            transition: all 0.2s ease;
+            border: 1px solid transparent;
+        }
+
+        .card:hover {
+            border-color: #e5e7eb;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        /* Add specific styles for this page if needed */
+    </style>
+    <link rel="preconnect" href="https://rsms.me/">
+    <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
+</head>
+<body class="bg-gray-100">
+    <div class="flex h-screen bg-gray-200">
+        <!-- Sidebar -->
+        <div class="w-64 bg-gray-800 text-white flex flex-col fixed h-full sidebar">
+            <!-- Logo/Brand -->
+            <div class="h-16 flex items-center justify-center text-xl font-bold border-b border-gray-700">
+                VeighNa 交易平台
+            </div>
+            <!-- Navigation Links -->
+            <nav class="flex-1 px-4 py-4 space-y-2 overflow-y-auto">
+                <a href="../dashboard/dashboard.html" class="sidebar-link flex items-center px-4 py-2 rounded hover:bg-gray-700">
+                    <svg class="h-5 w-5 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>
+                    仪表盘
+                </a>
+
+                <!-- 交易中心 -->
+                <a href="../trading/live_trading.html" class="sidebar-link flex items-center px-4 py-2 rounded hover:bg-gray-700">
+                    <svg class="h-5 w-5 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01" />
+                    </svg>
+                    交易中心
+                </a>
+
+                <!-- 数据管理 -->
+                <a href="../data/data_management.html" class="sidebar-link flex items-center px-4 py-2 rounded hover:bg-gray-700">
+                    <svg class="h-5 w-5 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4M4 7l8 5m0 0l8-5m-8 5v10"/> </svg>
+                    数据管理
+                </a>
+
+                 <!-- AI 分析 -->
+                <a href="../ai_analysis/ai_analysis.html" class="sidebar-link active flex items-center px-4 py-2 rounded hover:bg-gray-700">
+                    <svg class="h-5 w-5 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg> <!-- Placeholder Icon -->
+                    AI 分析
+                </a>
+
+                <!-- 策略管理 -->
+                <div class="pt-2 pb-1">
+                    <p class="px-4 text-xs font-semibold text-gray-400 uppercase">策略管理</p>
+                </div>
+
+                <a href="../strategies/cta_strategies.html" class="sidebar-link flex items-center px-4 py-2 rounded hover:bg-gray-700">
+                     <svg class="h-5 w-5 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/> </svg>
+                    CTA策略
+                </a>
+
+
+                <a href="../strategies/stock_selection_strategies.html" class="sidebar-link flex items-center px-4 py-2 rounded hover:bg-gray-700">
+                    <svg class="h-5 w-5 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.5 14.25l-2.635-2.635a.937.937 0 00-1.326 0l-2.635 2.635m5.27 0l-2.635 2.635a.937.937 0 01-1.326 0l-2.635-2.635M15.75 7.5l-2.635 2.635a.937.937 0 01-1.326 0L9.155 7.5" /> </svg>
+                    选股策略
+                </a>
+
+                <!-- 执行与结果 -->
+                <div class="pt-2 pb-1">
+                    <p class="px-4 text-xs font-semibold text-gray-400 uppercase">执行与结果</p>
+                </div>
+
+                <a href="../backtest/backtest.html" class="sidebar-link flex items-center px-4 py-2 rounded hover:bg-gray-700">
+                    <svg class="h-5 w-5 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    策略回测
+                </a>
+            </nav>
+            <!-- User Area/Logout -->
+            <div class="border-t border-gray-700 p-4 flex-shrink-0">
+                <a href="../common/settings.html" class="sidebar-link flex items-center px-4 py-2 rounded hover:bg-gray-700">
+                    <svg class="h-5 w-5 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/> <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/> </svg>
+                    设置
+                </a>
+                <a href="../common/login.html" class="sidebar-link flex items-center px-4 py-2 mt-2 text-red-400 rounded hover:bg-gray-700">
+                     <svg class="h-5 w-5 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/> </svg>
+                    登出
+                </a>
+            </div>
+        </div>
+
+        <!-- Main content -->
+        <div class="flex-1 flex flex-col overflow-hidden ml-64">
+            <!-- Header -->
+            <header class="bg-white shadow p-4 flex justify-between items-center">
+                <h1 class="text-xl font-semibold text-gray-800">AI 分析</h1>
+                <!-- Hamburger Button (Visible only on small screens) -->
+                <button id="hamburger-button" class="lg:hidden text-gray-600 hover:text-gray-800 focus:outline-none">
+                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
+                </button>
+            </header>
+
+            <!-- Content area -->
+            <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 p-6">
+                <div class="container mx-auto">
+                    <!-- AI分析功能 -->
+                    <div class="bg-white p-6 rounded-lg shadow mb-6 card">
+                        <h2 class="text-lg font-semibold text-gray-700 mb-4 border-b pb-2">智能选股分析</h2>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <!-- Input and Controls Area -->
+                            <div class="md:col-span-1 space-y-6">
+                                <!-- Stock Input -->
+                                <div>
+                                    <label for="stock-code" class="block text-sm font-medium text-gray-700 mb-1">股票代码</label>
+                                    <div class="flex">
+                                        <input type="text" id="stock-code" name="stock-code" class="flex-1 rounded-l-md border border-gray-300 px-3 py-2 text-gray-900 focus:border-blue-500 focus:ring-blue-500" placeholder="例如: 600519.SH 或 AAPL.US">
+                                        <button onclick="fetchData()" class="bg-blue-600 text-white px-4 py-2 rounded-r-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 text-sm">获取数据</button>
+                                    </div>
+                                    <p class="mt-1 text-xs text-gray-500">请输入完整的股票代码 (包含交易所后缀)</p>
+                                </div>
+
+                                <!-- Technical Indicator Selection -->
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">选择技术指标</label>
+                                    <div class="space-y-2 max-h-48 overflow-y-auto border rounded p-3 bg-gray-50">
+                                        <div class="flex items-center">
+                                            <input id="ma" name="indicators" value="MA" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" checked>
+                                            <label for="ma" class="ml-2 text-sm text-gray-700">移动平均线 (MA)</label>
+                                        </div>
+                                        <div class="flex items-center">
+                                            <input id="macd" name="indicators" value="MACD" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" checked>
+                                            <label for="macd" class="ml-2 text-sm text-gray-700">MACD</label>
+                                        </div>
+                                        <div class="flex items-center">
+                                            <input id="rsi" name="indicators" value="RSI" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" checked>
+                                            <label for="rsi" class="ml-2 text-sm text-gray-700">相对强弱指标 (RSI)</label>
+                                        </div>
+                                        <div class="flex items-center">
+                                            <input id="kdj" name="indicators" value="KDJ" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                            <label for="kdj" class="ml-2 text-sm text-gray-700">KDJ 指标</label>
+                                        </div>
+                                        <div class="flex items-center">
+                                            <input id="boll" name="indicators" value="BOLL" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                            <label for="boll" class="ml-2 text-sm text-gray-700">布林带 (BOLL)</label>
+                                        </div>
+                                        <div class="flex items-center">
+                                            <input id="cci" name="indicators" value="CCI" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                            <label for="cci" class="ml-2 text-sm text-gray-700">顺势指标 (CCI)</label>
+                                        </div>
+                                         <div class="flex items-center">
+                                            <input id="obv" name="indicators" value="OBV" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                            <label for="obv" class="ml-2 text-sm text-gray-700">能量潮 (OBV)</label>
+                                        </div>
+                                        <!-- Add more indicators as needed -->
+                                    </div>
+                                </div>
+
+                                <!-- Generate Report Button -->
+                                <div>
+                                     <button onclick="generateReport()" class="w-full bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50" id="generate-button" disabled>生成 AI 分析报告</button>
+                                     <p id="generate-status" class="mt-1 text-xs text-center text-gray-500"></p>
+                                </div>
+                            </div>
+
+                            <!-- Analysis Report Display Area -->
+                            <div class="md:col-span-2 border rounded-lg p-4 bg-gray-50 min-h-[400px] flex flex-col">
+                                <div class="flex justify-between items-center mb-3 pb-2 border-b">
+                                    <h3 id="report-title" class="text-md font-medium text-gray-800">分析报告</h3>
+                                    <span id="report-timestamp" class="text-sm text-gray-500"></span>
+                                </div>
+
+                                <div id="report-content" class="prose max-w-none text-sm flex-grow overflow-y-auto">
+                                    <!-- Placeholder text -->
+                                    <div id="report-placeholder" class="text-center text-gray-500 pt-10">
+                                        <p>请输入股票代码并选择指标，然后点击"生成 AI 分析报告"。</p>
+                                        <svg class="mx-auto h-12 w-12 text-gray-400 mt-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M15 10a3 3 0 11-6 0 3 3 0 016 0zm-2 9a4 4 0 00-4-4H5a4 4 0 00-4 4v1h16v-1a4 4 0 00-4-4h-2z"></path></svg>
+                                        <p class="mt-2">报告内容将在此处显示。</p>
+                                    </div>
+                                    <!-- Loading Indicator -->
+                                     <div id="report-loading" class="text-center text-gray-500 pt-10 hidden">
+                                         <svg class="animate-spin mx-auto h-8 w-8 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                           <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                           <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                         </svg>
+                                         <p class="mt-2">正在生成报告，请稍候...</p>
+                                     </div>
+                                    <!-- Report content will be inserted here -->
+                                </div>
+
+                                <div class="mt-4 pt-2 border-t flex justify-end space-x-2">
+                                    <button class="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-100 disabled:opacity-50" disabled id="export-button">导出 PDF</button>
+                                    <button class="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-100 disabled:opacity-50" disabled id="share-button">分享</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Optional: Add other sections or charts below if needed -->
+
+                </div> <!-- /.container -->
+            </main>
+        </div>
+    </div>
+
+    <script>
+        const stockCodeInput = document.getElementById('stock-code');
+        const generateButton = document.getElementById('generate-button');
+        const generateStatus = document.getElementById('generate-status');
+        const reportTitle = document.getElementById('report-title');
+        const reportTimestamp = document.getElementById('report-timestamp');
+        const reportContent = document.getElementById('report-content');
+        const reportPlaceholder = document.getElementById('report-placeholder');
+        const reportLoading = document.getElementById('report-loading');
+        const exportButton = document.getElementById('export-button');
+        const shareButton = document.getElementById('share-button');
+        let hasData = false; // Flag to track if data has been 'fetched'
+
+        // Enable generate button only when a stock code is entered
+        stockCodeInput.addEventListener('input', () => {
+             if (stockCodeInput.value.trim() !== '' && hasData) {
+                 generateButton.disabled = false;
+             } else {
+                 generateButton.disabled = true;
+             }
+        });
+
+        // Mock function for fetching data
+        function fetchData() {
+            const stockCode = stockCodeInput.value.trim();
+            if (!stockCode) {
+                alert('请输入股票代码。');
+                return;
+            }
+            // Simulate API call
+            generateStatus.textContent = `正在获取 ${stockCode} 的数据...`;
+            generateButton.disabled = true;
+            setTimeout(() => {
+                // Simulate success
+                hasData = true;
+                generateStatus.textContent = `${stockCode} 数据已准备好。`;
+                generateButton.disabled = false; // Enable generate button after fetching
+                 alert(`模拟获取 ${stockCode} 数据成功！现在可以生成报告。`);
+            }, 1500); // Simulate network delay
+        }
+
+        // Mock function for generating the report
+        function generateReport() {
+            const stockCode = stockCodeInput.value.trim();
+            if (!stockCode || !hasData) {
+                alert('请先输入股票代码并获取数据。');
+                return;
+            }
+
+            const selectedIndicators = Array.from(document.querySelectorAll('input[name="indicators"]:checked'))
+                                            .map(cb => cb.value);
+
+            if (selectedIndicators.length === 0) {
+                alert('请至少选择一个技术指标。');
+                return;
+            }
+
+            console.log('Generating report for:', stockCode, 'with indicators:', selectedIndicators);
+
+            // Show loading state
+            reportPlaceholder.classList.add('hidden');
+            reportLoading.classList.remove('hidden');
+            reportContent.innerHTML = ''; // Clear previous report if any
+            generateButton.disabled = true;
+            generateStatus.textContent = '正在生成报告...';
+            exportButton.disabled = true;
+            shareButton.disabled = true;
+
+            // Simulate report generation delay
+            setTimeout(() => {
+                // Simulate receiving report data
+                reportLoading.classList.add('hidden');
+                reportTitle.textContent = `${stockCode} 分析报告`;
+                reportTimestamp.textContent = `生成时间: ${new Date().toLocaleString()}`;
+
+                // Generate mock report content (replace with actual LLM output later)
+                let mockReportHTML = `<h4 class="text-blue-600 !mt-0">市场概况</h4>
+                    <p>根据您选择的指标，${stockCode} 近期表现显示出一定的趋势。 [此处应为大模型生成的市场概况分析]</p>
+                    <h4 class="text-blue-600">技术指标分析 (${selectedIndicators.join(', ')})</h4>
+                    <ul>`;
+                selectedIndicators.forEach(indicator => {
+                    mockReportHTML += `<li><strong>${indicator}:</strong> [此处为 ${indicator} 指标的 AI 解读]</li>`;
+                });
+                mockReportHTML += `</ul>
+                    <h4 class="text-blue-600">AI 综合评估</h4>
+                    <p>[此处为大模型基于所选指标和市场数据的综合评估和建议]</p>
+                    <ol>
+                        <li>关注点 1...</li>
+                        <li>关注点 2...</li>
+                    </ol>
+                    <h4 class="text-blue-600">风险提示</h4>
+                    <p>[此处为 AI 识别的主要风险点]</p>`;
+
+                reportContent.innerHTML = mockReportHTML;
+                generateStatus.textContent = '报告生成完成。';
+                // Enable buttons after report generation
+                exportButton.disabled = false;
+                shareButton.disabled = false;
+                generateButton.disabled = false; // Re-enable generate button
+
+            }, 3000); // Simulate LLM processing time
+        }
+
+         // Placeholder functions for export/share
+         exportButton.addEventListener('click', () => alert('导出 PDF 功能待实现。'));
+         shareButton.addEventListener('click', () => alert('分享功能待实现。'));
+
+    </script>
+
+    <!-- Sidebar is now directly embedded in the page -->
+    <script>
+        // Sidebar Toggle Script for Mobile
+        document.addEventListener('DOMContentLoaded', () => {
+            const hamburgerButton = document.getElementById('hamburger-button');
+            const sidebar = document.querySelector('.sidebar'); // 选择侧边栏
+
+            // 创建遮罩元素
+            const backdrop = document.createElement('div');
+            backdrop.id = 'sidebar-backdrop';
+            backdrop.className = 'fixed inset-0 bg-black bg-opacity-50 z-30 hidden lg:hidden';
+            document.body.appendChild(backdrop);
+
+            const toggleSidebar = () => {
+                if (sidebar) {
+                    const isOpen = sidebar.classList.contains('show');
+                    if (isOpen) {
+                        sidebar.classList.remove('show');
+                        backdrop.classList.add('hidden');
+                    } else {
+                        sidebar.classList.add('show');
+                        backdrop.classList.remove('hidden');
+                    }
+                }
+            };
+
+            if (hamburgerButton) {
+                hamburgerButton.addEventListener('click', toggleSidebar);
+            }
+
+            if (backdrop) {
+                backdrop.addEventListener('click', toggleSidebar);
+            }
+        });
+    </script>
+
+</body>
+</html>

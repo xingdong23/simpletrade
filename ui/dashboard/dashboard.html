@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VeighNa 交易平台 - 仪表盘</title>
+    <!-- Include Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            overflow-x: hidden; /* 防止水平滚动条 */
+        }
+        .sidebar-link.active {
+            background-color: #3b82f6;
+            color: white;
+        }
+
+        /* 侧边栏样式优化 */
+        @media (max-width: 1023px) {
+            .sidebar {
+                transform: translateX(-100%);
+                transition: transform 0.3s ease-in-out;
+                position: fixed;
+                z-index: 50;
+                top: 0;
+                left: 0;
+                bottom: 0;
+            }
+            .sidebar.show {
+                transform: translateX(0);
+            }
+            .ml-64 {
+                margin-left: 0 !important;
+            }
+        }
+
+        /* 卡片样式优化 */
+        .card {
+            transition: all 0.2s ease;
+            border: 1px solid transparent;
+        }
+
+        .card:hover {
+            border-color: #e5e7eb;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+    </style>
+    <!-- Include a font, e.g., Inter -->
+    <link rel="preconnect" href="https://rsms.me/">
+    <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
+</head>
+<body class="bg-gray-100">
+    <div class="flex h-screen bg-gray-200">
+        <!-- Sidebar -->
+        <div class="w-64 bg-gray-800 text-white flex flex-col fixed h-full sidebar">
+            <!-- Logo/Brand -->
+            <div class="h-16 flex items-center justify-center text-xl font-bold border-b border-gray-700">
+                VeighNa 交易平台
+            </div>
+            <!-- Navigation Links -->
+            <nav class="flex-1 px-4 py-4 space-y-2 overflow-y-auto">
+                <a href="../dashboard/dashboard.html" class="sidebar-link active flex items-center px-4 py-2 rounded hover:bg-gray-700">
+                    <svg class="h-5 w-5 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>
+                    仪表盘
+                </a>
+
+                <!-- 交易中心 -->
+                <a href="../trading/live_trading.html" class="sidebar-link flex items-center px-4 py-2 rounded hover:bg-gray-700">
+                    <svg class="h-5 w-5 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01" />
+                    </svg>
+                    交易中心
+                </a>
+
+                <!-- 数据管理 -->
+                <a href="../data/data_management.html" class="sidebar-link flex items-center px-4 py-2 rounded hover:bg-gray-700">
+                    <svg class="h-5 w-5 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4M4 7l8 5m0 0l8-5m-8 5v10"/> </svg>
+                    数据管理
+                </a>
+
+                 <!-- AI 分析 -->
+                <a href="../ai_analysis/ai_analysis.html" class="sidebar-link flex items-center px-4 py-2 rounded hover:bg-gray-700">
+                    <svg class="h-5 w-5 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg> <!-- Placeholder Icon -->
+                    AI 分析
+                </a>
+
+                <!-- 策略管理 -->
+                <div class="pt-2 pb-1">
+                    <p class="px-4 text-xs font-semibold text-gray-400 uppercase">策略管理</p>
+                </div>
+
+                <a href="../strategies/cta_strategies.html" class="sidebar-link flex items-center px-4 py-2 rounded hover:bg-gray-700">
+                     <svg class="h-5 w-5 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/> </svg>
+                    CTA策略
+                </a>
+
+
+                <a href="../strategies/stock_selection_strategies.html" class="sidebar-link flex items-center px-4 py-2 rounded hover:bg-gray-700">
+                    <svg class="h-5 w-5 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.5 14.25l-2.635-2.635a.937.937 0 00-1.326 0l-2.635 2.635m5.27 0l-2.635 2.635a.937.937 0 01-1.326 0l-2.635-2.635M15.75 7.5l-2.635 2.635a.937.937 0 01-1.326 0L9.155 7.5" /> </svg>
+                    选股策略
+                </a>
+
+                <!-- 执行与结果 -->
+                <div class="pt-2 pb-1">
+                    <p class="px-4 text-xs font-semibold text-gray-400 uppercase">执行与结果</p>
+                </div>
+
+                <a href="../backtest/backtest.html" class="sidebar-link flex items-center px-4 py-2 rounded hover:bg-gray-700">
+                    <svg class="h-5 w-5 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    策略回测
+                </a>
+            </nav>
+            <!-- User Area/Logout -->
+            <div class="border-t border-gray-700 p-4 flex-shrink-0">
+                <a href="../common/settings.html" class="sidebar-link flex items-center px-4 py-2 rounded hover:bg-gray-700">
+                    <svg class="h-5 w-5 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/> <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/> </svg>
+                    设置
+                </a>
+                <a href="../common/login.html" class="sidebar-link flex items-center px-4 py-2 mt-2 text-red-400 rounded hover:bg-gray-700">
+                     <svg class="h-5 w-5 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/> </svg>
+                    登出
+                </a>
+            </div>
+        </div>
+
+        <!-- Main content -->
+        <div class="flex-1 flex flex-col overflow-hidden ml-64"> <!-- Add ml-64 for fixed sidebar -->
+            <!-- Header -->
+            <header class="bg-white shadow p-4 flex justify-between items-center">
+                <h1 class="text-xl font-semibold text-gray-800">仪表盘</h1>
+                <!-- Hamburger Button (Visible only on small screens) -->
+                <button id="hamburger-button" class="lg:hidden text-gray-600 hover:text-gray-800 focus:outline-none">
+                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
+                </button>
+            </header>
+
+            <!-- Content area -->
+            <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 p-6">
+                <div class="container mx-auto">
+                    <!-- 交易接口状态 -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
+                        <div class="bg-white p-6 rounded-lg shadow card">
+                            <h2 class="text-lg font-semibold text-gray-700 mb-2">交易接口</h2>
+                            <div class="space-y-2">
+                                <p class="text-gray-600">CTP: <span class="text-green-500 font-bold">已连接</span></p>
+                                <p class="text-gray-600">IB: <span class="text-green-500 font-bold">已连接</span></p>
+                                <p class="text-gray-600">XTP: <span class="text-red-500 font-bold">未连接</span></p>
+                            </div>
+                            <a href="../trading/live_trading.html" class="text-blue-500 hover:underline mt-4 inline-block">管理接口</a>
+                        </div>
+                        <div class="bg-white p-6 rounded-lg shadow card">
+                            <h2 class="text-lg font-semibold text-gray-700 mb-2">策略状态</h2>
+                            <div class="space-y-2">
+                                <p class="text-gray-600">CTA策略: <span class="font-bold">3</span> 个运行中</p>
+                                <p class="text-gray-600">Alpha策略: <span class="font-bold">2</span> 个运行中</p>
+                                <p class="text-gray-600">算法交易: <span class="font-bold">1</span> 个运行中</p>
+                            </div>
+                            <a href="../strategies/cta_strategies.html" class="text-blue-500 hover:underline mt-4 inline-block">查看策略</a>
+                        </div>
+                        <div class="bg-white p-6 rounded-lg shadow card">
+                            <h2 class="text-lg font-semibold text-gray-700 mb-2">账户概览</h2>
+                            <div class="space-y-2">
+                                <p class="text-gray-600">可用资金: <span class="font-bold">1,000,000.00</span> 元</p>
+                                <p class="text-gray-600">持仓市值: <span class="font-bold">500,000.00</span> 元</p>
+                                <p class="text-gray-600">今日盈亏: <span class="text-green-500 font-bold">+15,000.00</span> 元</p>
+                            </div>
+                            <span class="text-blue-500 mt-4 inline-block">账户详情</span>
+                        </div>
+                    </div>
+
+                    <!-- AI分析功能 -->
+                    <div class="bg-white p-6 rounded-lg shadow mb-6 card">
+                        <h2 class="text-lg font-semibold text-gray-700 mb-4">AI智能分析</h2>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <!-- 股票输入区域 -->
+                            <div class="col-span-1">
+                                <div class="mb-4">
+                                    <label for="stock-code" class="block text-sm font-medium text-gray-700 mb-1">股票代码</label>
+                                    <div class="flex">
+                                        <input type="text" id="stock-code" class="flex-1 rounded-l-md border border-gray-300 px-3 py-2 text-gray-900 focus:border-blue-500 focus:ring-blue-500" placeholder="输入股票代码，如：600000">
+                                        <button class="bg-blue-600 text-white px-4 py-2 rounded-r-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">获取数据</button>
+                                    </div>
+                                </div>
+
+                                <div class="mb-4">
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">技术指标选择</label>
+                                    <div class="space-y-2">
+                                        <div class="flex items-center">
+                                            <input id="ma" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" checked>
+                                            <label for="ma" class="ml-2 text-sm text-gray-700">移动平均线 (MA)</label>
+                                        </div>
+                                        <div class="flex items-center">
+                                            <input id="macd" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" checked>
+                                            <label for="macd" class="ml-2 text-sm text-gray-700">MACD指标</label>
+                                        </div>
+                                        <div class="flex items-center">
+                                            <input id="rsi" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" checked>
+                                            <label for="rsi" class="ml-2 text-sm text-gray-700">相对强弱指标 (RSI)</label>
+                                        </div>
+                                        <div class="flex items-center">
+                                            <input id="kdj" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                            <label for="kdj" class="ml-2 text-sm text-gray-700">KDJ指标</label>
+                                        </div>
+                                        <div class="flex items-center">
+                                            <input id="boll" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                            <label for="boll" class="ml-2 text-sm text-gray-700">布林带 (BOLL)</label>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <button class="w-full bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2">生成AI分析报告</button>
+                            </div>
+
+                            <!-- 分析报告展示区域 -->
+                            <div class="col-span-2 border rounded-lg p-4 bg-gray-50">
+                                <div class="flex justify-between items-center mb-4">
+                                    <h3 class="text-md font-medium text-gray-800">贵州茅台 (600519) 分析报告</h3>
+                                    <span class="text-sm text-gray-500">生成时间: 2023-10-15 15:30</span>
+                                </div>
+
+                                <div class="prose max-w-none">
+                                    <h4 class="text-blue-600">市场概况</h4>
+                                    <p>贵州茅台（600519）近期表现强势，股价在过去一个月内上涨了8.5%，跑赢大盘3.2个百分点。目前股价处于历史较高位置，但相对于行业平均估值仍有一定优势。</p>
+
+                                    <h4 class="text-blue-600">技术指标分析</h4>
+                                    <ul>
+                                        <li><strong>MA指标</strong>：短期MA5位于MA10和MA20上方，呈现多头排列，显示短期走势强劲。</li>
+                                        <li><strong>MACD指标</strong>：MACD金叉形成，红柱体积增大，显示上涨动能增强。</li>
+                                        <li><strong>RSI指标</strong>：RSI(14)为68，处于强势区间但未达超买，仍有上升空间。</li>
+                                    </ul>
+
+                                    <h4 class="text-blue-600">AI综合评估</h4>
+                                    <p>综合技术面和基本面分析，贵州茅台短期内维持强势概率较大。建议关注以下几点：</p>
+                                    <ol>
+                                        <li>近期成交量有所放大，但未见异常，价格上涨有一定量能支撑；</li>
+                                        <li>60日线对股价形成有效支撑，可作为风险控制的重要参考位；</li>
+                                        <li>行业政策面偏暖，对高端白酒龙头形成利好支撑。</li>
+                                    </ol>
+
+                                    <h4 class="text-blue-600">风险提示</h4>
+                                    <p>需警惕以下风险因素：市场整体回调风险、行业消费数据不及预期、估值处于历史较高位置可能面临调整压力。</p>
+                                </div>
+
+                                <div class="mt-4 flex justify-end space-x-2">
+                                    <button class="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-100">导出PDF</button>
+                                    <button class="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-100">分享</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 持仓和成交信息 -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                        <div class="bg-white p-6 rounded-lg shadow card">
+                            <h2 class="text-lg font-semibold text-gray-700 mb-4">当前持仓</h2>
+                            <div class="overflow-x-auto">
+                                <table class="min-w-full divide-y divide-gray-200">
+                                    <thead>
+                                        <tr>
+                                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">合约</th>
+                                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">方向</th>
+                                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">数量</th>
+                                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">均价</th>
+                                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">盈亏</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="bg-white divide-y divide-gray-200">
+                                        <tr>
+                                            <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">IF2109</td>
+                                            <td class="px-4 py-2 whitespace-nowrap text-sm text-red-600">空</td>
+                                            <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">2</td>
+                                            <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">5,230.00</td>
+                                            <td class="px-4 py-2 whitespace-nowrap text-sm text-green-600">+8,400.00</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">rb2110</td>
+                                            <td class="px-4 py-2 whitespace-nowrap text-sm text-red-600">空</td>
+                                            <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">10</td>
+                                            <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">5,120.00</td>
+                                            <td class="px-4 py-2 whitespace-nowrap text-sm text-green-600">+5,200.00</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">AAPL</td>
+                                            <td class="px-4 py-2 whitespace-nowrap text-sm text-green-600">多</td>
+                                            <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">100</td>
+                                            <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">150.25</td>
+                                            <td class="px-4 py-2 whitespace-nowrap text-sm text-red-600">-1,200.00</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <span class="text-blue-500 mt-4 inline-block">查看全部持仓</span>
+                        </div>
+                        <div class="bg-white p-6 rounded-lg shadow card">
+                            <h2 class="text-lg font-semibold text-gray-700 mb-4">最近成交</h2>
+                            <div class="overflow-x-auto">
+                                <table class="min-w-full divide-y divide-gray-200">
+                                    <thead>
+                                        <tr>
+                                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">时间</th>
+                                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">合约</th>
+                                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">方向</th>
+                                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">开平</th>
+                                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">数量</th>
+                                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">价格</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="bg-white divide-y divide-gray-200">
+                                        <tr>
+                                            <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">14:30:25</td>
+                                            <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">IF2109</td>
+                                            <td class="px-4 py-2 whitespace-nowrap text-sm text-red-600">空</td>
+                                            <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">开仓</td>
+                                            <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">1</td>
+                                            <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">5,230.00</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">14:15:10</td>
+                                            <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">rb2110</td>
+                                            <td class="px-4 py-2 whitespace-nowrap text-sm text-red-600">空</td>
+                                            <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">开仓</td>
+                                            <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">5</td>
+                                            <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">5,120.00</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">13:45:32</td>
+                                            <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">AAPL</td>
+                                            <td class="px-4 py-2 whitespace-nowrap text-sm text-green-600">多</td>
+                                            <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">平仓</td>
+                                            <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">50</td>
+                                            <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900">149.75</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <span class="text-blue-500 mt-4 inline-block">查看全部成交</span>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+    <!-- Sidebar Toggle Script for Mobile -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const hamburgerButton = document.getElementById('hamburger-button');
+            const sidebar = document.querySelector('.sidebar'); // 选择侧边栏
+
+            // 创建遮罩元素
+            const backdrop = document.createElement('div');
+            backdrop.id = 'sidebar-backdrop';
+            backdrop.className = 'fixed inset-0 bg-black bg-opacity-50 z-30 hidden lg:hidden';
+            document.body.appendChild(backdrop);
+
+            const toggleSidebar = () => {
+                if (sidebar) {
+                    const isOpen = sidebar.classList.contains('show');
+                    if (isOpen) {
+                        sidebar.classList.remove('show');
+                        backdrop.classList.add('hidden');
+                    } else {
+                        sidebar.classList.add('show');
+                        backdrop.classList.remove('hidden');
+                    }
+                }
+            };
+
+            if (hamburgerButton) {
+                hamburgerButton.addEventListener('click', toggleSidebar);
+            }
+
+            if (backdrop) {
+                backdrop.addEventListener('click', toggleSidebar);
+            }
+        });
+    </script>
+</body>
+</html>

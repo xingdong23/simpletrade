@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VeighNa 交易平台 - 数据管理</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            overflow-x: hidden; /* 防止水平滚动条 */
+        }
+        .sidebar-link.active {
+            background-color: #3b82f6;
+            color: white;
+        }
+
+        /* 侧边栏样式优化 */
+        @media (max-width: 1023px) {
+            .sidebar {
+                transform: translateX(-100%);
+                transition: transform 0.3s ease-in-out;
+                position: fixed;
+                z-index: 50;
+                top: 0;
+                left: 0;
+                bottom: 0;
+            }
+            .sidebar.show {
+                transform: translateX(0);
+            }
+            .ml-64 {
+                margin-left: 0 !important;
+            }
+        }
+
+        /* 卡片样式优化 */
+        .card {
+            transition: all 0.2s ease;
+            border: 1px solid transparent;
+        }
+
+        .card:hover {
+            border-color: #e5e7eb;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        /* Styling for file input area */
+        .file-upload-area {
+            border: 2px dashed #cbd5e1; /* border-gray-300 */
+            border-radius: 0.375rem; /* rounded-md */
+            padding: 2rem; /* p-8 */
+            text-align: center;
+            cursor: pointer;
+        }
+        .file-upload-area:hover {
+            border-color: #3b82f6; /* border-blue-500 */
+            background-color: #f0f9ff; /* bg-blue-50 */
+        }
+    </style>
+    <link rel="preconnect" href="https://rsms.me/">
+    <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
+</head>
+<body class="bg-gray-100">
+    <div class="flex h-screen bg-gray-200">
+        <!-- Sidebar -->
+        <div class="w-64 bg-gray-800 text-white flex flex-col fixed h-full sidebar">
+            <!-- Logo/Brand -->
+            <div class="h-16 flex items-center justify-center text-xl font-bold border-b border-gray-700">
+                VeighNa 交易平台
+            </div>
+            <!-- Navigation Links -->
+            <nav class="flex-1 px-4 py-4 space-y-2 overflow-y-auto">
+                <a href="../dashboard/dashboard.html" class="sidebar-link flex items-center px-4 py-2 rounded hover:bg-gray-700">
+                    <svg class="h-5 w-5 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>
+                    仪表盘
+                </a>
+
+                <!-- 交易中心 -->
+                <a href="../trading/live_trading.html" class="sidebar-link flex items-center px-4 py-2 rounded hover:bg-gray-700">
+                    <svg class="h-5 w-5 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01" />
+                    </svg>
+                    交易中心
+                </a>
+
+                <!-- 数据管理 -->
+                <a href="../data/data_management.html" class="sidebar-link active flex items-center px-4 py-2 rounded hover:bg-gray-700">
+                    <svg class="h-5 w-5 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4M4 7l8 5m0 0l8-5m-8 5v10"/> </svg>
+                    数据管理
+                </a>
+
+                 <!-- AI 分析 -->
+                <a href="../ai_analysis/ai_analysis.html" class="sidebar-link flex items-center px-4 py-2 rounded hover:bg-gray-700">
+                    <svg class="h-5 w-5 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg> <!-- Placeholder Icon -->
+                    AI 分析
+                </a>
+
+                <!-- 策略管理 -->
+                <div class="pt-2 pb-1">
+                    <p class="px-4 text-xs font-semibold text-gray-400 uppercase">策略管理</p>
+                </div>
+
+                <a href="../strategies/cta_strategies.html" class="sidebar-link flex items-center px-4 py-2 rounded hover:bg-gray-700">
+                     <svg class="h-5 w-5 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/> </svg>
+                    CTA策略
+                </a>
+
+
+                <a href="../strategies/stock_selection_strategies.html" class="sidebar-link flex items-center px-4 py-2 rounded hover:bg-gray-700">
+                    <svg class="h-5 w-5 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.5 14.25l-2.635-2.635a.937.937 0 00-1.326 0l-2.635 2.635m5.27 0l-2.635 2.635a.937.937 0 01-1.326 0l-2.635-2.635M15.75 7.5l-2.635 2.635a.937.937 0 01-1.326 0L9.155 7.5" /> </svg>
+                    选股策略
+                </a>
+
+                <!-- 执行与结果 -->
+                <div class="pt-2 pb-1">
+                    <p class="px-4 text-xs font-semibold text-gray-400 uppercase">执行与结果</p>
+                </div>
+
+                <a href="../backtest/backtest.html" class="sidebar-link flex items-center px-4 py-2 rounded hover:bg-gray-700">
+                    <svg class="h-5 w-5 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    策略回测
+                </a>
+            </nav>
+            <!-- User Area/Logout -->
+            <div class="border-t border-gray-700 p-4 flex-shrink-0">
+                <a href="../common/settings.html" class="sidebar-link flex items-center px-4 py-2 rounded hover:bg-gray-700">
+                    <svg class="h-5 w-5 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/> <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/> </svg>
+                    设置
+                </a>
+                <a href="../common/login.html" class="sidebar-link flex items-center px-4 py-2 mt-2 text-red-400 rounded hover:bg-gray-700">
+                     <svg class="h-5 w-5 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/> </svg>
+                    登出
+                </a>
+            </div>
+        </div>
+
+        <!-- Main content -->
+        <div class="flex-1 flex flex-col overflow-hidden ml-64">
+            <!-- 头部 -->
+            <header class="bg-white shadow p-4 flex justify-between items-center">
+                <h1 class="text-xl font-semibold text-gray-800">数据管理</h1>
+                <!-- Hamburger Button (Visible only on small screens) -->
+                <button id="hamburger-button" class="lg:hidden text-gray-600 hover:text-gray-800 focus:outline-none">
+                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
+                </button>
+            </header>
+
+            <!-- 内容区域 -->
+            <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 p-6">
+                <div class="container mx-auto">
+
+                    <!-- 数据管理工具栏 -->
+                    <div class="bg-white p-6 rounded-lg shadow mb-6 card">
+                        <div class="flex flex-col md:flex-row md:justify-between md:items-center space-y-4 md:space-y-0">
+                            <div>
+                                <h2 class="text-lg font-semibold text-gray-700">数据管理</h2>
+                                <p class="text-sm text-gray-500">管理您的各类交易数据</p>
+                            </div>
+                            <div class="flex space-x-4">
+                                <button class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded">
+                                    导入数据
+                                </button>
+                                <button class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded">
+                                    导出数据
+                                </button>
+                                <button class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded">
+                                    清空数据库
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 数据源配置 -->
+                    <div class="bg-white p-6 rounded-lg shadow mb-6 card">
+                        <h2 class="text-lg font-semibold text-gray-700 mb-3 border-b pb-2">数据源配置</h2>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <h3 class="font-medium text-gray-900 mb-2">当前数据源</h3>
+                                <div class="bg-gray-50 p-4 rounded-lg">
+                                    <p class="text-sm text-gray-600">数据源名称: <span class="font-medium">RQData</span></p>
+                                    <p class="text-sm text-gray-600">状态: <span class="text-green-600 font-medium">已连接</span></p>
+                                    <p class="text-sm text-gray-600">最后更新: <span class="font-medium">2024-07-21 08:30:00</span></p>
+                                    <div class="mt-3 flex space-x-2">
+                                        <button class="text-xs bg-blue-500 hover:bg-blue-600 text-white py-1 px-2 rounded">测试连接</button>
+                                        <button class="text-xs bg-red-500 hover:bg-red-600 text-white py-1 px-2 rounded">断开连接</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div>
+                                <h3 class="font-medium text-gray-900 mb-2">添加新数据源</h3>
+                                <form class="space-y-3">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">数据源类型</label>
+                                        <select class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                                            <option>RQData</option>
+                                            <option>TuShare</option>
+                                            <option>IQFeed</option>
+                                            <option>Yahoo Finance</option>
+                                            <option>MongoDB</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">API密钥</label>
+                                        <input type="password" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="输入API密钥">
+                                    </div>
+                                    <button type="button" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded text-sm">
+                                        添加数据源
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 数据下载 -->
+                    <div class="bg-white p-6 rounded-lg shadow mb-6 card">
+                        <h2 class="text-lg font-semibold text-gray-700 mb-3 border-b pb-2">数据下载</h2>
+                        <form class="space-y-4">
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">数据类型</label>
+                                    <select class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                                        <option>日K线数据</option>
+                                        <option>分钟K线数据</option>
+                                        <option>Tick数据</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">合约代码</label>
+                                    <input type="text" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="如: rb2110.SHFE">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">交易所</label>
+                                    <select class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                                        <option>SHFE</option>
+                                        <option>CFFEX</option>
+                                        <option>DCE</option>
+                                        <option>CZCE</option>
+                                        <option>INE</option>
+                                        <option>SSE</option>
+                                        <option>SZSE</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">开始日期</label>
+                                    <input type="date" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">结束日期</label>
+                                    <input type="date" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                                </div>
+                            </div>
+                            <button type="button" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded">
+                                下载数据
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- 数据库统计 -->
+                    <div class="bg-white p-6 rounded-lg shadow card">
+                        <h2 class="text-lg font-semibold text-gray-700 mb-3 border-b pb-2">数据库统计</h2>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                            <div class="bg-gray-50 p-4 rounded-lg">
+                                <h3 class="font-medium text-gray-900 mb-1">日K线数据</h3>
+                                <p class="text-sm text-gray-600">合约数量: <span class="font-medium">256</span></p>
+                                <p class="text-sm text-gray-600">数据量: <span class="font-medium">1,250,000</span> 条</p>
+                                <p class="text-sm text-gray-600">存储大小: <span class="font-medium">450 MB</span></p>
+                            </div>
+                            <div class="bg-gray-50 p-4 rounded-lg">
+                                <h3 class="font-medium text-gray-900 mb-1">分钟K线数据</h3>
+                                <p class="text-sm text-gray-600">合约数量: <span class="font-medium">128</span></p>
+                                <p class="text-sm text-gray-600">数据量: <span class="font-medium">3,500,000</span> 条</p>
+                                <p class="text-sm text-gray-600">存储大小: <span class="font-medium">1.2 GB</span></p>
+                            </div>
+                            <div class="bg-gray-50 p-4 rounded-lg">
+                                <h3 class="font-medium text-gray-900 mb-1">Tick数据</h3>
+                                <p class="text-sm text-gray-600">合约数量: <span class="font-medium">64</span></p>
+                                <p class="text-sm text-gray-600">数据量: <span class="font-medium">15,000,000</span> 条</p>
+                                <p class="text-sm text-gray-600">存储大小: <span class="font-medium">4.5 GB</span></p>
+                            </div>
+                        </div>
+
+                        <h3 class="text-md font-semibold text-gray-700 mb-3">数据详情</h3>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">合约代码</th>
+                                        <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">交易所</th>
+                                        <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">数据类型</th>
+                                        <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">开始日期</th>
+                                        <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">结束日期</th>
+                                        <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">数据量</th>
+                                        <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-gray-200">
+                                    <tr>
+                                        <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">IF2109</td>
+                                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">CFFEX</td>
+                                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">日K线</td>
+                                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">2021-01-01</td>
+                                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">2021-07-21</td>
+                                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">145 条</td>
+                                        <td class="px-4 py-3 whitespace-nowrap text-sm font-medium space-x-2">
+                                            <a href="#" class="text-indigo-600 hover:text-indigo-900">查看</a>
+                                            <a href="#" class="text-blue-600 hover:text-blue-900">导出</a>
+                                            <a href="#" class="text-red-600 hover:text-red-900">删除</a>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">rb2110</td>
+                                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">SHFE</td>
+                                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">分钟K线</td>
+                                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">2021-01-01</td>
+                                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">2021-07-21</td>
+                                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">28,560 条</td>
+                                        <td class="px-4 py-3 whitespace-nowrap text-sm font-medium space-x-2">
+                                            <a href="#" class="text-indigo-600 hover:text-indigo-900">查看</a>
+                                            <a href="#" class="text-blue-600 hover:text-blue-900">导出</a>
+                                            <a href="#" class="text-red-600 hover:text-red-900">删除</a>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">AAPL</td>
+                                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">SMART</td>
+                                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">日K线</td>
+                                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">2020-01-01</td>
+                                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">2021-07-21</td>
+                                        <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">378 条</td>
+                                        <td class="px-4 py-3 whitespace-nowrap text-sm font-medium space-x-2">
+                                            <a href="#" class="text-indigo-600 hover:text-indigo-900">查看</a>
+                                            <a href="#" class="text-blue-600 hover:text-blue-900">导出</a>
+                                            <a href="#" class="text-red-600 hover:text-red-900">删除</a>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                </div>
+            </main>
+        </div>
+    </div>
+    <script>
+        // Optional: Add JS for drag & drop feedback or file upload handling
+        const fileUploadArea = document.querySelector('.file-upload-area');
+        const fileInput = document.getElementById('customDataUpload');
+
+        fileUploadArea.addEventListener('dragover', (event) => {
+            event.preventDefault(); // Prevent default browser behavior
+            fileUploadArea.classList.add('border-blue-500', 'bg-blue-50');
+        });
+
+        fileUploadArea.addEventListener('dragleave', () => {
+             fileUploadArea.classList.remove('border-blue-500', 'bg-blue-50');
+        });
+
+        fileUploadArea.addEventListener('drop', (event) => {
+            event.preventDefault(); // Prevent default browser behavior
+            fileUploadArea.classList.remove('border-blue-500', 'bg-blue-50');
+            if (event.dataTransfer.files.length) {
+                fileInput.files = event.dataTransfer.files;
+                // Optionally, trigger upload or display file info here
+                console.log('Files dropped:', fileInput.files);
+                 alert(`已选择文件: ${fileInput.files[0].name}`); // Simple feedback
+            }
+        });
+
+         fileInput.addEventListener('change', () => {
+            if (fileInput.files.length) {
+                console.log('Files selected:', fileInput.files);
+                 alert(`已选择文件: ${fileInput.files[0].name}`); // Simple feedback
+                 // Trigger actual upload process here
+            }
+        });
+    </script>
+
+    <!-- Sidebar is now directly embedded in the page -->
+    <script>
+        // Sidebar Toggle Script for Mobile
+        document.addEventListener('DOMContentLoaded', () => {
+            const hamburgerButton = document.getElementById('hamburger-button');
+            const sidebar = document.querySelector('.sidebar'); // 选择侧边栏
+
+            // 创建遮罩元素
+            const backdrop = document.createElement('div');
+            backdrop.id = 'sidebar-backdrop';
+            backdrop.className = 'fixed inset-0 bg-black bg-opacity-50 z-30 hidden lg:hidden';
+            document.body.appendChild(backdrop);
+
+            const toggleSidebar = () => {
+                if (sidebar) {
+                    const isOpen = sidebar.classList.contains('show');
+                    if (isOpen) {
+                        sidebar.classList.remove('show');
+                        backdrop.classList.add('hidden');
+                    } else {
+                        sidebar.classList.add('show');
+                        backdrop.classList.remove('hidden');
+                    }
+                }
+            };
+
+            if (hamburgerButton) {
+                hamburgerButton.addEventListener('click', toggleSidebar);
+            }
+
+            if (backdrop) {
+                backdrop.addEventListener('click', toggleSidebar);
+            }
+        });
+    </script>
+
+</body>
+</html>
