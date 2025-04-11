@@ -21,7 +21,7 @@ def install_dependencies():
         print(f"Error: vnpy directory not found at {VNPY_DIR}")
         print("Please run 'git submodule update --init' to initialize the vnpy submodule.")
         return False
-    
+
     # 安装基础依赖
     requirements_file = VNPY_DIR / "requirements.txt"
     if requirements_file.exists():
@@ -29,11 +29,14 @@ def install_dependencies():
         subprocess.check_call([
             sys.executable, "-m", "pip", "install", "-r", str(requirements_file)
         ])
-    
+
     # 安装额外依赖(按需选择)
     install_talib()
     install_ibapi()
-    
+
+    # 安装外部模块
+    install_external_modules()
+
     print("Dependencies installation completed.")
     return True
 
@@ -60,7 +63,7 @@ def install_talib():
             except:
                 print("Failed to install TA-Lib via brew. Please install it manually.")
                 print("brew install ta-lib")
-            
+
             subprocess.check_call([
                 sys.executable, "-m", "pip", "install", "TA-Lib"
             ])
@@ -71,7 +74,7 @@ def install_talib():
             except:
                 print("Failed to install TA-Lib via apt-get. Please install it manually.")
                 print("sudo apt-get install ta-lib")
-            
+
             subprocess.check_call([
                 sys.executable, "-m", "pip", "install", "TA-Lib"
             ])
@@ -91,6 +94,31 @@ def install_ibapi():
             ])
         else:
             print(f"Warning: IB API directory not found at {ibapi_dir}")
+
+def install_external_modules():
+    """安装外部模块"""
+    # 外部模块目录
+    external_dir = ROOT_DIR / "external"
+
+    # 安装 vnpy_datamanager
+    datamanager_dir = external_dir / "vnpy_datamanager"
+    if datamanager_dir.exists():
+        print(f"Installing vnpy_datamanager from {datamanager_dir}")
+        subprocess.check_call([
+            sys.executable, "-m", "pip", "install", "-e", str(datamanager_dir)
+        ])
+    else:
+        print(f"Warning: vnpy_datamanager directory not found at {datamanager_dir}")
+
+    # 安装 vnpy_ib
+    ib_dir = external_dir / "vnpy_ib"
+    if ib_dir.exists():
+        print(f"Installing vnpy_ib from {ib_dir}")
+        subprocess.check_call([
+            sys.executable, "-m", "pip", "install", "-e", str(ib_dir)
+        ])
+    else:
+        print(f"Warning: vnpy_ib directory not found at {ib_dir}")
 
 if __name__ == "__main__":
     install_dependencies()

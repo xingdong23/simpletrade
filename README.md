@@ -26,18 +26,29 @@ SimpleTrade是一个为个人投资者设计的量化交易平台，旨在让普
 
 ```
 simpletrade/
-├── simpletrade/        # 核心代码包
-│   ├── core/           # 核心引擎和功能
-│   ├── apps/           # 自定义应用
-│   ├── api/            # API服务
-│   ├── models/         # 数据模型
-│   └── utils/          # 工具函数
-├── vnpy/               # vnpy源码(Git子模块)
-├── docs/               # 项目文档
-├── tests/              # 测试代码
-├── scripts/            # 脚本工具
-├── ui/                 # UI设计和原型
-└── ai_context/         # AI协作上下文
+├── docs/                  # 项目文档
+├── simpletrade/           # 主要代码包
+│   ├── api/               # API接口
+│   │   ├── data.py        # 数据管理API
+│   │   ├── analysis.py    # 数据分析API
+│   │   ├── server.py      # API服务器
+│   │   └── wechat/        # 微信小程序API
+│   ├── core/              # 核心功能
+│   │   ├── data/          # 数据管理
+│   │   ├── message/       # 消息处理
+│   │   └── analysis/      # 数据分析
+│   └── apps/              # 应用模块
+│       └── st_datamanager/ # 数据管理应用
+├── tests/                 # 测试代码
+│   ├── unit/              # 单元测试
+│   ├── integration/       # 集成测试
+│   ├── scripts/           # 测试脚本
+│   └── conftest.py        # 测试配置
+├── examples/              # 示例代码
+├── vnpy/                  # vnpy子模块
+├── ai_context/            # AI协作上下文
+├── setup.py               # 包安装配置
+└── README.md              # 项目说明
 ```
 
 ## 安装与配置
@@ -45,42 +56,66 @@ simpletrade/
 ### 1. 克隆仓库
 
 ```bash
-git clone https://github.com/yourusername/simpletrade.git
+git clone --recursive https://github.com/yourusername/simpletrade.git
 cd simpletrade
 ```
 
-### 2. 初始化vnpy子模块
+注意`--recursive`参数，这是为了同时克隆vnpy子模块。
+
+### 2. 创建Conda环境
 
 ```bash
-git submodule update --init
+conda create -n simpletrade python=3.8
+conda activate simpletrade
 ```
 
 ### 3. 安装依赖
 
 ```bash
-# 安装项目依赖
+# 安装vnpy
+cd vnpy
 pip install -e .
+cd ..
 
-# 安装vnpy依赖
-python scripts/setup_vnpy.py
+# 安装simpletrade
+pip install -e .
 ```
 
-### 4. 运行
+### 4. 运行示例
 
 ```bash
-python -m simpletrade.main
+# 运行数据管理示例
+python examples/data_management_example.py
+
+# 运行API服务示例
+python examples/api_example.py
+```
+
+### 5. 运行测试
+
+```bash
+# 安装pytest
+pip install pytest
+
+# 运行单元测试
+pytest tests/unit
+
+# 运行集成测试
+pytest tests/integration
 ```
 
 ## 开发指南
 
 ### 1. 环境设置
 
-推荐使用虚拟环境进行开发：
+推荐使用Conda环境进行开发：
 
 ```bash
-python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
-pip install -e .
+conda create -n simpletrade python=3.8
+conda activate simpletrade
+
+# 安装开发依赖
+pip install pytest black isort
 ```
 
 ### 2. 代码规范
@@ -100,10 +135,12 @@ pip install -e .
 
 详细文档请参阅`docs/`目录：
 
+- [项目结构](docs/project_structure.md)
+- [安装指南](docs/installation.md)
+- [API参考](docs/api_reference.md)
 - [功能需求文档](docs/functional_requirements.md)
 - [技术规格文档](docs/technical_specification.md)
 - [vnpy集成指南](docs/vnpy_integration_guide.md)
-- [vnpy集成方案](docs/vnpy_integration_plan.md)
 - [架构设计](docs/architecture_diagram.md)
 
 ## 许可证

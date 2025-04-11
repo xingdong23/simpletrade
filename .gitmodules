@@ -1,3 +1,9 @@
 [submodule "vnpy"]
 	path = vnpy
 	url = https://github.com/vnpy/vnpy.git
+[submodule "external/vnpy_datamanager"]
+	path = external/vnpy_datamanager
+	url = https://github.com/xingdong23/vnpy_datamanager.git
+[submodule "external/vnpy_ib"]
+	path = external/vnpy_ib
+	url = https://github.com/xingdong23/vnpy_ib.git
