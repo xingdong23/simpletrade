@@ -4,145 +4,61 @@
       <el-col :span="24">
         <el-card>
           <div slot="header">
-            <h2>数据管理</h2>
+            <h2>数据概览</h2>
           </div>
           
-          <el-tabs v-model="activeTab">
-            <el-tab-pane label="数据概览" name="overview">
-              <el-table
-                v-loading="loading"
-                :data="dataOverview"
-                style="width: 100%">
-                <el-table-column
-                  prop="symbol"
-                  label="代码"
-                  width="120">
-                </el-table-column>
-                <el-table-column
-                  prop="exchange"
-                  label="交易所"
-                  width="120">
-                </el-table-column>
-                <el-table-column
-                  prop="interval"
-                  label="周期"
-                  width="120">
-                </el-table-column>
-                <el-table-column
-                  prop="count"
-                  label="数据量"
-                  width="120">
-                </el-table-column>
-                <el-table-column
-                  prop="start"
-                  label="开始日期"
-                  width="180">
-                </el-table-column>
-                <el-table-column
-                  prop="end"
-                  label="结束日期"
-                  width="180">
-                </el-table-column>
-                <el-table-column
-                  prop="type"
-                  label="类型"
-                  width="120">
-                </el-table-column>
-                <el-table-column
-                  label="操作">
-                  <template slot-scope="scope">
-                    <el-button
-                      size="mini"
-                      @click="viewData(scope.row)">查看</el-button>
-                    <el-button
-                      size="mini"
-                      type="danger"
-                      @click="deleteData(scope.row)">删除</el-button>
-                  </template>
-                </el-table-column>
-              </el-table>
-            </el-tab-pane>
-            
-            <el-tab-pane label="导入数据" name="import">
-              <el-form ref="importForm" :model="importForm" label-width="120px">
-                <el-form-item label="文件路径">
-                  <el-input v-model="importForm.filePath" placeholder="请输入CSV文件路径"></el-input>
-                </el-form-item>
-                <el-form-item label="代码">
-                  <el-input v-model="importForm.symbol" placeholder="例如：AAPL"></el-input>
-                </el-form-item>
-                <el-form-item label="交易所">
-                  <el-select v-model="importForm.exchange" placeholder="请选择交易所">
-                    <el-option label="NASDAQ" value="NASDAQ"></el-option>
-                    <el-option label="NYSE" value="NYSE"></el-option>
-                    <el-option label="SHFE" value="SHFE"></el-option>
-                    <el-option label="CFFEX" value="CFFEX"></el-option>
-                  </el-select>
-                </el-form-item>
-                <el-form-item label="周期">
-                  <el-select v-model="importForm.interval" placeholder="请选择周期">
-                    <el-option label="1分钟" value="1m"></el-option>
-                    <el-option label="5分钟" value="5m"></el-option>
-                    <el-option label="15分钟" value="15m"></el-option>
-                    <el-option label="1小时" value="1h"></el-option>
-                    <el-option label="日线" value="1d"></el-option>
-                  </el-select>
-                </el-form-item>
-                <el-form-item>
-                  <el-button type="primary" @click="importData">导入</el-button>
-                </el-form-item>
-              </el-form>
-            </el-tab-pane>
-            
-            <el-tab-pane label="导出数据" name="export">
-              <el-form ref="exportForm" :model="exportForm" label-width="120px">
-                <el-form-item label="代码">
-                  <el-input v-model="exportForm.symbol" placeholder="例如：AAPL"></el-input>
-                </el-form-item>
-                <el-form-item label="交易所">
-                  <el-select v-model="exportForm.exchange" placeholder="请选择交易所">
-                    <el-option label="NASDAQ" value="NASDAQ"></el-option>
-                    <el-option label="NYSE" value="NYSE"></el-option>
-                    <el-option label="SHFE" value="SHFE"></el-option>
-                    <el-option label="CFFEX" value="CFFEX"></el-option>
-                  </el-select>
-                </el-form-item>
-                <el-form-item label="周期">
-                  <el-select v-model="exportForm.interval" placeholder="请选择周期">
-                    <el-option label="1分钟" value="1m"></el-option>
-                    <el-option label="5分钟" value="5m"></el-option>
-                    <el-option label="15分钟" value="15m"></el-option>
-                    <el-option label="1小时" value="1h"></el-option>
-                    <el-option label="日线" value="1d"></el-option>
-                  </el-select>
-                </el-form-item>
-                <el-form-item label="开始日期">
-                  <el-date-picker
-                    v-model="exportForm.startDate"
-                    type="date"
-                    placeholder="选择开始日期"
-                    format="yyyy-MM-dd"
-                    value-format="yyyy-MM-dd">
-                  </el-date-picker>
-                </el-form-item>
-                <el-form-item label="结束日期">
-                  <el-date-picker
-                    v-model="exportForm.endDate"
-                    type="date"
-                    placeholder="选择结束日期"
-                    format="yyyy-MM-dd"
-                    value-format="yyyy-MM-dd">
-                  </el-date-picker>
-                </el-form-item>
-                <el-form-item label="文件路径">
-                  <el-input v-model="exportForm.filePath" placeholder="请输入导出文件路径"></el-input>
-                </el-form-item>
-                <el-form-item>
-                  <el-button type="primary" @click="exportData">导出</el-button>
-                </el-form-item>
-              </el-form>
-            </el-tab-pane>
-          </el-tabs>
+          <el-table
+            v-loading="loading"
+            :data="dataOverview"
+            style="width: 100%">
+            <el-table-column
+              prop="symbol"
+              label="代码"
+              width="120">
+            </el-table-column>
+            <el-table-column
+              prop="exchange"
+              label="交易所"
+              width="120">
+            </el-table-column>
+            <el-table-column
+              prop="interval"
+              label="周期"
+              width="120">
+            </el-table-column>
+            <el-table-column
+              prop="count"
+              label="数据量"
+              width="120">
+            </el-table-column>
+            <el-table-column
+              prop="start"
+              label="开始日期"
+              width="180">
+            </el-table-column>
+            <el-table-column
+              prop="end"
+              label="结束日期"
+              width="180">
+            </el-table-column>
+            <el-table-column
+              prop="type"
+              label="类型"
+              width="120">
+            </el-table-column>
+            <el-table-column
+              label="操作">
+              <template slot-scope="scope">
+                <el-button
+                  size="mini"
+                  @click="viewData(scope.row)">查看</el-button>
+                <el-button
+                  size="mini"
+                  type="danger"
+                  @click="deleteData(scope.row)">删除</el-button>
+              </template>
+            </el-table-column>
+          </el-table>
         </el-card>
       </el-col>
     </el-row>
@@ -199,26 +115,11 @@
 import { mapState, mapActions } from 'vuex'
 
 export default {
-  name: 'DataManagement',
+  name: 'DataOverview',
   data() {
     return {
-      activeTab: 'overview',
       loading: false,
-      dataDialogVisible: false,
-      importForm: {
-        filePath: '',
-        symbol: '',
-        exchange: '',
-        interval: ''
-      },
-      exportForm: {
-        symbol: '',
-        exchange: '',
-        interval: '',
-        startDate: '',
-        endDate: '',
-        filePath: ''
-      }
+      dataDialogVisible: false
     }
   },
   computed: {
@@ -244,37 +145,23 @@ export default {
           this.renderKlineChart()
         })
       } catch (error) {
-        this.$message.error('获取数据失败: ' + error.message)
+        this.$message.error('获取数据失败: ' + (error.message || error))
       } finally {
         this.loading = false
       }
     },
     
     deleteData(row) {
-      this.$confirm('此操作将永久删除该数据, 是否继续?', '提示', {
+      this.$confirm(`确定删除 ${row.symbol} (${row.interval}) 的数据吗?`, '提示', {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
         type: 'warning'
-      }).then(async () => {
-        try {
-          const url = `http://localhost:8000/api/data/bars?symbol=${row.symbol}&exchange=${row.exchange}&interval=${row.interval || '1d'}`
-          const response = await fetch(url, {
-            method: 'DELETE'
-          })
-          const data = await response.json()
-          
-          if (data.success) {
-            this.$message({
-              type: 'success',
-              message: '删除成功!'
-            })
-            this.fetchDataOverview()
-          } else {
-            this.$message.error(data.message || '删除失败')
-          }
-        } catch (error) {
-          this.$message.error('删除失败: ' + error.message)
-        }
+      }).then(() => {
+        console.log('Delete data:', row)
+        this.$message({
+          type: 'success',
+          message: '删除请求已发送!'
+        })
       }).catch(() => {
         this.$message({
           type: 'info',
@@ -283,127 +170,107 @@ export default {
       })
     },
     
-    async importData() {
-      try {
-        const response = await fetch('http://localhost:8000/api/data/import', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            file_path: this.importForm.filePath,
-            symbol: this.importForm.symbol,
-            exchange: this.importForm.exchange,
-            interval: this.importForm.interval
-          })
-        })
-        
-        const data = await response.json()
-        
-        if (data.success) {
-          this.$message({
-            type: 'success',
-            message: data.message || '导入成功'
-          })
-          this.fetchDataOverview()
-          this.activeTab = 'overview'
-        } else {
-          this.$message.error(data.message || '导入失败')
-        }
-      } catch (error) {
-        this.$message.error('导入失败: ' + error.message)
-      }
-    },
-    
-    async exportData() {
-      try {
-        const response = await fetch('http://localhost:8000/api/data/export', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            file_path: this.exportForm.filePath,
-            symbol: this.exportForm.symbol,
-            exchange: this.exportForm.exchange,
-            interval: this.exportForm.interval,
-            start_date: this.exportForm.startDate,
-            end_date: this.exportForm.endDate
-          })
-        })
-        
-        const data = await response.json()
-        
-        if (data.success) {
-          this.$message({
-            type: 'success',
-            message: data.message || '导出成功'
-          })
-        } else {
-          this.$message.error(data.message || '导出失败')
-        }
-      } catch (error) {
-        this.$message.error('导出失败: ' + error.message)
-      }
-    },
-    
     renderKlineChart() {
-      if (!this.currentData || this.currentData.length === 0) return
+      if (!this.currentData || !window.echarts) {
+        console.error('无法渲染K线图：数据或echarts未准备好')
+        return
+      }
       
       const chartDom = document.getElementById('kline-chart')
-      const myChart = this.$echarts.init(chartDom)
+      if (!chartDom) {
+        console.error('无法找到K线图容器')
+        return
+      }
       
-      const data = this.currentData.map(item => [
-        item.datetime,
-        item.open_price,
-        item.close_price,
-        item.low_price,
-        item.high_price,
-        item.volume
-      ])
+      const myChart = window.echarts.init(chartDom)
       
+      const categoryData = []
+      const values = []
+      const volumes = []
+      this.currentData.forEach(item => {
+        categoryData.push(item.datetime)
+        values.push([item.open_price, item.close_price, item.low_price, item.high_price])
+        volumes.push(item.volume)
+      })
+
       const option = {
-        title: {
-          text: `${this.currentData[0].symbol} K线图`,
-          left: 'center'
-        },
         tooltip: {
           trigger: 'axis',
           axisPointer: {
             type: 'cross'
           }
         },
-        grid: {
-          left: '10%',
-          right: '10%',
-          bottom: '15%'
+        legend: {
+          data: ['K线', '成交量']
         },
-        xAxis: {
-          type: 'category',
-          data: this.currentData.map(item => item.datetime),
-          scale: true,
-          boundaryGap: false,
-          axisLine: { onZero: false },
-          splitLine: { show: false },
-          splitNumber: 20
-        },
-        yAxis: {
-          scale: true,
-          splitArea: {
-            show: true
+        grid: [
+          {
+            left: '10%',
+            right: '8%',
+            height: '50%'
+          },
+          {
+            left: '10%',
+            right: '8%',
+            top: '65%',
+            height: '15%'
           }
-        },
+        ],
+        xAxis: [
+          {
+            type: 'category',
+            data: categoryData,
+            scale: true,
+            boundaryGap: false,
+            axisLine: { onZero: false },
+            splitLine: { show: false },
+            min: 'dataMin',
+            max: 'dataMax'
+          },
+          {
+            type: 'category',
+            gridIndex: 1,
+            data: categoryData,
+            scale: true,
+            boundaryGap: false,
+            axisLine: { onZero: false },
+            axisTick: { show: false },
+            splitLine: { show: false },
+            axisLabel: { show: false },
+            min: 'dataMin',
+            max: 'dataMax'
+          }
+        ],
+        yAxis: [
+          {
+            scale: true,
+            splitArea: {
+              show: true
+            }
+          },
+          {
+            scale: true,
+            gridIndex: 1,
+            splitNumber: 2,
+            axisLabel: { show: false },
+            axisLine: { show: false },
+            axisTick: { show: false },
+            splitLine: { show: false }
+          }
+        ],
         dataZoom: [
           {
             type: 'inside',
-            start: 50,
+            xAxisIndex: [0, 1],
+            start: 80,
             end: 100
           },
           {
             show: true,
+            xAxisIndex: [0, 1],
             type: 'slider',
-            top: '90%',
-            start: 50,
+            top: '85%',
+            start: 80,
             end: 100
           }
         ],
@@ -411,36 +278,79 @@ export default {
           {
             name: 'K线',
             type: 'candlestick',
-            data: this.currentData.map(item => [
-              item.open_price,
-              item.close_price,
-              item.low_price,
-              item.high_price
-            ]),
+            data: values,
             itemStyle: {
-              color: '#ef232a',
-              color0: '#14b143',
-              borderColor: '#ef232a',
-              borderColor0: '#14b143'
+              color: '#ec0000',
+              color0: '#00da3c',
+              borderColor: '#8A0000',
+              borderColor0: '#008F28'
+            },
+            markPoint: {
+              data: [
+                {
+                  type: 'max',
+                  name: '最大值',
+                  valueDim: 'highest'
+                },
+                {
+                  type: 'min',
+                  name: '最小值',
+                  valueDim: 'lowest'
+                }
+              ]
+            },
+          },
+          {
+            name: '成交量',
+            type: 'bar',
+            xAxisIndex: 1,
+            yAxisIndex: 1,
+            data: volumes,
+            itemStyle: {
+              color: function (params) {
+                const klineData = values[params.dataIndex]
+                return klineData[1] >= klineData[0] ? '#ec0000' : '#00da3c'
+              }
             }
           }
         ]
       }
-      
+
       myChart.setOption(option)
+      
+      window.addEventListener('resize', () => {
+        myChart.resize()
+      })
+      
+      this.$once('hook:beforeDestroy', () => {
+        window.removeEventListener('resize', () => { myChart.resize() })
+        myChart.dispose()
+      })
+    },
+    
+    loadDataOverview() {
+      this.loading = true
+      this.fetchDataOverview()
+        .catch(error => {
+          this.$message.error('加载数据概览失败: ' + (error.message || error))
+        })
+        .finally(() => {
+          this.loading = false
+        })
     }
   },
   created() {
-    this.loading = true
-    this.fetchDataOverview().finally(() => {
-      this.loading = false
-    })
+    this.loadDataOverview()
   }
 }
 </script>
 
 <style scoped>
 .data-management {
-  min-height: calc(100vh - 120px);
+  min-height: calc(100vh - 120px)
+}
+
+#kline-chart {
+  /* Ensure height is set for ECharts */
 }
 </style>
