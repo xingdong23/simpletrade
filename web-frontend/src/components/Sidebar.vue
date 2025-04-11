@@ -9,7 +9,7 @@
     router>
     
     <div class="logo-container">
-      <img src="../assets/logo.png" alt="Logo" class="logo" v-if="!isCollapse">
+      <!-- <img src="../assets/logo.png" alt="Logo" class="logo" v-if="!isCollapse"> -->
       <span class="title" v-if="!isCollapse">SimpleTrade</span>
     </div>
     
