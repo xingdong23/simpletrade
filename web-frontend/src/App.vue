@@ -1,58 +1,44 @@
 <template>
   <div id="app">
-    <el-container>
-      <el-header>
-        <el-menu
-          :default-active="activeIndex"
-          class="el-menu-demo"
-          mode="horizontal"
-          router
-          background-color="#545c64"
-          text-color="#fff"
-          active-text-color="#ffd04b">
-          <el-menu-item index="/">首页</el-menu-item>
-          <el-menu-item index="/data">数据管理</el-menu-item>
-          <el-menu-item index="/analysis">数据分析</el-menu-item>
-        </el-menu>
-      </el-header>
-      <el-main>
-        <router-view/>
-      </el-main>
-      <el-footer>
-        SimpleTrade &copy; 2024
-      </el-footer>
-    </el-container>
+    <router-view />
   </div>
 </template>
 
 <script>
 export default {
-  name: 'App',
-  data() {
-    return {
-      activeIndex: '/'
-    }
-  },
-  watch: {
-    $route(to) {
-      this.activeIndex = to.path
-    }
-  }
+  name: 'App'
 }
 </script>
 
 <style>
-#app {
-  font-family: Avenir, Helvetica, Arial, sans-serif;
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  font-family: 'Helvetica Neue', Helvetica, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  color: #2c3e50;
-  height: 100vh;
 }
 
-.el-header {
-  padding: 0;
+#app {
+  height: 100%;
 }
+
+/* 全局滚动条样式 */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c0c4cc;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f0f2f5;
+}
+</style>
 
 .el-footer {
   text-align: center;
