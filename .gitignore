@@ -43,3 +43,6 @@ htmlcov/
 tests/data/
 logs/
 temp/
+
+# Node.js
+node_modules/
