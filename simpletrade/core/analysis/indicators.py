@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 from typing import List, Dict, Any, Optional, Union
 
-# 导入vnpy的数据模型
+# 导入vnpy数据模型
 from vnpy.trader.object import BarData
 
 

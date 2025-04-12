@@ -4,10 +4,12 @@ SimpleTrade API服务
 提供RESTful API服务，用于访问SimpleTrade的功能。
 """
 
+import os  # 添加这行导入
+import sys
+from pathlib import Path
 from fastapi import FastAPI, APIRouter
 import uvicorn
 from fastapi.middleware.cors import CORSMiddleware
-
 class APIServer:
     """SimpleTrade API服务"""
 

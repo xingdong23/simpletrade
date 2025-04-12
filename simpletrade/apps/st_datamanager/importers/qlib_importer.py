@@ -12,6 +12,7 @@ import pandas as pd
 from datetime import datetime, timedelta
 from typing import List, Tuple, Dict, Any, Optional
 from pathlib import Path
+import logging
 
 # 添加vendors目录到Python路径
 root_path = str(Path(__file__).parent.parent.parent.parent.parent)
@@ -19,8 +20,8 @@ vendors_path = os.path.join(root_path, 'vendors')
 sys.path.append(vendors_path)
 
 # 导入vnpy相关模块
-from vnpy.vnpy.trader.object import BarData
-from vnpy.vnpy.trader.constant import Exchange, Interval
+from vnpy.trader.object import BarData
+from vnpy.trader.constant import Exchange, Interval
 
 class QlibDataImporter:
     """Qlib数据格式导入器"""

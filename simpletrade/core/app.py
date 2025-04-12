@@ -1,21 +1,21 @@
 """
-SimpleTrade应用基类模块
+SimpleTrade应用基础模块
 
-本模块定义了SimpleTrade应用的基类，用于扩展vnpy的应用架构。
+本模块定义了SimpleTrade应用的基础类。
 """
 
+import importlib
+from abc import ABC, abstractmethod
 from pathlib import Path
-import sys
-import os
+from typing import Optional
+from types import ModuleType
 
-# 添加vendors目录到Python路径
-root_path = str(Path(__file__).parent.parent.parent)
-vendors_path = os.path.join(root_path, 'vendors')
-sys.path.append(vendors_path)
+from vnpy.trader.app import BaseApp
+from vnpy.trader.engine import BaseEngine
 
 # 导入vnpy相关模块
-from vnpy.vnpy.trader.app import BaseApp
-from vnpy.vnpy.trader.engine import BaseEngine
+# from vnpy.vnpy.trader.app import BaseApp
+# from vnpy.vnpy.trader.engine import BaseEngine
 
 class STBaseApp(BaseApp):
     """

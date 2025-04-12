@@ -22,7 +22,7 @@ vendors_path = os.path.join(root_path, 'vendors')
 sys.path.append(vendors_path)
 
 # 导入vnpy相关模块
-from vnpy.vnpy.trader.constant import Exchange, Interval
+from vnpy.trader.constant import Exchange, Interval
 
 def read_calendar(qlib_dir):
     """读取交易日历"""

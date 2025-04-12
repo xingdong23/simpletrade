@@ -18,52 +18,64 @@ const routes = [
       }
     ]
   },
+  // { // Comment out or remove old /data route
+  //   path: '/data',
+  //   component: Layout,
+  //   redirect: '/data/index',
+  //   meta: { title: '数据管理' },
+  //   children: [
+  //     {
+  //       path: 'index',
+  //       name: 'DataOverview',
+  //       component: () => import('../views/Data.vue'),
+  //       meta: { title: '数据概览' }
+  //     },
+  //     {
+  //       path: 'import',
+  //       name: 'DataImport',
+  //       component: () => import('../views/data/Import.vue'),
+  //       meta: { title: '数据导入' }
+  //     },
+  //     {
+  //       path: 'export',
+  //       name: 'DataExport',
+  //       component: () => import('../views/data/Export.vue'),
+  //       meta: { title: '数据导出' }
+  //     }
+  //   ]
+  // },
   {
-    path: '/data',
+    path: '/market-data', // Add new route for MarketData
     component: Layout,
-    redirect: '/data/index',
-    meta: { title: '数据管理' },
     children: [
       {
-        path: 'index',
-        name: 'DataOverview',
-        component: () => import('../views/Data.vue'),
-        meta: { title: '数据概览' }
-      },
-      {
-        path: 'import',
-        name: 'DataImport',
-        component: () => import('../views/data/Import.vue'),
-        meta: { title: '数据导入' }
-      },
-      {
-        path: 'export',
-        name: 'DataExport',
-        component: () => import('../views/data/Export.vue'),
-        meta: { title: '数据导出' }
+        path: '',
+        name: 'MarketData',
+        component: () => import('../views/MarketData.vue'), // Point to the new component
+        meta: { title: '行情数据' } // Update title
       }
     ]
   },
-  {
-    path: '/analysis',
-    component: Layout,
-    redirect: '/analysis/index',
-    meta: { title: '数据分析' },
-    children: [
-      {
-        path: 'index',
-        name: 'AnalysisIndex',
-        component: () => import('../views/Analysis.vue'),
-        meta: { title: '技术指标' }
-      },
-      {
-        path: 'charts',
-        name: 'AnalysisCharts',
-        component: () => import('../views/analysis/Charts.vue'),
-        meta: { title: '图表分析' }
-      }
-    ]
-  },
+  // { // Comment out or remove old /analysis route
+  //   path: '/analysis',
+  //   component: Layout,
+  //   redirect: '/analysis/index',
+  //   meta: { title: '数据分析' },
+  //   children: [
+  //     {
+  //       path: 'index',
+  //       name: 'AnalysisIndex',
+  //       component: () => import('../views/Analysis.vue'),
+  //       meta: { title: '技术指标' }
+  //     },
+  //     {
+  //       path: 'charts',
+  //       name: 'AnalysisCharts',
+  //       component: () => import('../views/analysis/Charts.vue'),
+  //       meta: { title: '图表分析' }
+  //     }
+  //   ]
+  // },
   {
     path: '/trading',
     component: Layout,

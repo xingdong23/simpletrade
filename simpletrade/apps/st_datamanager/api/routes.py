@@ -10,16 +10,18 @@ from datetime import datetime
 from typing import List, Optional, Dict, Any
 from pathlib import Path
 
-from fastapi import APIRouter, Query, Path, Body, HTTPException, Depends
+from fastapi import APIRouter, Query, Path, Body, HTTPException, Depends, UploadFile, File
 from pydantic import BaseModel, Field
 
-# 添加vendors目录到Python路径
-root_path = str(Path(__file__).parent.parent.parent.parent.parent)
-vendors_path = os.path.join(root_path, 'vendors')
-sys.path.append(vendors_path)
-
 # 导入vnpy相关模块
-from vnpy.vnpy.trader.constant import Exchange, Interval
+# Revert to standard vnpy imports
+from vnpy.trader.constant import Exchange, Interval
+from vnpy.trader.object import BarData as VnpyBarData # Rename to avoid conflict
+# # Ensure consistent vnpy import path (should be vnpy.vnpy.*)
+# # from vnpy.vnpy.trader.constant import Exchange, Interval
+# # from vnpy.vnpy.trader.object import BarData as VnpyBarData # Rename to avoid conflict
+# # try:
+# #     from vnpy.trader.constant import Exchange, Interval
 
 import logging
 import traceback
@@ -30,13 +32,19 @@ from simpletrade.apps.st_datamanager import STDataManagerApp # 导入 App 类
 router = APIRouter(prefix="/api/data", tags=["data"])
 
 # 数据模型
+class ApiResponse(BaseModel):
+    """API响应模型"""
+    success: bool
+    message: str
+    data: Optional[Any] = None
+
 class BarData(BaseModel):
     """K线数据模型"""
     datetime: str
-    open: float = Field(..., alias="open_price")
-    high: float = Field(..., alias="high_price")
-    low: float = Field(..., alias="low_price")
-    close: float = Field(..., alias="close_price")
+    open_price: float # Field(..., alias="open")
+    high_price: float # Field(..., alias="high")
+    low_price: float # Field(..., alias="low")
+    close_price: float # Field(..., alias="close")
     volume: float
     open_interest: float
 
@@ -61,9 +69,8 @@ class DownloadRequest(BaseModel):
     start_date: str
     end_date: Optional[str] = None
 
-class ImportRequest(BaseModel):
-    """导入请求模型"""
-    file_path: str
+class ImportCsvRequestParams(BaseModel):
+    """CSV导入请求参数模型 (for query/form data)"""
     symbol: str
     exchange: str
     interval: str
@@ -75,7 +82,6 @@ class ImportRequest(BaseModel):
     volume_head: str
     open_interest_head: str
     datetime_format: str = "%Y-%m-%d %H:%M:%S"
-
 
 class ImportQlibRequest(BaseModel):
     """导入Qlib数据请求模型"""
@@ -94,18 +100,6 @@ class ExportRequest(BaseModel):
     start_date: str
     end_date: str
     file_path: str
-
-class DeleteRequest(BaseModel):
-    """删除请求模型"""
-    symbol: str
-    exchange: str
-    interval: Optional[str] = None
-
-class ApiResponse(BaseModel):
-    """API响应模型"""
-    success: bool
-    message: str
-    data: Optional[Any] = None
 
 # 依赖注入：获取数据管理引擎
 logger = logging.getLogger(__name__)
@@ -134,45 +128,17 @@ async def get_data_overview(
         logger.error("Dependency injection returned None for engine!")
         raise HTTPException(status_code=500, detail="Data manager engine not available.")
     try:
-        logger.info(f"Calling engine.get_bar_overview() on {engine}...")
-        bar_overviews = engine.get_bar_overview() # 获取K线概览
-        logger.info(f"Bar overviews received: {len(bar_overviews)}")
+        # 直接调用引擎的 get_available_data 方法获取合并后的概览
+        logger.info(f"Calling engine.get_available_data() on {engine}...")
+        available_data = engine.get_available_data()
+        logger.info(f"Available data received: {len(available_data)}")
 
-        logger.info(f"Calling engine.get_tick_overview() on {engine}...")
-        tick_overviews = engine.get_tick_overview() # 获取Tick概览
-        logger.info(f"Tick overviews received: {len(tick_overviews)}")
-
-        # 转换为API模型
-        result = []
-        for overview in bar_overviews:
-            result.append({
-                "symbol": overview.symbol,
-                "exchange": overview.exchange.value,
-                "interval": overview.interval.value,
-                "count": overview.count,
-                "start": overview.start.strftime("%Y-%m-%d %H:%M:%S"),
-                "end": overview.end.strftime("%Y-%m-%d %H:%M:%S"),
-                "type": "bar"
-            })
-
-        for overview in tick_overviews:
-            result.append({
-                "symbol": overview.symbol,
-                "exchange": overview.exchange.value,
-                # Tick data does not have interval
-                "interval": None,
-                "count": overview.count,
-                # Use appropriate formatting for potentially high-precision timestamps
-                "start": overview.start.strftime("%Y-%m-%d %H:%M:%S.%f") if overview.start else None,
-                "end": overview.end.strftime("%Y-%m-%d %H:%M:%S.%f") if overview.end else None,
-                "type": "tick"
-            })
-
-        logger.info("数据概览转换完成，准备返回响应.")
+        # get_available_data 返回的已经是 Dict 列表，可以直接使用
+        logger.info("数据概览获取完成，准备返回响应.")
         return {
             "success": True,
             "message": "获取数据概览成功", # 更新成功消息
-            "data": result # 返回真实数据
+            "data": available_data # 返回引擎处理好的数据
         }
     except Exception as e:
         logger.error(f"Error in st_datamanager get_data_overview: {e}")
@@ -198,8 +164,8 @@ async def get_bars(
         if end_date:
             end = datetime.strptime(end_date, "%Y-%m-%d")
 
-        # 获取数据
-        bars = engine.get_bar_data(
+        # 加载数据
+        bars: List[VnpyBarData] = engine.get_bar_data(
             symbol=symbol,
             exchange=exchange_obj,
             interval=interval_obj,
@@ -222,11 +188,16 @@ async def get_bars(
 
         return {
             "success": True,
-            "message": f"获取K线数据成功，共 {len(result)} 条",
+            "message": f"获取K线数据成功，共 {len(bars)} 条",
             "data": result
         }
+    except ValueError as ve:
+        logger.error(f"Invalid parameter value: {ve}")
+        raise HTTPException(status_code=400, detail=f"Invalid parameter value: {ve}")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error getting bars: {e}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail="获取K线数据时发生错误")
 
 @router.post("/download", response_model=ApiResponse)
 async def download_data(
@@ -263,41 +234,79 @@ async def download_data(
                 "message": f"下载 {request.symbol}.{request.exchange} 的 {request.interval} 数据失败"
             }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error downloading data: {e}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail="下载数据时发生错误")
 
-@router.post("/import", response_model=ApiResponse)
-async def import_data(
-    request: ImportRequest,
+@router.post("/import/csv", response_model=ApiResponse)
+async def import_data_from_csv_upload(
+    params: ImportCsvRequestParams = Depends(), # Use Depends for form data or query params
+    file: UploadFile = File(...),
     engine = Depends(get_data_manager_engine)
 ):
-    """导入CSV数据"""
-    try:
-        # 解析参数
-        exchange_obj = Exchange(request.exchange)
-        interval_obj = Interval(request.interval)
+    """通过上传CSV文件导入K线数据"""
+    if not engine:
+        logger.error("Data manager engine not available via dependency injection.")
+        raise HTTPException(status_code=500, detail="数据管理引擎不可用")
 
-        # 导入数据
-        success, msg = engine.import_data_from_csv(
-            file_path=request.file_path,
-            symbol=request.symbol,
+    # Create a temporary file to store the uploaded content
+    try:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".csv", mode="wb") as tmp_file:
+            shutil.copyfileobj(file.file, tmp_file)
+            temp_file_path = tmp_file.name
+        logger.info(f"Uploaded CSV file saved temporarily to: {temp_file_path}")
+
+        # Parse parameters
+        try:
+            exchange_obj = Exchange(params.exchange)
+            interval_obj = Interval(params.interval)
+        except ValueError as e:
+            logger.error(f"Invalid exchange or interval: {e}")
+            raise HTTPException(status_code=400, detail=f"无效的交易所或周期: {e}")
+
+        # Call the engine's import function with the temporary file path
+        success, message = engine.import_data_from_csv(
+            file_path=temp_file_path,
+            symbol=params.symbol,
             exchange=exchange_obj,
             interval=interval_obj,
-            datetime_head=request.datetime_head,
-            open_head=request.open_head,
-            high_head=request.high_head,
-            low_head=request.low_head,
-            close_head=request.close_head,
-            volume_head=request.volume_head,
-            open_interest_head=request.open_interest_head,
-            datetime_format=request.datetime_format
+            datetime_head=params.datetime_head,
+            open_head=params.open_head,
+            high_head=params.high_head,
+            low_head=params.low_head,
+            close_head=params.close_head,
+            volume_head=params.volume_head,
+            open_interest_head=params.open_interest_head,
+            datetime_format=params.datetime_format
         )
 
         return {
             "success": success,
-            "message": msg
+            "message": message
         }
+
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error importing CSV: {e}")
+        traceback.print_exc()
+        # Ensure detail message is helpful but avoids leaking sensitive info
+        error_detail = f"导入CSV文件时发生错误: {type(e).__name__}"
+        if isinstance(e, FileNotFoundError):
+            error_detail = "处理上传文件时出错"
+        elif isinstance(e, HTTPException):
+            error_detail = e.detail # Propagate specific HTTP errors
+        # Add more specific error handling if needed
+        raise HTTPException(status_code=500, detail=error_detail)
+    finally:
+        # Clean up the temporary file
+        if 'temp_file_path' in locals() and os.path.exists(temp_file_path):
+            try:
+                os.remove(temp_file_path)
+                logger.info(f"Temporary file {temp_file_path} removed.")
+            except Exception as cleanup_error:
+                logger.error(f"Error removing temporary file {temp_file_path}: {cleanup_error}")
+        # Ensure the uploaded file resource is closed
+        if file:
+            await file.close()
 
 @router.post("/import/qlib", response_model=ApiResponse)
 async def import_qlib_data(
@@ -333,7 +342,9 @@ async def import_qlib_data(
             "message": msg
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error importing Qlib data: {e}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail="导入Qlib数据时发生错误")
 
 @router.post("/export", response_model=ApiResponse)
 async def export_data(
@@ -363,35 +374,63 @@ async def export_data(
             "message": msg
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error exporting data: {e}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail="导出数据时发生错误")
 
-@router.post("/delete", response_model=ApiResponse)
-async def delete_data(
-    request: DeleteRequest,
+@router.delete("/bar/{exchange}/{symbol}/{interval}", response_model=ApiResponse)
+async def delete_bar_data(
+    exchange: str = Path(..., title="交易所"),
+    symbol: str = Path(..., title="代码"),
+    interval: str = Path(..., title="周期"),
     engine = Depends(get_data_manager_engine)
 ):
-    """删除数据"""
+    """删除指定的K线数据"""
+    if not engine:
+        logger.error("Data manager engine not available.")
+        raise HTTPException(status_code=500, detail="数据管理引擎不可用")
     try:
-        # 解析参数
-        exchange_obj = Exchange(request.exchange)
+        exchange_obj = Exchange(exchange)
+        interval_obj = Interval(interval)
+    except ValueError as e:
+        logger.error(f"Invalid exchange or interval: {e}")
+        raise HTTPException(status_code=400, detail=f"无效的交易所或周期: {e}")
 
-        # 删除数据
-        if request.interval:
-            interval_obj = Interval(request.interval)
-            success, msg = engine.delete_bar_data(
-                symbol=request.symbol,
-                exchange=exchange_obj,
-                interval=interval_obj
-            )
-        else:
-            success, msg = engine.delete_tick_data(
-                symbol=request.symbol,
-                exchange=exchange_obj
-            )
-
-        return {
-            "success": success,
-            "message": msg
-        }
+    try:
+        success, message = engine.delete_bar_data(
+            symbol=symbol,
+            exchange=exchange_obj,
+            interval=interval_obj
+        )
+        return {"success": success, "message": message}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error deleting bar data: {e}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail="删除K线数据时发生错误")
+
+@router.delete("/tick/{exchange}/{symbol}", response_model=ApiResponse)
+async def delete_tick_data(
+    exchange: str = Path(..., title="交易所"),
+    symbol: str = Path(..., title="代码"),
+    engine = Depends(get_data_manager_engine)
+):
+    """删除指定的Tick数据"""
+    if not engine:
+        logger.error("Data manager engine not available.")
+        raise HTTPException(status_code=500, detail="数据管理引擎不可用")
+    try:
+        exchange_obj = Exchange(exchange)
+    except ValueError as e:
+        logger.error(f"Invalid exchange: {e}")
+        raise HTTPException(status_code=400, detail=f"无效的交易所: {e}")
+
+    try:
+        success, message = engine.delete_tick_data(
+            symbol=symbol,
+            exchange=exchange_obj
+        )
+        return {"success": success, "message": message}
+    except Exception as e:
+        logger.error(f"Error deleting tick data: {e}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail="删除Tick数据时发生错误")

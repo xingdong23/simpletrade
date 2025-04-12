@@ -12,15 +12,12 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Path, Body
 from pydantic import BaseModel, Field
 
 # 导入vnpy的数据模型和数据管理功能
-from vnpy.trader.object import BarData, TickData
+from vnpy.trader.object import BarData as VnpyBarData, TickData
 from vnpy.trader.constant import Exchange, Interval
 
-# 导入我们的数据管理器和分析功能
-from simpletrade.core.data import DataManager
+# 导入分析功能和数据管理引擎 App
 from simpletrade.core.analysis import calculate_indicators, backtest_strategy
-
-# 创建数据管理器实例
-data_manager = DataManager()
+from simpletrade.apps.st_datamanager.api.routes import get_data_manager_engine # 导入用于依赖注入的函数
 
 # 创建路由器
 router = APIRouter(prefix="/api/analysis", tags=["analysis"])
@@ -121,8 +118,11 @@ async def get_available_indicators():
         }
 
 @router.post("/indicators", response_model=ApiResponse)
-async def calculate_technical_indicators(request: IndicatorRequest):
+async def calculate_technical_indicators(request: IndicatorRequest, engine = Depends(get_data_manager_engine)):
     """计算技术指标"""
+    if not engine:
+        logger.error("Data manager engine not available.")
+        raise HTTPException(status_code=500, detail="数据管理引擎不可用")
     try:
         # 解析参数
         exchange_obj = Exchange(request.exchange)
@@ -132,8 +132,8 @@ async def calculate_technical_indicators(request: IndicatorRequest):
         if request.end_date:
             end = datetime.strptime(request.end_date, "%Y-%m-%d")
 
-        # 加载数据
-        bars = data_manager.load_bar_data(
+        # 加载数据 (使用注入的引擎)
+        bars: List[VnpyBarData] = engine.get_bar_data(
             symbol=request.symbol,
             exchange=exchange_obj,
             interval=interval_obj,
@@ -181,8 +181,11 @@ async def calculate_technical_indicators(request: IndicatorRequest):
         }
 
 @router.post("/backtest", response_model=ApiResponse)
-async def run_strategy_backtest(request: BacktestRequest):
+async def run_strategy_backtest(request: BacktestRequest, engine = Depends(get_data_manager_engine)):
     """运行策略回测"""
+    if not engine:
+        logger.error("Data manager engine not available.")
+        raise HTTPException(status_code=500, detail="数据管理引擎不可用")
     try:
         # 解析参数
         exchange_obj = Exchange(request.exchange)
@@ -192,8 +195,8 @@ async def run_strategy_backtest(request: BacktestRequest):
         if request.end_date:
             end = datetime.strptime(request.end_date, "%Y-%m-%d")
 
-        # 加载数据
-        bars = data_manager.load_bar_data(
+        # 加载数据 (使用注入的引擎)
+        bars: List[VnpyBarData] = engine.get_bar_data(
             symbol=request.symbol,
             exchange=exchange_obj,
             interval=interval_obj,

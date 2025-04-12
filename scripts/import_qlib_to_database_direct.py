@@ -22,9 +22,9 @@ vendors_path = os.path.join(root_path, 'vendors')
 sys.path.append(vendors_path)
 
 # 导入vnpy相关模块
-from vnpy.vnpy.trader.object import BarData
-from vnpy.vnpy.trader.constant import Exchange, Interval
-from vnpy.vnpy.trader.database import get_database
+from vnpy.trader.object import BarData
+from vnpy.trader.constant import Exchange, Interval
+from vnpy.trader.database import get_database
 
 # 获取数据库对象
 database_manager = get_database()

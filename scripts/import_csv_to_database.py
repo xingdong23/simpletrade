@@ -9,6 +9,7 @@ import sys
 import pandas as pd
 from datetime import datetime
 from pathlib import Path
+from typing import List
 
 # 添加项目根目录到Python路径
 root_path = str(Path(__file__).parent.parent)
@@ -19,9 +20,9 @@ vendors_path = os.path.join(root_path, 'vendors')
 sys.path.append(vendors_path)
 
 # 导入vnpy相关模块
-from vnpy.vnpy.trader.object import BarData
-from vnpy.vnpy.trader.constant import Exchange, Interval
-from vnpy.vnpy.trader.database import get_database
+from vnpy.trader.object import BarData
+from vnpy.trader.constant import Exchange, Interval
+from vnpy.trader.database import get_database
 
 def convert_csv_to_bars(csv_file, symbol, exchange, interval):
     """将CSV数据转换为BarData列表"""

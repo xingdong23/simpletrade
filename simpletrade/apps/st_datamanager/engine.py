@@ -13,22 +13,17 @@ import pandas as pd # 添加 pandas 导入
 import traceback # 添加 traceback 导入
 from pathlib import Path
 
-# 添加vendors目录到Python路径
-root_path = str(Path(__file__).parent.parent.parent.parent)
-vendors_path = os.path.join(root_path, 'vendors')
-sys.path.append(vendors_path)
-
 # 导入数据导入器
 from simpletrade.apps.st_datamanager.importers.qlib_importer import QlibDataImporter
 
 # 导入vnpy相关模块
-from vnpy.vnpy.trader.object import BarData, TickData, HistoryRequest
-from vnpy.vnpy.trader.constant import Interval, Exchange
-from vnpy.vnpy.trader.database import get_database
+from vnpy.trader.object import BarData, TickData, HistoryRequest
+from vnpy.trader.constant import Interval, Exchange
+from vnpy.trader.database import get_database
 
 # 获取数据库对象
 database_manager = get_database()
-from vnpy.vnpy.trader.utility import extract_vt_symbol
+from vnpy.trader.utility import extract_vt_symbol
 
 from simpletrade.core.app import STBaseEngine
 

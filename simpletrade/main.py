@@ -4,7 +4,71 @@ SimpleTrade主程序入口
 启动SimpleTrade交易平台。
 """
 
+import sys
+import os
+import logging
+from pathlib import Path
+
+# --- Remove Debugging Imports and sys.path modifications ---
+# # --- Remove Debugging Imports ---
+# # try:
+# #     import vnpy
+# #     print(f\"[DEBUG] Successfully imported vnpy. Path: {vnpy.__path__}\")
+# # except ImportError as e:
+# #     print(f\"[DEBUG] Failed to import vnpy: {e}\")
+# #     # Print sys.path here as well for early diagnosis
+# #     print(\"[DEBUG] Current sys.path:\")
+# #     for i, p in enumerate(sys.path):
+# #         print(f\"  {i}: {p}\")
+# # --- End Debugging Imports ---
+# 
+# # --- Add specific vendor paths to sys.path --- 
+# project_root = str(Path(__file__).parent.parent.absolute())
+# vendors_dir = os.path.join(project_root, 'vendors')
+# 
+# # Add the inner vnpy source directory
+# vnpy_source_path = os.path.join(vendors_dir, 'vnpy', 'vnpy') 
+# print(f\"[DEBUG] Calculated vnpy_source_path: {vnpy_source_path}\") # Debug path calc
+# if os.path.exists(vnpy_source_path):
+#     if vnpy_source_path not in sys.path:
+#         sys.path.insert(0, vnpy_source_path)
+#         print(f\"[DEBUG] Inserted {vnpy_source_path} into sys.path\")
+#     else:
+#         print(f\"[DEBUG] {vnpy_source_path} already in sys.path\")
+# else:
+#      print(f\"[DEBUG] ERROR: vnpy_source_path does NOT exist: {vnpy_source_path}\")
+# 
+# # Add vnpy_tiger path
+# vnpy_tiger_path = os.path.join(vendors_dir, 'vnpy_tiger')
+# if os.path.exists(vnpy_tiger_path):
+#     if vnpy_tiger_path not in sys.path:
+#         sys.path.insert(0, vnpy_tiger_path)
+#         print(f\"[DEBUG] Inserted {vnpy_tiger_path} into sys.path\")
+#     else:
+#         print(f\"[DEBUG] {vnpy_tiger_path} already in sys.path\")
+# else:
+#     print(f\"[DEBUG] WARNING: vnpy_tiger_path does NOT exist: {vnpy_tiger_path}\")
+# 
+# print(\"[DEBUG] sys.path immediately BEFORE importing vnpy.event:\")
+# for i, p in enumerate(sys.path):
+#     print(f\"  {i}: {p}\")
+# # --- End sys.path modification ---
+
+# Use standard vnpy import 
 from vnpy.event import EventEngine
+# # Try importing vnpy.event
+# try:
+#     from vnpy.event import EventEngine
+#     print(\"[DEBUG] Successfully imported EventEngine from vnpy.event\")
+# except ImportError as e:
+#     print(f\"[DEBUG] FAILED to import EventEngine from vnpy.event: {e}\")
+#     print(\"[DEBUG] sys.path AT THE TIME OF FAILURE:\")
+#     for i, p in enumerate(sys.path):
+#         print(f\"  {i}: {p}\")
+#     # Optionally re-raise or exit if needed
+#     # raise e
+
+# Continue with other imports...
 from simpletrade.core.engine import STMainEngine
 
 # 导入SimpleTrade应用
@@ -13,10 +77,7 @@ from simpletrade.apps.st_datamanager import STDataManagerApp
 from simpletrade.apps.st_message import STMessageApp
 
 # 导入外部模块
-import sys
-import os
 import logging
-from pathlib import Path
 
 # 配置日志
 logging.basicConfig(
@@ -26,17 +87,11 @@ logging.basicConfig(
 )
 logger = logging.getLogger("simpletrade.main")
 
-# 确保vnpy_tiger在Python路径中
-project_root = str(Path(__file__).parent.parent.absolute())
-vnpy_tiger_path = os.path.join(project_root, 'vendors', 'vnpy_tiger')
-if os.path.exists(vnpy_tiger_path) and vnpy_tiger_path not in sys.path:
-    logger.info(f"Adding vnpy_tiger path to sys.path: {vnpy_tiger_path}")
-    sys.path.insert(0, vnpy_tiger_path)
-
-# 显示Python搜索路径
-logger.debug("Python search paths:")
-for i, path in enumerate(sys.path):
-    logger.debug(f"  {i}: {path}")
+# Remove debug sys.path print
+# # Display Python search paths (Remove this one, moved to earlier debug print)
+# # logger.debug("Python search paths (in main.py):")
+# # for i, path in enumerate(sys.path):
+# #     logger.debug(f"  {i}: {path}")
 
 try:
     from vnpy_datamanager import DataManagerApp
@@ -138,31 +193,6 @@ except Exception as e:
     logger.error(f"Global: Failed to load CTA Strategy app: {e}")
 logger.info("Global registration complete.")
 # --- 结束 全局 App 和 Gateway 注册 ---
-
-import sys
-import os
-import logging
-from pathlib import Path
-
-# 配置日志
-logging.basicConfig(
-    level=logging.DEBUG,  # 修改为DEBUG级别
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[logging.StreamHandler()]
-)
-logger = logging.getLogger("simpletrade.main")
-
-# 确保vnpy_tiger在Python路径中
-project_root = str(Path(__file__).parent.parent.absolute())
-vnpy_tiger_path = os.path.join(project_root, 'vendors', 'vnpy_tiger')
-if os.path.exists(vnpy_tiger_path) and vnpy_tiger_path not in sys.path:
-    logger.info(f"Adding vnpy_tiger path to sys.path: {vnpy_tiger_path}")
-    sys.path.insert(0, vnpy_tiger_path)
-
-# 显示Python搜索路径
-logger.debug("Python search paths:")
-for i, path in enumerate(sys.path):
-    logger.debug(f"  {i}: {path}")
 
 def main():
     """SimpleTrade主程序入口 (主要用于非API模式或测试)"""
