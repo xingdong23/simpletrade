@@ -17,7 +17,7 @@ SimpleTrade是一个为个人投资者设计的量化交易平台，旨在让普
 
 ## 技术栈
 
-- 后端: Python, vnpy框架(直接使用源码)
+- 后端: Python, vnpy框架 (标准库安装), FastAPI
 - API: FastAPI
 - 数据库: SQLite
 - 前端: 微信小程序, H5
@@ -45,11 +45,6 @@ simpletrade/
 ├── test_data/             # 测试数据目录
 ├── tests/                 # 测试代码
 ├── ui/                    # UI设计文件
-├── vendors/               # 第三方依赖
-│   ├── vnpy/              # vnpy子模块
-│   ├── vnpy_datamanager/   # vnpy数据管理模块
-│   ├── vnpy_ib/           # IB接口模块
-│   └── vnpy_tiger/        # 老虎证券Gateway
 ├── web-frontend/          # Web前端
 ├── setup.py               # 包安装配置
 └── README.md              # 项目说明
@@ -60,34 +55,31 @@ simpletrade/
 ### 1. 克隆仓库
 
 ```bash
-git clone --recursive https://github.com/yourusername/simpletrade.git
+git clone https://github.com/yourusername/simpletrade.git
 cd simpletrade
 ```
-
-注意`--recursive`参数，这是为了同时克隆vnpy子模块。
 
 ### 2. 创建Conda环境
 
 ```bash
-conda create -n simpletrade python=3.8
+conda create -n simpletrade python=3.10
 conda activate simpletrade
 ```
 
 ### 3. 安装依赖
 
 ```bash
-# 安装vnpy
-cd vendors/vnpy
-pip install -e .
-cd ../..
+# 推荐使用 pip 安装 vnpy 及其插件
+pip install vnpy vnpy_ctp vnpy_ib vnpy_tiger vnpy_datamanager vnpy_sqlite
 
-# 安装vnpy_tiger
-cd vendors/vnpy_tiger
-pip install -e .
-cd ../..
+# 安装 simpletrade 自身 (如果需要，或者在开发中使用)
+# pip install -e .
 
-# 安装simpletrade
-pip install -e .
+# 安装其他项目依赖 (例如 FastAPI, Uvicorn)
+pip install fastapi uvicorn[standard] pydantic[email]
+
+# 安装可能需要的额外依赖 (例如 TA-Lib)
+# conda install -c conda-forge ta-lib # (示例，根据需要安装)
 ```
 
 ### 4. 运行示例

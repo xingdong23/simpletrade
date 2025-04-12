@@ -24,12 +24,11 @@
 
 ### 2.1 安装老虎证券Gateway
 
-```bash
-# 进入vnpy_tiger目录
-cd vnpy_tiger
+确保您已在激活的 Python 环境中通过 pip 安装了 `vnpy_tiger`：
 
-# 安装老虎证券Gateway
-pip install -e .
+```bash
+# 激活环境 (e.g., conda activate simpletrade)
+pip install vnpy_tiger
 ```
 
 ### 2.2 申请老虎证券开放平台账号

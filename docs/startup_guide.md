@@ -61,9 +61,7 @@ Global: Tiger Gateway registered.
 
 3. 如果导入失败，尝试重新安装：
    ```bash
-   cd vendors/vnpy_tiger
-   pip install -e .
-   cd ../..
+   pip install --force-reinstall vnpy_tiger
    ```
 
 ## 故障排除
