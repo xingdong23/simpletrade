@@ -22,23 +22,32 @@
 
 ## 2. 安装与配置
 
-### 2.1 安装老虎证券Gateway
+### 2.1 获取并放置 vnpy_tiger 源码
 
-确保您已在激活的 Python 环境中通过 pip 安装了 `vnpy_tiger`：
+`vnpy_tiger` 是 SimpleTrade 的自定义组件，并非通过 `pip` 安装。
+
+1.  确保 `vnpy_tiger` 的源代码位于项目根目录下的 `vendors/vnpy_tiger` 目录中。
+2.  `simpletrade/main.py` 文件会自动将 `vendors` 目录添加到 Python 搜索路径 (`sys.path`) 以便导入。
+
+### 2.2 安装 vnpy_tiger 依赖
+
+确保您已在激活的 Python 环境中安装了 `vnpy_tiger` 所需的依赖，主要是 `tigeropen`：
 
 ```bash
 # 激活环境 (e.g., conda activate simpletrade)
-pip install vnpy_tiger
+pip install tigeropen
+# 如果 vnpy_tiger 有 requirements.txt, 也安装它:
+# pip install -r vendors/vnpy_tiger/requirements.txt
 ```
 
-### 2.2 申请老虎证券开放平台账号
+### 2.3 申请老虎证券开放平台账号
 
 1. 访问[老虎开放平台](https://www.itigerup.com/openapi)
 2. 注册并申请开发者账号
 3. 创建应用并获取Tiger ID
 4. 生成并下载私钥文件
 
-### 2.3 配置老虎证券Gateway
+### 2.4 配置老虎证券Gateway
 
 在使用老虎证券Gateway之前，需要配置以下信息：
 
@@ -56,20 +65,24 @@ TIGER_SETTING = {
 
 ### 3.1 注册老虎证券Gateway
 
-在SimpleTrade的main.py文件中，已经添加了老虎证券Gateway的注册代码：
+`simpletrade/main.py` 文件中包含加载和注册 `vnpy_tiger` 的逻辑。由于 `vendors` 目录已加入 `sys.path`，`from vnpy_tiger import TigerGateway` 应该能正常工作。
 
 ```python
+# (位于 main.py)
 try:
-    from vnpy_tiger import TigerGateway
-    print("vnpy_tiger imported successfully.")
-except ImportError:
-    print("Warning: vnpy_tiger not found. Please install it first.")
+    logger.info("Attempting to import vnpy_tiger...")
+    from vnpy_tiger import TigerGateway # Should find it in vendors/
+    logger.info("vnpy_tiger imported successfully.")
+except ImportError as e:
+    logger.error(f"Warning: vnpy_tiger not found. Error: {e}")
+    logger.warning("Please install it first.") # Should say: Please check vendors/vnpy_tiger and dependencies.
     TigerGateway = None
 
-# 在main函数中
+# 在全局 App 和 Gateway 注册部分
 if TigerGateway:
     main_engine.add_gateway(TigerGateway)
-    print("Tiger Gateway registered.")
+    logger.info("Global: Tiger Gateway registered.")
+# ...
 ```
 
 ### 3.2 连接老虎证券Gateway

@@ -22,6 +22,7 @@ SimpleTrade是一个为个人投资者设计的量化交易平台，旨在让普
 - 数据库: SQLite
 - 前端: 微信小程序, H5
 - AI: Scikit-learn, PyTorch, OpenAI API
+- **特殊组件**: 自定义 `vnpy_tiger` (存放于 `vendors/` 目录)
 
 ## 项目结构
 
@@ -45,6 +46,8 @@ simpletrade/
 ├── test_data/             # 测试数据目录
 ├── tests/                 # 测试代码
 ├── ui/                    # UI设计文件
+├── vendors/               # 自定义/非pip安装的组件
+│   └── vnpy_tiger/        # 自定义的老虎证券Gateway
 ├── web-frontend/          # Web前端
 ├── setup.py               # 包安装配置
 └── README.md              # 项目说明
@@ -68,15 +71,30 @@ conda activate simpletrade
 
 ### 3. 安装依赖
 
+**重要**: 本项目采用混合依赖管理：
+- vnpy 核心及官方插件通过 `pip` 安装。
+- 自定义的 `vnpy_tiger` 网关位于 `vendors/vnpy_tiger` 目录，需要单独安装其依赖。
+
 ```bash
+# 激活环境
+conda activate simpletrade
+
 # 推荐使用 pip 安装 vnpy 及其插件
-pip install vnpy vnpy_ctp vnpy_ib vnpy_tiger vnpy_datamanager vnpy_sqlite
+# pip install vnpy vnpy_ctp vnpy_ib vnpy_tiger vnpy_datamanager vnpy_sqlite
+# 安装 vnpy 核心及常用官方插件
+pip install vnpy vnpy_ctp vnpy_ib vnpy_datamanager vnpy_sqlite # 注意：移除了 vnpy_tiger
 
 # 安装 simpletrade 自身 (如果需要，或者在开发中使用)
 # pip install -e .
 
 # 安装其他项目依赖 (例如 FastAPI, Uvicorn)
 pip install fastapi uvicorn[standard] pydantic[email]
+
+# 安装 vnpy_tiger 的依赖 (主要是 tigeropen)
+# 确保 tigeropen 已安装
+pip install tigeropen
+# 如果 vnpy_tiger 有 requirements.txt, 也可以安装它:
+# pip install -r vendors/vnpy_tiger/requirements.txt
 
 # 安装可能需要的额外依赖 (例如 TA-Lib)
 # conda install -c conda-forge ta-lib # (示例，根据需要安装)

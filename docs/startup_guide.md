@@ -38,41 +38,50 @@ npm run serve
 
 ## 验证 vnpy_tiger 加载状态
 
-要验证 `vnpy_tiger` 是否成功加载，可以查看后端 API 服务的启动日志。如果成功加载，日志中应该包含以下信息：
+要验证 `vnpy_tiger` 是否成功加载，可以查看后端 API 服务的启动日志。
 
+首先，`main.py` 在启动时应该会打印类似以下的日志，表示 `vendors` 目录已添加到 `sys.path`：
 ```
+[INFO] Added vendors path to sys.path: /path/to/your/project/vendors
+```
+
+然后，如果 `vnpy_tiger` 及其依赖（如 `tigeropen`）都正常，你应该会看到日志中包含：
+```
+Attempting to import vnpy_tiger...
 vnpy_tiger imported successfully.
 Global: Tiger Gateway registered.
 ```
 
-如果未看到上述信息，可能需要检查 `vnpy_tiger` 的安装状态：
+如果导入失败 (看到 `Warning: vnpy_tiger not found. Error: ...`)，或者没有看到 `Tiger Gateway registered.`，请检查：
 
-1. 确认 `vnpy_tiger` 已安装：
+1. 确认 `vendors/vnpy_tiger` 目录及其内容存在。
+2. 确认 `main.py` 开头的 `sys.path` 修改被执行且路径正确。
+3. 确认 `vnpy_tiger` 的依赖已安装：
    ```bash
    conda activate simpletrade
-   pip list | grep tiger
+   pip show tigeropen # 检查 tigeropen 是否安装
+   # 如果 vnpy_tiger 有 requirements.txt, 检查其中列出的其他依赖
    ```
-
-2. 确认可以成功导入：
+4. 尝试在 Python 解释器中手动导入：
    ```bash
    conda activate simpletrade
-   python -c "import vnpy_tiger; print('vnpy_tiger successfully imported')"
-   ```
-
-3. 如果导入失败，尝试重新安装：
-   ```bash
-   pip install --force-reinstall vnpy_tiger
+   python
+   >>> import sys
+   >>> import os
+   >>> from pathlib import Path
+   >>> project_root = Path(__file__).parent.parent.absolute() # In interpreter, adjust path manually if needed
+   >>> vendors_path = project_root / "vendors"
+   >>> if vendors_path.exists() and str(vendors_path) not in sys.path:
+   ...     sys.path.insert(0, str(vendors_path))
+   >>> print(sys.path) # Verify vendors path is present
+   >>> import vnpy_tiger # See if import works now
+   >>> exit()
    ```
 
 ## 故障排除
 
-如果遇到 `vnpy_tiger` 加载失败的问题，可以尝试以下步骤：
+如果遇到 `vnpy_tiger` **运行时**的错误（例如连接失败，而不是导入失败），可以尝试：
 
-1. 确认 `tigeropen` 依赖已安装：
-   ```bash
-   pip install tigeropen
-   ```
-
-2. 重新启动应用并检查日志。
-
-3. 如果问题仍然存在，可能需要检查 Python 路径和环境变量。
+1. 检查 `tigeropen` 版本是否与 `vnpy_tiger` 代码兼容。
+2. 确认 Tiger API 的配置（ID, Account, Key Path）是否正确。
+3. 检查网络连接和 Tiger 服务器状态。

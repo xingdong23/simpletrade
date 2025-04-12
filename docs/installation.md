@@ -33,18 +33,28 @@ source simpletrade_env/bin/activate  # Linux/macOS
 
 ### 3. 安装依赖
 
++ **重要**: 本项目采用混合依赖管理：
++ - vnpy 核心及官方插件通过 `pip` 安装。
++ - 自定义的 `vnpy_tiger` 网关位于 `vendors/vnpy_tiger` 目录，需要单独安装其依赖并确保路径可访问 (通过`main.py`中的`sys.path`修改实现)。
+
 在激活的环境中，使用 pip 安装 SimpleTrade 及其核心依赖：
 
 ```bash
-# 安装 vnpy 核心及常用插件
+# 安装 vnpy 核心及常用官方插件
 # 选择你需要的插件进行安装
-pip install vnpy vnpy_ctp vnpy_ib vnpy_tiger vnpy_datamanager vnpy_sqlite
+pip install vnpy vnpy_ctp vnpy_ib vnpy_datamanager vnpy_sqlite # 注意：移除了 vnpy_tiger
 
 # 安装 SimpleTrade (通常在开发模式下使用)
 # pip install -e .
 
 # 安装 FastAPI 和 Uvicorn (用于 API 服务)
 pip install fastapi uvicorn[standard] pydantic[email]
+
+# 安装 vnpy_tiger 的依赖 (主要是 tigeropen)
+# 确保 tigeropen 已安装
+pip install tigeropen
+# 如果 vnpy_tiger 有 requirements.txt, 也可以安装它:
+# pip install -r vendors/vnpy_tiger/requirements.txt
 
 # 安装其他可能需要的依赖 (根据需要)
 # 例如 TA-Lib:
@@ -71,7 +81,12 @@ python -c "import vnpy; print(vnpy.__version__)"
 
 ### vnpy导入错误
 
-如果遇到vnpy导入错误，请确保在**激活的 simpletrade 环境**中运行，并且已使用 `pip install vnpy [插件...]` 安装了 vnpy 及其所需插件。
+如果遇到vnpy导入错误，请确保在**激活的 simpletrade 环境**中运行，并且已使用 `pip install vnpy [插件...]` 安装了 vnpy 及其所需**官方**插件。
+
++ 对于 `vnpy_tiger` 导入错误，请检查：
++ 1. `vendors/vnpy_tiger` 目录是否存在且包含正确的源代码。
++ 2. `main.py` 文件开头的 `sys.path` 修改是否正确执行。
++ 3. `vnpy_tiger` 的依赖 (`tigeropen` 等) 是否已通过 `pip` 安装。
 
 ## 开发环境设置
 

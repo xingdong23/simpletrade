@@ -9,6 +9,15 @@ import os
 import logging
 from pathlib import Path
 
+# --- Add vendors directory to sys.path ---
+# This allows importing modules like vnpy_tiger located in the vendors directory.
+project_root = Path(__file__).parent.parent.absolute()
+vendors_path = project_root / "vendors"
+if vendors_path.exists() and str(vendors_path) not in sys.path:
+    sys.path.insert(0, str(vendors_path))
+    print(f"[INFO] Added vendors path to sys.path: {vendors_path}")
+# --- End sys.path modification ---
+
 # --- Remove Debugging Imports and sys.path modifications ---
 # # --- Remove Debugging Imports ---
 # # try:
