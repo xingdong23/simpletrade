@@ -68,6 +68,26 @@ SimpleTrade将直接使用vnpy源码，而非作为依赖安装。集成步骤�
    from vnpy.trader.object import OrderRequest, SubscribeRequest
    ```
 
+### 3.1.1 安装可选模块（Gateways, Apps）
+
+与vnpy核心框架类似，SimpleTrade也通过源码方式集成vnpy的可选模块（如 `vnpy_datamanager`, `vnpy_tiger` 等）。
+
+1.  **放置源码**: 将所需可选模块的源码文件夹（例如 `vnpy_datamanager/`, `vnpy_tiger/`）放置在项目结构中（通常建议放在项目根目录，或 `vnpy/` 目录内，根据实际情况保持一致性）。
+2.  **安装依赖**: 每个可选模块通常有自己的依赖文件。在激活的 `simpletrade` conda 环境下，使用 `pip` 安装其 `requirements.txt`：
+    ```bash
+    # 激活环境（如果尚未激活）
+    # conda activate simpletrade
+
+    # 安装 vnpy_tiger 的依赖
+    pip install -r vnpy_tiger/requirements.txt
+
+    # 安装 vnpy_datamanager 的依赖 (假设源码在项目根目录)
+    # pip install -r vnpy_datamanager/requirements.txt 
+    
+    # ... 其他模块类似
+    ```
+    **重要**: 必须在 `simpletrade` conda 环境中执行 `pip install`。如果启动时仍提示找不到模块，通常是其依赖未完全安装。
+
 ### 3.2 扩展主引擎
 
 创建SimpleTrade自定义的主引擎，扩展vnpy的MainEngine：

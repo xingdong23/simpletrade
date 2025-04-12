@@ -7,8 +7,9 @@ SimpleTrade数据管理引擎
 import os
 from datetime import datetime
 from typing import List, Dict, Any, Optional, Tuple
+import time # 导入 time 模块
 
-from vnpy.trader.object import BarData, TickData
+from vnpy.trader.object import BarData, TickData, HistoryRequest
 from vnpy.trader.constant import Interval, Exchange
 from vnpy.trader.database import get_database
 
@@ -18,28 +19,29 @@ from vnpy.trader.utility import extract_vt_symbol
 
 from simpletrade.core.app import STBaseEngine
 
-# 导入vnpy_datamanager的引擎
-try:
-    from vnpy_datamanager.engine import ManagerEngine
-    HAS_DATAMANAGER = True
-except ImportError:
-    HAS_DATAMANAGER = False
-    ManagerEngine = object  # 类型提示用
+# 移除 vnpy_datamanager 的导入和检查
+# try:
+#     from vnpy_datamanager.engine import ManagerEngine
+#     HAS_DATAMANAGER = True
+# except ImportError:
+#     HAS_DATAMANAGER = False
+#     ManagerEngine = object  # 类型提示用
 
 class STDataManagerEngine(STBaseEngine):
     """SimpleTrade数据管理引擎"""
 
-    def __init__(self, main_engine, event_engine):
+    def __init__(self, main_engine, event_engine, engine_name: str):
         """初始化"""
-        super().__init__(main_engine, event_engine, "st_datamanager")
+        super().__init__(main_engine, event_engine, engine_name)
 
-        # 创建原始DataManager引擎实例（如果可用）
-        self.original_engine = None
-        if HAS_DATAMANAGER:
-            self.original_engine = ManagerEngine(main_engine, event_engine)
-            self.write_log("vnpy_datamanager引擎已加载")
-        else:
-            self.write_log("警告：vnpy_datamanager未安装，部分功能可能不可用")
+        # 移除原始 DataManager 引擎的实例化
+        # self.original_engine = None
+        # if HAS_DATAMANAGER:
+        #     self.original_engine = ManagerEngine(main_engine, event_engine)
+        #     self.write_log("vnpy_datamanager引擎已加载")
+        # else:
+        #     self.write_log("警告：vnpy_datamanager未安装，部分功能可能不可用")
+        self.write_log("STDataManagerEngine 初始化完成。") # 添加简单的初始化日志
 
         # 初始化API路由和消息指令
         self.init_api_routes()
@@ -90,7 +92,7 @@ class STDataManagerEngine(STBaseEngine):
 
     def write_log(self, msg: str):
         """写入日志"""
-        self.main_engine.write_log(msg, source=self.app_name)
+        self.main_engine.write_log(msg, source=self.engine_name)
 
     # ---- 数据查询功能 ----
 
@@ -170,6 +172,15 @@ class STDataManagerEngine(STBaseEngine):
 
         return data
 
+    # ---- 新增：数据概览查询 ----
+    def get_bar_overview(self) -> List[Any]:
+        """获取所有K线数据的概览"""
+        return database_manager.get_bar_overview()
+
+    def get_tick_overview(self) -> List[Any]:
+        """获取所有Tick数据的概览"""
+        return database_manager.get_tick_overview()
+
     # ---- 数据下载功能 ----
 
     def download_bar_data(
@@ -178,23 +189,73 @@ class STDataManagerEngine(STBaseEngine):
         exchange: Exchange,
         interval: Interval,
         start: datetime,
-        end: Optional[datetime] = None
+        end: Optional[datetime] = None,
+        gateway_name: str = "TIGER" # 默认使用 TIGER, 或许可以设为可配置
     ) -> bool:
         """下载K线数据"""
-        if not self.original_engine:
-            self.write_log("错误：vnpy_datamanager未安装，无法下载数据")
-            return False
-
+        self.write_log(f"收到K线数据下载请求: {symbol=}, {exchange=}, {interval=}, {start=}, {end=}, {gateway_name=}")
+        
         if end is None:
             end = datetime.now()
+            self.write_log(f"结束时间未指定，使用当前时间: {end}")
 
-        return self.original_engine.download_bar_data(
+        # 从 main_engine 获取 gateway 实例
+        gateway = self.main_engine.get_gateway(gateway_name)
+        if not gateway:
+            self.write_log(f"错误：找不到名为 {gateway_name} 的 Gateway 实例。")
+            return False
+
+        # 检查 Gateway 是否已连接（通过检查核心客户端是否初始化）
+        # 并实现按需连接
+        connected = False
+        if hasattr(gateway, "quote_client") and gateway.quote_client is not None: # 检查 quote_client 是否已初始化
+            self.write_log(f"Gateway {gateway_name} 已连接。")
+            connected = True
+        else:
+            self.write_log(f"Gateway {gateway_name} 未连接，尝试连接...")
+            try:
+                self.main_engine.connect({}, gateway_name)
+                # 再次检查连接是否成功
+                if hasattr(gateway, "quote_client") and gateway.quote_client is not None:
+                    self.write_log(f"Gateway {gateway_name} 连接成功。")
+                    connected = True
+                    time.sleep(1) # 短暂等待，确保内部状态稳定
+                else:
+                    self.write_log(f"错误：调用 main_engine.connect 后，Gateway {gateway_name} 仍然未初始化客户端。")
+            except Exception as e:
+                self.write_log(f"连接 Gateway {gateway_name} 时出错：{e}")
+                import traceback
+                traceback.print_exc()
+
+        if not connected:
+            return False # 如果未连接或连接失败，则无法下载
+
+        # 检查 gateway 是否有 query_history 方法 (有些 gateway 可能不支持)
+        if not hasattr(gateway, "query_history") or not callable(gateway.query_history):
+             self.write_log(f"错误：Gateway {gateway_name} 不支持历史数据查询 (缺少 query_history 方法)。")
+             return False
+
+        # 创建历史数据请求
+        req = HistoryRequest(
             symbol=symbol,
             exchange=exchange,
             interval=interval,
             start=start,
             end=end
         )
+        
+        # 发送请求到 gateway
+        try:
+            gateway.query_history(req)
+            self.write_log(f"已向 Gateway {gateway_name} 发送历史数据下载请求: {req}")
+            # 注意：这里只表示请求已发送，数据是异步下载和存储的。
+            # 实际是否成功下载需要通过事件监听或后续查询数据库确认。
+            return True
+        except Exception as e:
+            self.write_log(f"向 Gateway {gateway_name} 发送下载请求时出错：{e}")
+            import traceback
+            traceback.print_exc()
+            return False
 
     # ---- 数据导入导出功能 ----
 
@@ -213,66 +274,43 @@ class STDataManagerEngine(STBaseEngine):
         open_interest_head: str,
         datetime_format: str
     ) -> Tuple[bool, str]:
-        """从CSV导入数据"""
-        if not self.original_engine:
-            return False, "错误：vnpy_datamanager未安装，无法导入数据"
+        """从CSV导入数据 - [待实现]"""
+        # 移除对 original_engine 的依赖
+        # if not self.original_engine:
+        #     return False, "错误：vnpy_datamanager未安装，无法导入数据"
+        # 实际实现需要:
+        # 1. 检查文件是否存在
+        # 2. 使用 pandas 或 csv 库读取文件
+        # 3. 解析数据行，创建 BarData 对象列表
+        # 4. 调用 database_manager.save_bar_data() 保存数据
+        # 5. 处理异常并返回结果
+        self.write_log("错误：CSV数据导入功能尚未在 STDataManagerEngine 中实现。")
+        return False, "功能未实现"
 
-        if not os.path.exists(file_path):
-            return False, f"错误：文件不存在 {file_path}"
+        # if not os.path.exists(file_path):
+        #     return False, f"错误：文件不存在 {file_path}"
 
-        try:
-            result = self.original_engine.import_data_from_csv(
-                file_path=file_path,
-                symbol=symbol,
-                exchange=exchange,
-                interval=interval,
-                datetime_head=datetime_head,
-                open_head=open_head,
-                high_head=high_head,
-                low_head=low_head,
-                close_head=close_head,
-                volume_head=volume_head,
-                open_interest_head=open_interest_head,
-                datetime_format=datetime_format
-            )
-            if result:
-                return True, "数据导入成功"
-            else:
-                return False, "数据导入失败"
-        except Exception as e:
-            return False, f"数据导入出错：{str(e)}"
-
-    def export_data_to_csv(
-        self,
-        symbol: str,
-        exchange: Exchange,
-        interval: Interval,
-        start: datetime,
-        end: datetime,
-        file_path: str
-    ) -> Tuple[bool, str]:
-        """导出数据到CSV"""
-        if not os.path.exists(os.path.dirname(file_path)):
-            return False, f"错误：目录不存在 {os.path.dirname(file_path)}"
-
-        try:
-            bars = self.get_bar_data(symbol, exchange, interval, start, end)
-            if not bars:
-                return False, "错误：未找到符合条件的数据"
-
-            # 创建CSV文件
-            with open(file_path, "w", encoding="utf-8") as f:
-                # 写入表头
-                f.write("datetime,open,high,low,close,volume,open_interest\n")
-
-                # 写入数据
-                for bar in bars:
-                    line = f"{bar.datetime},{bar.open_price},{bar.high_price},{bar.low_price},{bar.close_price},{bar.volume},{bar.open_interest}\n"
-                    f.write(line)
-
-            return True, f"成功导出 {len(bars)} 条数据到 {file_path}"
-        except Exception as e:
-            return False, f"数据导出出错：{str(e)}"
+        # try:
+        #     result = self.original_engine.import_data_from_csv(
+        #         file_path=file_path,
+        #         symbol=symbol,
+        #         exchange=exchange,
+        #         interval=interval,
+        #         datetime_head=datetime_head,
+        #         open_head=open_head,
+        #         high_head=high_head,
+        #         low_head=low_head,
+        #         close_head=close_head,
+        #         volume_head=volume_head,
+        #         open_interest_head=open_interest_head,
+        #         datetime_format=datetime_format
+        #     )
+        #     if result:
+        #         return True, "数据导入成功"
+        #     else:
+        #         return False, "数据导入失败"
+        # except Exception as e:
+        #     return False, f"数据导入出错：{str(e)}"
 
     # ---- 数据管理功能 ----
 

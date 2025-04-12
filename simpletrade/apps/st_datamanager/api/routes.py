@@ -97,31 +97,62 @@ def get_data_manager_engine():
     # 实际实现时需要根据SimpleTrade的架构调整
     from simpletrade.main import main_engine
     # 使用 App 类的 __name__ 属性来获取实例
-    engine_instance = main_engine.get_engine(STDataManagerApp.__name__)
-    logger.info(f"get_data_manager_engine called. Requested engine name: {STDataManagerApp.__name__}, got instance: {engine_instance}")
+    # engine_instance = main_engine.get_engine(STDataManagerApp.__name__)
+    # 使用 app_name 属性来获取实例
+    engine_instance = main_engine.get_engine(STDataManagerApp.app_name)
+    logger.info(f"get_data_manager_engine called. Requested engine name: {STDataManagerApp.app_name}, got instance: {engine_instance}") # 更新日志
     return engine_instance
 
 # API路由
 @router.get("/overview", response_model=ApiResponse)
 async def get_data_overview(
-    # engine = Depends(get_data_manager_engine) # 暂时注释掉依赖注入
+    engine = Depends(get_data_manager_engine) # 启用依赖注入
 ):
-    """获取数据概览 - [调试模式：直接返回成功]"""
-    logger.info(f"Entering st_datamanager get_data_overview [DEBUG MODE]")
-    # logger.info(f"Engine instance: {engine}")
-    # if not engine:
-    #     logger.error("Dependency injection returned None for engine!")
-    #     raise HTTPException(status_code=500, detail="Data manager engine not available.")
+    """获取数据概览"""
+    logger.info(f"Entering st_datamanager get_data_overview") # 更新日志信息
+    if not engine:
+        logger.error("Dependency injection returned None for engine!")
+        raise HTTPException(status_code=500, detail="Data manager engine not available.")
     try:
-        # logger.info(f"Calling engine.get_available_data() on {engine}...")
-        # data = engine.get_available_data()
-        # logger.info(f"engine.get_available_data() returned: {data}")
-        data = [] # 直接返回空列表
-        logger.info("Returning empty data in debug mode.")
+        logger.info(f"Calling engine.get_bar_overview() on {engine}...")
+        bar_overviews = engine.get_bar_overview() # 获取K线概览
+        logger.info(f"Bar overviews received: {len(bar_overviews)}")
+
+        logger.info(f"Calling engine.get_tick_overview() on {engine}...")
+        tick_overviews = engine.get_tick_overview() # 获取Tick概览
+        logger.info(f"Tick overviews received: {len(tick_overviews)}")
+
+        # 转换为API模型
+        result = []
+        for overview in bar_overviews:
+            result.append({
+                "symbol": overview.symbol,
+                "exchange": overview.exchange.value,
+                "interval": overview.interval.value,
+                "count": overview.count,
+                "start": overview.start.strftime("%Y-%m-%d %H:%M:%S"),
+                "end": overview.end.strftime("%Y-%m-%d %H:%M:%S"),
+                "type": "bar"
+            })
+
+        for overview in tick_overviews:
+            result.append({
+                "symbol": overview.symbol,
+                "exchange": overview.exchange.value,
+                # Tick data does not have interval
+                "interval": None, 
+                "count": overview.count,
+                # Use appropriate formatting for potentially high-precision timestamps
+                "start": overview.start.strftime("%Y-%m-%d %H:%M:%S.%f") if overview.start else None, 
+                "end": overview.end.strftime("%Y-%m-%d %H:%M:%S.%f") if overview.end else None,
+                "type": "tick"
+            })
+            
+        logger.info("数据概览转换完成，准备返回响应.")
         return {
             "success": True,
-            "message": "获取数据概览成功 (调试模式)",
-            "data": data
+            "message": "获取数据概览成功", # 更新成功消息
+            "data": result # 返回真实数据
         }
     except Exception as e:
         logger.error(f"Error in st_datamanager get_data_overview: {e}")

@@ -131,27 +131,40 @@
     - 完成时间: 2024-04-13 18:00
 
 16. **[更新] Web前端开发与完善**
-    - 状态: 进行中 (**受阻**)
+    - 状态: 进行中
     - 进度: 80%
-    - 描述: 基本UI框架完成，但后端 `/api/data/overview` 接口持续返回调试数据，无法进行有效联调。
+    - 描述: 基本UI框架完成，**后端阻塞 API `/api/data/overview` 已修复**，准备进行数据相关功能的联调。
     - 相关文件: `web-frontend/`
-    - 计划完成时间: 待定 (取决于API问题解决)
+    - 计划完成时间: 待定
 
-17. **[更新] 修复自定义 App 初始化错误**
+17. **[更新] 修复 `/api/data/overview` 返回调试数据的问题**
     - 优先级: 紧急
-    - 状态: **已完成**
-    - 描述: 修改 `STMessageApp`, `STTraderApp`, `STDataManagerApp` 的 `__init__` 方法，使其能被 `STMainEngine.add_app` 正确实例化。
-    - 相关文件: `simpletrade/apps/st_message/engine.py`, `simpletrade/apps/st_trader/engine.py`, `simpletrade/apps/st_datamanager/engine.py` (或对应的 `__init__.py`)
-    - 完成时间: 2025-04-12 11:30
+    - 状态: **已解决**
+    - 描述: 通过定位正确的 API 文件 (`routes.py`)、修复引擎初始化、依赖注入和方法调用链中的多个问题，最终解决了此问题。旧 API 文件已被移除。
+    - 相关文件: `simpletrade/apps/st_datamanager/api/routes.py`, `simpletrade/apps/st_datamanager/engine.py`
+    - 完成时间: [当前日期 时间]
 
-18. **测试计划文档编写**
+18. **[新增] 实现数据下载功能 (方案A)**
+    - 优先级: 高
+    - 状态: **进行中**
+    - 进度: 30%
+    - 描述: 已移除对 `vnpy_datamanager` 的依赖，在 `STDataManagerEngine` 中实现了 `download_bar_data` 的框架逻辑（含按需连接），**待实际测试下载**。
+    - 相关文件: `simpletrade/apps/st_datamanager/engine.py`, `simpletrade/apps/st_datamanager/api/routes.py`
+
+19. **[新增] 实现数据导入功能 (方案A)**
+    - 优先级: 高
+    - 状态: **待开始**
+    - 描述: 需要在 `STDataManagerEngine` 中实现 `import_data_from_csv` 方法，不依赖 `vnpy_datamanager`。
+    - 相关文件: `simpletrade/apps/st_datamanager/engine.py`, `simpletrade/apps/st_datamanager/api/routes.py`
+
+20. **测试计划文档编写**
     - 优先级: 高
     - 状态: 待开始
     - 描述: 编写详细的测试策略、测试用例和测试环境规范
     - 相关文件: `docs/test_plan.md`
     - 预期成果: 完整的测试计划文档，包括单元测试、集成测试和性能测试策略
 
-19. **部署和运维文档编写**
+21. **部署和运维文档编写**
     - 优先级: 中
     - 状态: 待开始
     - 描述: 编写系统部署流程、环境要求和监控方案
@@ -159,11 +172,14 @@
     - 预期成果: 详细的部署指南和运维手册
 
 ## 阻碍/问题
-- ~~[移除] `TypeError: STBaseApp.__init__() missing 2 required positional arguments...` 阻止了后端 App 正常注册和 API 服务正常运行。~~
+- ~~[移除] API服务器运行时加载旧代码/调试代码~~
 - 需要确定具体的测试框架和工具
 - 需要决定是否使用Docker进行部署
 - 需要确定微信小程序与后端的具体交互方式
-- **[新增] API服务器运行时加载旧代码/调试代码**: 即使磁盘文件已更新且清除了缓存，`/api/data/overview` 仍返回调试信息。
+- **[新增] 数据库无数据**: 需要通过下载或导入添加数据。
+- **数据下载功能尚未测试**: `download_bar_data` 的实现需要实际运行验证。
+- **数据导入功能尚未实现**: `import_data_from_csv` 需要开发。
+- **Pydantic V2 警告**
 
 ## 本周目标
 1. ✅ 完成vnpy源码集成方案设计
@@ -180,19 +196,20 @@
 12. ✅ 编写老虎证券Gateway相关文档，包括集成指南和使用指南
 13. ✅ 完善Web前端，增强用户界面和交互体验 (基本框架完成)
 14. ✅ 开发交易中心、回测系统和AI分析等功能模块 (基本框架完成)
-15. ✅ 定位并**解决**前后端联调中的系列问题，包括 App 初始化错误。
-16. ~~⏳ 修复自定义 App 初始化 TypeError。~~
-17. ⏳ **解决 `/api/data/overview` 返回调试数据的问题。**
+15. ✅ 定位并**解决**前后端联调中的系列问题 (API 可用)。
+16. ~~⏳ 修复自定义 App 初始化 TypeError。~~ (已包含在 15 中)
+17. ✅ **解决 `/api/data/overview` 返回调试数据的问题。**
+18. ⏳ **开始实现数据下载功能 (方案A)** (`download_bar_data` 框架完成)。
 
 ## 下一步具体行动
-1.  **诊断 API 服务器为何运行旧代码**：检查进程、环境、路径、依赖、加载机制等。
-2.  **确保 `/api/data/overview` 返回真实数据。**
-3.  (修复后) 重新启动并测试后端服务。
-4.  (修复后) 在浏览器中审查前端页面，确认数据管理概览能加载真实数据。
-5.  (修复后) 开始连接数据管理模块的前端与后端API。
-6.  (修复后) 开始连接仪表盘的市场概览与后端API或WebSocket。
-7.  (修复后) 实现交易中心、策略管理、回测系统、AI分析、系统设置等与后端API的对接。
-8.  (修复后) 编写测试计划文档和单元测试。
-9.  (修复后) 添加数据可视化组件。
-10. (修复后) 测试老虎证券Gateway。
-11. (修复后) 编写用户文档。
+1.  **测试数据下载**: 下次会话优先继续，调用 `/api/data/download` 尝试下载少量数据。
+2.  **验证数据下载**: 确认数据是否成功入库。
+3.  **实现数据导入**: 开发 `import_data_from_csv` 方法。
+4.  **联调数据管理**: 连接前端与后端API (概览、下载状态、导入、导出、删除、查看)。
+5.  连接仪表盘的市场概览与后端API或WebSocket。
+6.  实现交易中心等其他模块与后端API的对接。
+7.  编写测试计划文档和单元测试。
+8.  添加数据可视化组件。
+9.  测试老虎证券Gateway (连接和交易功能)。
+10. 编写用户文档。
+11. 修复 Pydantic V2 警告。

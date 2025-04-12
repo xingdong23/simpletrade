@@ -54,14 +54,6 @@ def create_server(main_engine=None, event_engine=None):
     except Exception as e:
         print(f"Failed to add data management API routes: {e}")
 
-    # 添加独立数据API路由
-    try:
-        from simpletrade.api.data import router as core_data_router
-        server.add_router(core_data_router)
-        print("Core data API routes added.")
-    except Exception as e:
-        print(f"Failed to add core data API routes: {e}")
-
     # 添加微信小程序API路由
     try:
         from simpletrade.api.wechat import auth_router, data_router as wechat_data_router
