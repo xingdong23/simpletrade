@@ -28,10 +28,12 @@ except ImportError:
     IbGateway = None
 
 try:
+    print("Attempting to import vnpy_tiger...")
     from vnpy_tiger import TigerGateway
     print("vnpy_tiger imported successfully.")
-except ImportError:
-    print("Warning: vnpy_tiger not found. Please install it first.")
+except ImportError as e:
+    print(f"Warning: vnpy_tiger not found. Error: {e}")
+    print("Please install it first.")
     TigerGateway = None
 
 # --- 全局引擎实例 ---

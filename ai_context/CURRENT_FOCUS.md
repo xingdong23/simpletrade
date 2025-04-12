@@ -1,9 +1,9 @@
 # SimpleTrade 当前工作重点
 
-**最后更新**: 2025-04-12 11:45
+**最后更新**: [当前日期 时间]
 
 ## 当前Sprint目标
-完善Web前端开发，增强用户界面和交互体验，**开始进行前后端联调**。 (**API问题阻碍联调，需优先解决**)
+完善Web前端开发，增强用户界面和交互体验，**开始进行前后端联调**。 (**阻塞：核心数据下载功能因 Tiger Gateway 加载问题受阻**)
 
 ## 活跃任务
 
@@ -146,15 +146,15 @@
 
 18. **[新增] 实现数据下载功能 (方案A)**
     - 优先级: 高
-    - 状态: **进行中**
-    - 进度: 30%
-    - 描述: 已移除对 `vnpy_datamanager` 的依赖，在 `STDataManagerEngine` 中实现了 `download_bar_data` 的框架逻辑（含按需连接），**待实际测试下载**。
-    - 相关文件: `simpletrade/apps/st_datamanager/engine.py`, `simpletrade/apps/st_datamanager/api/routes.py`
+    - 状态: **进行中 (阻碍: Tiger Gateway 加载失败)**
+    - 进度: 40%
+    - 描述: 已移除对 `vnpy_datamanager` 的依赖，在 `STDataManagerEngine` 中实现了 `download_bar_data` 的框架逻辑（含按需连接）。调试过程中遇到 `vnpy_tiger` 加载失败问题 (尝试 `pip install -e .`)，发现缺少依赖 `tigeropen`，确认 `tigeropen` 已安装但导入在启动时仍失败。TA-Lib 库冲突已通过 conda 修复。**需要干净重启应用后再次确认 `vnpy_tiger` 是否能被导入。**
+    - 相关文件: `simpletrade/apps/st_datamanager/engine.py`, `simpletrade/apps/st_datamanager/api/routes.py`, `simpletrade/main.py`, `vnpy_tiger/`
 
 19. **[新增] 实现数据导入功能 (方案A)**
     - 优先级: 高
-    - 状态: **待开始**
-    - 描述: 需要在 `STDataManagerEngine` 中实现 `import_data_from_csv` 方法，不依赖 `vnpy_datamanager`。
+    - 状态: **已完成 (代码实现，待测试)**
+    - 描述: 在 `STDataManagerEngine` 中使用 pandas 实现了 `import_data_from_csv` 方法，不依赖 `vnpy_datamanager`。
     - 相关文件: `simpletrade/apps/st_datamanager/engine.py`, `simpletrade/apps/st_datamanager/api/routes.py`
 
 20. **测试计划文档编写**
@@ -176,9 +176,9 @@
 - 需要确定具体的测试框架和工具
 - 需要决定是否使用Docker进行部署
 - 需要确定微信小程序与后端的具体交互方式
-- **[新增] 数据库无数据**: 需要通过下载或导入添加数据。
-- **数据下载功能尚未测试**: `download_bar_data` 的实现需要实际运行验证。
-- **数据导入功能尚未实现**: `import_data_from_csv` 需要开发。
+- **[新增] `vnpy_tiger` 加载失败**: 尽管执行了 `pip install -e .` 并且依赖 `tigeropen` 已确认安装，应用启动时仍报告 `vnpy_tiger not found`。需要干净重启应用后再次验证。
+- **[新增] 环境依赖管理冲突风险**: 项目指南要求优先 `conda`，但调试中使用了 `pip` 安装本地包 (`-e .`) 和依赖 (`tigeropen`)，需关注潜在冲突。
+- **数据库无数据**: 需要通过下载或导入添加数据。
 - **Pydantic V2 警告**
 
 ## 本周目标
@@ -199,17 +199,19 @@
 15. ✅ 定位并**解决**前后端联调中的系列问题 (API 可用)。
 16. ~~⏳ 修复自定义 App 初始化 TypeError。~~ (已包含在 15 中)
 17. ✅ **解决 `/api/data/overview` 返回调试数据的问题。**
-18. ⏳ **开始实现数据下载功能 (方案A)** (`download_bar_data` 框架完成)。
+18. ⏳ **开始实现数据下载功能 (方案A)** (`download_bar_data` 框架完成，**调试中**)。
+19. ✅ **实现数据导入功能 (方案A)** (代码完成)。
 
 ## 下一步具体行动
-1.  **测试数据下载**: 下次会话优先继续，调用 `/api/data/download` 尝试下载少量数据。
-2.  **验证数据下载**: 确认数据是否成功入库。
-3.  **实现数据导入**: 开发 `import_data_from_csv` 方法。
-4.  **联调数据管理**: 连接前端与后端API (概览、下载状态、导入、导出、删除、查看)。
-5.  连接仪表盘的市场概览与后端API或WebSocket。
-6.  实现交易中心等其他模块与后端API的对接。
-7.  编写测试计划文档和单元测试。
-8.  添加数据可视化组件。
-9.  测试老虎证券Gateway (连接和交易功能)。
-10. 编写用户文档。
-11. 修复 Pydantic V2 警告。
+1.  **[最优先] 重启应用并确认 `vnpy_tiger` 加载成功**: 检查启动日志，确保 `vnpy_tiger not found` 警告消失，且 Tiger Gateway 成功注册。
+2.  **测试数据下载**: (前提：`vnpy_tiger` 加载成功) 调用 `/api/data/download` (interval="DAILY") 尝试下载少量数据。
+3.  **验证数据下载**: 确认数据是否成功入库 (检查日志和 `/api/data/overview`)。
+4.  **测试数据导入**: 准备CSV文件，调用 `/api/data/import` 测试 `import_data_from_csv` 功能。
+5.  (数据可用后) 联调数据管理: 连接前端与后端API (概览、下载状态、导入、导出、删除、查看)。
+6.  连接仪表盘的市场概览与后端API或WebSocket。
+7.  实现交易中心等其他模块与后端API的对接。
+8.  编写测试计划文档和单元测试。
+9.  添加数据可视化组件。
+10. 测试老虎证券Gateway (连接和交易功能)。
+11. 编写用户文档。
+12. 处理 Pydantic V2 警告。

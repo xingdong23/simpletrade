@@ -8,6 +8,8 @@ import os
 from datetime import datetime
 from typing import List, Dict, Any, Optional, Tuple
 import time # 导入 time 模块
+import pandas as pd # 添加 pandas 导入
+import traceback # 添加 traceback 导入
 
 from vnpy.trader.object import BarData, TickData, HistoryRequest
 from vnpy.trader.constant import Interval, Exchange
@@ -274,43 +276,108 @@ class STDataManagerEngine(STBaseEngine):
         open_interest_head: str,
         datetime_format: str
     ) -> Tuple[bool, str]:
-        """从CSV导入数据 - [待实现]"""
-        # 移除对 original_engine 的依赖
-        # if not self.original_engine:
-        #     return False, "错误：vnpy_datamanager未安装，无法导入数据"
-        # 实际实现需要:
+        """从CSV导入K线数据"""
+        self.write_log(f"开始从CSV导入数据: {file_path}, 合约: {symbol}.{exchange.value}, 周期: {interval.value}")
+
         # 1. 检查文件是否存在
-        # 2. 使用 pandas 或 csv 库读取文件
+        if not os.path.exists(file_path):
+            msg = f"错误：CSV文件不存在 {file_path}"
+            self.write_log(msg)
+            return False, msg
+
+        # 2. 使用 pandas 读取文件
+        try:
+            # 显式指定dtype为str防止pandas自动类型推断导致问题, keep_default_na=False 防止空字符串被读为 NaN
+            df = pd.read_csv(file_path, dtype=str, keep_default_na=False)
+            self.write_log(f"成功读取CSV文件: {file_path}, 共 {len(df)} 行")
+        except Exception as e:
+            msg = f"错误：读取CSV文件失败 {file_path} - {e}"
+            self.write_log(msg)
+            traceback.print_exc()
+            return False, msg
+
         # 3. 解析数据行，创建 BarData 对象列表
+        bars: List[BarData] = []
+        imported_count = 0
+        failed_count = 0
+
+        # 获取vnpy gateway实例名称，BarData需要gateway_name
+        # 暂定使用默认的TIGER, 或许可以从配置读取或作为参数传入
+        gateway_name = "TIGER"
+
+        required_headers = {
+            datetime_head, open_head, high_head, low_head,
+            close_head, volume_head, open_interest_head
+        }
+        if not required_headers.issubset(df.columns):
+             missing_headers = required_headers - set(df.columns)
+             msg = f"错误：CSV文件缺少必要的列: {missing_headers}"
+             self.write_log(msg)
+             return False, msg
+
+        for index, row in df.iterrows():
+            try:
+                # 解析时间戳
+                dt_str = row[datetime_head]
+                dt = datetime.strptime(dt_str, datetime_format)
+
+                # 解析价格和成交量/持仓量，处理空字符串或非数字值
+                # 尝试转换为浮点数，如果失败（例如空字符串），则设为 0.0
+                open_price = float(row[open_head]) if row[open_head] else 0.0
+                high_price = float(row[high_head]) if row[high_head] else 0.0
+                low_price = float(row[low_head]) if row[low_head] else 0.0
+                close_price = float(row[close_head]) if row[close_head] else 0.0
+                volume = float(row[volume_head]) if row[volume_head] else 0.0
+                open_interest = float(row[open_interest_head]) if row[open_interest_head] else 0.0
+
+                # 创建BarData对象
+                bar = BarData(
+                    symbol=symbol,
+                    exchange=exchange,
+                    datetime=dt,
+                    interval=interval,
+                    volume=volume,
+                    open_price=open_price,
+                    high_price=high_price,
+                    low_price=low_price,
+                    close_price=close_price,
+                    open_interest=open_interest,
+                    gateway_name=gateway_name # BarData 需要 gateway_name
+                )
+                bars.append(bar)
+                imported_count += 1
+            except ValueError as ve:
+                failed_count += 1
+                self.write_log(f"警告：解析CSV第 {index + 2} 行数据失败 (值错误): {row.to_dict()} - {ve}")
+            except KeyError as ke:
+                failed_count += 1
+                self.write_log(f"警告：解析CSV第 {index + 2} 行数据失败 (列名错误): {row.to_dict()} - {ke}")
+            except Exception as e:
+                failed_count += 1
+                self.write_log(f"警告：解析CSV第 {index + 2} 行数据失败 (未知错误): {row.to_dict()} - {e}")
+                traceback.print_exc()
+
+
+        if not bars:
+            msg = "错误：未能从CSV文件中解析出任何有效的K线数据。"
+            if failed_count > 0:
+                msg += f" (共失败 {failed_count} 行)"
+            self.write_log(msg)
+            return False, msg
+
         # 4. 调用 database_manager.save_bar_data() 保存数据
-        # 5. 处理异常并返回结果
-        self.write_log("错误：CSV数据导入功能尚未在 STDataManagerEngine 中实现。")
-        return False, "功能未实现"
-
-        # if not os.path.exists(file_path):
-        #     return False, f"错误：文件不存在 {file_path}"
-
-        # try:
-        #     result = self.original_engine.import_data_from_csv(
-        #         file_path=file_path,
-        #         symbol=symbol,
-        #         exchange=exchange,
-        #         interval=interval,
-        #         datetime_head=datetime_head,
-        #         open_head=open_head,
-        #         high_head=high_head,
-        #         low_head=low_head,
-        #         close_head=close_head,
-        #         volume_head=volume_head,
-        #         open_interest_head=open_interest_head,
-        #         datetime_format=datetime_format
-        #     )
-        #     if result:
-        #         return True, "数据导入成功"
-        #     else:
-        #         return False, "数据导入失败"
-        # except Exception as e:
-        #     return False, f"数据导入出错：{str(e)}"
+        try:
+            database_manager.save_bar_data(bars)
+            success_msg = f"成功导入 {imported_count} 条K线数据到数据库。"
+            if failed_count > 0:
+                success_msg += f" (跳过 {failed_count} 条错误数据)"
+            self.write_log(success_msg)
+            return True, success_msg
+        except Exception as e:
+            msg = f"错误：保存导入的K线数据到数据库时失败 - {e}"
+            self.write_log(msg)
+            traceback.print_exc()
+            return False, msg
 
     # ---- 数据管理功能 ----
 
