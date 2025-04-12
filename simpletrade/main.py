@@ -13,85 +13,137 @@ from simpletrade.apps.st_datamanager import STDataManagerApp
 from simpletrade.apps.st_message import STMessageApp
 
 # 导入外部模块
+import sys
+import os
+import logging
+from pathlib import Path
+
+# 配置日志
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[logging.StreamHandler()]
+)
+logger = logging.getLogger("simpletrade.main")
+
+# 确保vnpy_tiger在Python路径中
+project_root = str(Path(__file__).parent.parent.absolute())
+vnpy_tiger_path = os.path.join(project_root, 'vnpy_tiger')
+if os.path.exists(vnpy_tiger_path) and vnpy_tiger_path not in sys.path:
+    logger.info(f"Adding vnpy_tiger path to sys.path: {vnpy_tiger_path}")
+    sys.path.insert(0, vnpy_tiger_path)
+    
+# 显示Python搜索路径
+logger.debug("Python search paths:")
+for i, path in enumerate(sys.path):
+    logger.debug(f"  {i}: {path}")
+
 try:
     from vnpy_datamanager import DataManagerApp
-    print("vnpy_datamanager imported successfully.")
+    logger.info("vnpy_datamanager imported successfully.")
 except ImportError:
-    print("Warning: vnpy_datamanager not found. Please install it first.")
+    logger.warning("Warning: vnpy_datamanager not found. Please install it first.")
     DataManagerApp = None
 
 try:
     from vnpy_ib import IbGateway
-    print("vnpy_ib imported successfully.")
+    logger.info("vnpy_ib imported successfully.")
 except ImportError:
-    print("Warning: vnpy_ib not found. Please install it first.")
+    logger.warning("Warning: vnpy_ib not found. Please install it first.")
     IbGateway = None
 
 try:
-    print("Attempting to import vnpy_tiger...")
+    logger.info("Attempting to import vnpy_tiger...")
     from vnpy_tiger import TigerGateway
-    print("vnpy_tiger imported successfully.")
+    logger.info("vnpy_tiger imported successfully.")
 except ImportError as e:
-    print(f"Warning: vnpy_tiger not found. Error: {e}")
-    print("Please install it first.")
+    logger.error(f"Warning: vnpy_tiger not found. Error: {e}")
+    logger.warning("Please install it first.")
     TigerGateway = None
 
 # --- 全局引擎实例 ---
 # 创建事件引擎
 event_engine = EventEngine()
-print("Global Event engine created.")
+logger.info("Global Event engine created.")
 
 # 创建SimpleTrade主引擎
 main_engine = STMainEngine(event_engine)
-print("Global Main engine created.")
+logger.info("Global Main engine created.")
 
 # --- 全局 App 和 Gateway 注册 ---
-print("Registering gateways and apps globally...")
+logger.info("Registering gateways and apps globally...")
 # 注册IB网关
 if IbGateway:
     main_engine.add_gateway(IbGateway)
-    print("Global: IB Gateway registered.")
+    logger.info("Global: IB Gateway registered.")
 
 # 注册老虎证券网关
 if TigerGateway:
     main_engine.add_gateway(TigerGateway)
-    print("Global: Tiger Gateway registered.")
+    logger.info("Global: Tiger Gateway registered.")
+else:
+    logger.warning("Tiger Gateway not registered due to import failure.")
 
 # 加载消息系统应用（先加载，便于其他应用注册消息处理器）
 main_engine.add_app(STMessageApp)
-print("Global: ST Message app loaded.")
+logger.info("Global: ST Message app loaded.")
 
 # 加载SimpleTrade应用
 main_engine.add_app(STTraderApp)
-print("Global: ST Trader app loaded.")
+logger.info("Global: ST Trader app loaded.")
 
 # 加载ST数据管理应用
 main_engine.add_app(STDataManagerApp)
-print("Global: ST Data Manager app loaded.")
+logger.info("Global: ST Data Manager app loaded.")
 
 # 加载原始数据管理应用（如果可用）
 if DataManagerApp:
     main_engine.add_app(DataManagerApp)
-    print("Global: Original Data Manager app loaded.")
+    logger.info("Global: Original Data Manager app loaded.")
 
 # 加载vnpy内置应用（按需选择）
 try:
     main_engine.add_app("cta_strategy")  # CTA策略
-    print("Global: CTA Strategy app loaded.")
+    logger.info("Global: CTA Strategy app loaded.")
 except Exception as e:
-    print(f"Global: Failed to load CTA Strategy app: {e}")
-print("Global registration complete.")
+    logger.error(f"Global: Failed to load CTA Strategy app: {e}")
+logger.info("Global registration complete.")
 # --- 结束 全局 App 和 Gateway 注册 ---
+
+import sys
+import os
+import logging
+from pathlib import Path
+
+# 配置日志
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[logging.StreamHandler()]
+)
+logger = logging.getLogger("simpletrade.main")
+
+# 确保vnpy_tiger在Python路径中
+project_root = str(Path(__file__).parent.parent.absolute())
+vnpy_tiger_path = os.path.join(project_root, 'vnpy_tiger')
+if os.path.exists(vnpy_tiger_path) and vnpy_tiger_path not in sys.path:
+    logger.info(f"Adding vnpy_tiger path to sys.path: {vnpy_tiger_path}")
+    sys.path.insert(0, vnpy_tiger_path)
+    
+# 显示Python搜索路径
+logger.debug("Python search paths:")
+for i, path in enumerate(sys.path):
+    logger.debug(f"  {i}: {path}")
 
 def main():
     """SimpleTrade主程序入口 (主要用于非API模式或测试)"""
-    print("Starting SimpleTrade main function (non-API mode)...")
+    logger.info("Starting SimpleTrade main function (non-API mode)...")
 
     # --- 使用全局引擎实例 ---
     # 引擎和 App 已在全局范围初始化和注册
     # --- 结束 使用全局引擎实例 ---
 
-    print("SimpleTrade main function setup complete! (Engine and apps already initialized)")
+    logger.info("SimpleTrade main function setup complete! (Engine and apps already initialized)")
 
     # 保持主程序运行 (如果需要)
     import time
@@ -99,9 +151,11 @@ def main():
         while True:
             time.sleep(1)
     except KeyboardInterrupt:
-        print("Shutting down SimpleTrade...")
+        logger.info("Shutting down SimpleTrade...")
         main_engine.close()
-        print("SimpleTrade shutdown completed.")
+        logger.info("SimpleTrade shutdown completed.")
+        
+    return main_engine, event_engine
 
 if __name__ == "__main__":
     main()

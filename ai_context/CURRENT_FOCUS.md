@@ -1,6 +1,6 @@
 # SimpleTrade 当前工作重点
 
-**最后更新**: [当前日期 时间]
+**最后更新**: 2024-04-12 15:30
 
 ## 当前Sprint目标
 完善Web前端开发，增强用户界面和交互体验，**开始进行前后端联调**。 (**阻塞：核心数据下载功能因 Tiger Gateway 加载问题受阻**)
@@ -144,11 +144,11 @@
     - 相关文件: `simpletrade/apps/st_datamanager/api/routes.py`, `simpletrade/apps/st_datamanager/engine.py`
     - 完成时间: [当前日期 时间]
 
-18. **[新增] 实现数据下载功能 (方案A)**
+18. **[更新] 实现数据下载功能 (方案A)**
     - 优先级: 高
-    - 状态: **进行中 (阻碍: Tiger Gateway 加载失败)**
+    - 状态: **进行中 (阻碍: Tiger Gateway 加载问题)**
     - 进度: 40%
-    - 描述: 已移除对 `vnpy_datamanager` 的依赖，在 `STDataManagerEngine` 中实现了 `download_bar_data` 的框架逻辑（含按需连接）。调试过程中遇到 `vnpy_tiger` 加载失败问题 (尝试 `pip install -e .`)，发现缺少依赖 `tigeropen`，确认 `tigeropen` 已安装但导入在启动时仍失败。TA-Lib 库冲突已通过 conda 修复。**需要干净重启应用后再次确认 `vnpy_tiger` 是否能被导入。**
+    - 描述: 已移除对 `vnpy_datamanager` 的依赖，在 `STDataManagerEngine` 中实现了 `download_bar_data` 的框架逻辑（含按需连接）。调试过程中遇到 `vnpy_tiger` 加载失败问题，已确认模块可在 Python 解释器中导入，但应用启动时可能仍存在问题。
     - 相关文件: `simpletrade/apps/st_datamanager/engine.py`, `simpletrade/apps/st_datamanager/api/routes.py`, `simpletrade/main.py`, `vnpy_tiger/`
 
 19. **[新增] 实现数据导入功能 (方案A)**
@@ -163,6 +163,13 @@
     - 描述: 编写详细的测试策略、测试用例和测试环境规范
     - 相关文件: `docs/test_plan.md`
     - 预期成果: 完整的测试计划文档，包括单元测试、集成测试和性能测试策略
+
+22. **[新增] 启动指南文档编写**
+    - 优先级: 中
+    - 状态: **已完成**
+    - 描述: 创建详细的启动指南文档，记录了正确的后端和前端启动方式，以及如何验证 vnpy_tiger 的加载状态。
+    - 相关文件: `docs/startup_guide.md`
+    - 完成时间: 2024-04-12 15:30
 
 21. **部署和运维文档编写**
     - 优先级: 中
@@ -199,12 +206,16 @@
 15. ✅ 定位并**解决**前后端联调中的系列问题 (API 可用)。
 16. ~~⏳ 修复自定义 App 初始化 TypeError。~~ (已包含在 15 中)
 17. ✅ **解决 `/api/data/overview` 返回调试数据的问题。**
-18. ⏳ **开始实现数据下载功能 (方案A)** (`download_bar_data` 框架完成，**调试中**)。
+18. ⏳ **继续排查 `vnpy_tiger` 加载问题** (进度: 50%)
 19. ✅ **实现数据导入功能 (方案A)** (代码完成)。
+20. ✅ **创建启动指南文档** (已完成)
 
 ## 下一步具体行动
-1.  **[最优先] 重启应用并确认 `vnpy_tiger` 加载成功**: 检查启动日志，确保 `vnpy_tiger not found` 警告消失，且 Tiger Gateway 成功注册。
-2.  **测试数据下载**: (前提：`vnpy_tiger` 加载成功) 调用 `/api/data/download` (interval="DAILY") 尝试下载少量数据。
+1.  **[最优先] 继续排查 `vnpy_tiger` 在应用启动时的加载问题**:
+   - 添加更详细的日志输出
+   - 考虑在代码中显式添加 vnpy_tiger 到 sys.path
+   - 测试其他 Gateway 是否可以正常工作
+2.  **测试数据下载**: (前提：`vnpy_tiger` 加载成功) 调用 `/api/data/download` (interval="d") 尝试下载少量数据。
 3.  **验证数据下载**: 确认数据是否成功入库 (检查日志和 `/api/data/overview`)。
 4.  **测试数据导入**: 准备CSV文件，调用 `/api/data/import` 测试 `import_data_from_csv` 功能。
 5.  (数据可用后) 联调数据管理: 连接前端与后端API (概览、下载状态、导入、导出、删除、查看)。

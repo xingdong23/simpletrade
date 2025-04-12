@@ -14,14 +14,27 @@ from tigeropen.quote.quote_client import QuoteClient
 from tigeropen.trade.trade_client import TradeClient
 from tigeropen.push.push_client import PushClient
 from tigeropen.common.util.signature_utils import read_private_key
-from tigeropen.quote.domain.market_status import MarketStatus
-from tigeropen.quote.domain.quote_bar import QuoteBar
-from tigeropen.quote.domain.quote_tick import QuoteTick
+
+# 适配tigeropen 3.3.5版本
+try:
+    from tigeropen.quote.domain.market_status import MarketStatus
+except ImportError:
+    from tigeropen.quote.response.market_status_response import MarketStatus
+
+try:
+    from tigeropen.quote.domain.quote_bar import QuoteBar
+except ImportError:
+    from tigeropen.quote.response.quote_bar_response import QuoteBar
+
+try:
+    from tigeropen.quote.domain.quote_tick import QuoteTick
+except ImportError:
+    from tigeropen.quote.response.tick_response import QuoteTick
+
 from tigeropen.quote.request.market_status_request import MarketStatusRequest
 from tigeropen.quote.request.quote_request import OpenApiRequest
 from tigeropen.quote.response.quote_bar_response import QuoteBarResponse
 from tigeropen.quote.request.quote_bar_request import QuoteBarRequest
-from tigeropen.push.push_client import PushClient
 
 from vnpy.event import EventEngine
 from vnpy.trader.constant import (
