@@ -5,13 +5,22 @@ SimpleTrade应用基类模块
 """
 
 from pathlib import Path
-from vnpy.trader.app import BaseApp
-from vnpy.trader.engine import BaseEngine
+import sys
+import os
+
+# 添加vendors目录到Python路径
+root_path = str(Path(__file__).parent.parent.parent)
+vendors_path = os.path.join(root_path, 'vendors')
+sys.path.append(vendors_path)
+
+# 导入vnpy相关模块
+from vnpy.vnpy.trader.app import BaseApp
+from vnpy.vnpy.trader.engine import BaseEngine
 
 class STBaseApp(BaseApp):
     """
     SimpleTrade基础应用类
-    
+
     所有SimpleTrade应用都应继承此类。
     """
 
@@ -22,11 +31,11 @@ class STBaseApp(BaseApp):
     display_name = ""  # 显示名称
     engine_class = None  # 引擎类
     widget_class = None  # 界面类
-    
+
     def __init__(self, main_engine, event_engine):
         """
         初始化
-        
+
         参数:
             main_engine (MainEngine): 主引擎
             event_engine (EventEngine): 事件引擎
@@ -36,21 +45,21 @@ class STBaseApp(BaseApp):
 class STBaseEngine(BaseEngine):
     """
     SimpleTrade基础引擎类
-    
+
     所有SimpleTrade引擎都应继承此类。
     """
-    
+
     def __init__(self, main_engine, event_engine, app_name):
         """
         初始化
-        
+
         参数:
             main_engine (MainEngine): 主引擎
             event_engine (EventEngine): 事件引擎
             app_name (str): 应用名称
         """
         super().__init__(main_engine, event_engine, app_name)
-        
+
         # 添加到主引擎的ST引擎列表
         if hasattr(main_engine, "add_st_engine"):
             main_engine.add_st_engine(app_name, self)

@@ -4,13 +4,22 @@ SimpleTrade数据管理API路由
 定义数据管理的RESTful API路由。
 """
 
+import os
+import sys
 from datetime import datetime
 from typing import List, Optional, Dict, Any
+from pathlib import Path
 
 from fastapi import APIRouter, Query, Path, Body, HTTPException, Depends
 from pydantic import BaseModel, Field
 
-from vnpy.trader.constant import Exchange, Interval
+# 添加vendors目录到Python路径
+root_path = str(Path(__file__).parent.parent.parent.parent.parent)
+vendors_path = os.path.join(root_path, 'vendors')
+sys.path.append(vendors_path)
+
+# 导入vnpy相关模块
+from vnpy.vnpy.trader.constant import Exchange, Interval
 
 import logging
 import traceback
