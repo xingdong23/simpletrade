@@ -28,7 +28,7 @@ logger = logging.getLogger("simpletrade.main")
 
 # 确保vnpy_tiger在Python路径中
 project_root = str(Path(__file__).parent.parent.absolute())
-vnpy_tiger_path = os.path.join(project_root, 'vnpy_tiger')
+vnpy_tiger_path = os.path.join(project_root, 'vendors', 'vnpy_tiger')
 if os.path.exists(vnpy_tiger_path) and vnpy_tiger_path not in sys.path:
     logger.info(f"Adding vnpy_tiger path to sys.path: {vnpy_tiger_path}")
     sys.path.insert(0, vnpy_tiger_path)
@@ -154,7 +154,7 @@ logger = logging.getLogger("simpletrade.main")
 
 # 确保vnpy_tiger在Python路径中
 project_root = str(Path(__file__).parent.parent.absolute())
-vnpy_tiger_path = os.path.join(project_root, 'vnpy_tiger')
+vnpy_tiger_path = os.path.join(project_root, 'vendors', 'vnpy_tiger')
 if os.path.exists(vnpy_tiger_path) and vnpy_tiger_path not in sys.path:
     logger.info(f"Adding vnpy_tiger path to sys.path: {vnpy_tiger_path}")
     sys.path.insert(0, vnpy_tiger_path)

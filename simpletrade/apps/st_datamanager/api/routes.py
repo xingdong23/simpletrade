@@ -67,6 +67,16 @@ class ImportRequest(BaseModel):
     open_interest_head: str
     datetime_format: str = "%Y-%m-%d %H:%M:%S"
 
+
+class ImportQlibRequest(BaseModel):
+    """导入Qlib数据请求模型"""
+    qlib_dir: str
+    symbol: str
+    exchange: str
+    interval: str
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+
 class ExportRequest(BaseModel):
     """导出请求模型"""
     symbol: str
@@ -251,7 +261,7 @@ async def import_data(
     request: ImportRequest,
     engine = Depends(get_data_manager_engine)
 ):
-    """导入数据"""
+    """导入CSV数据"""
     try:
         # 解析参数
         exchange_obj = Exchange(request.exchange)
@@ -271,6 +281,42 @@ async def import_data(
             volume_head=request.volume_head,
             open_interest_head=request.open_interest_head,
             datetime_format=request.datetime_format
+        )
+
+        return {
+            "success": success,
+            "message": msg
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/import/qlib", response_model=ApiResponse)
+async def import_qlib_data(
+    request: ImportQlibRequest,
+    engine = Depends(get_data_manager_engine)
+):
+    """导入Qlib格式数据"""
+    try:
+        # 解析参数
+        exchange_obj = Exchange(request.exchange)
+        interval_obj = Interval(request.interval)
+
+        # 解析日期
+        start_date = None
+        end_date = None
+        if request.start_date:
+            start_date = datetime.strptime(request.start_date, "%Y-%m-%d")
+        if request.end_date:
+            end_date = datetime.strptime(request.end_date, "%Y-%m-%d")
+
+        # 导入数据
+        success, msg = engine.import_data_from_qlib(
+            qlib_dir=request.qlib_dir,
+            symbol=request.symbol,
+            exchange=exchange_obj,
+            interval=interval_obj,
+            start_date=start_date,
+            end_date=end_date
         )
 
         return {

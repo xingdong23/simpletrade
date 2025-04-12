@@ -11,6 +11,9 @@ import time # 导入 time 模块
 import pandas as pd # 添加 pandas 导入
 import traceback # 添加 traceback 导入
 
+# 导入数据导入器
+from simpletrade.apps.st_datamanager.importers.qlib_importer import QlibDataImporter
+
 from vnpy.trader.object import BarData, TickData, HistoryRequest
 from vnpy.trader.constant import Interval, Exchange
 from vnpy.trader.database import get_database
@@ -379,6 +382,58 @@ class STDataManagerEngine(STBaseEngine):
             return True, success_msg
         except Exception as e:
             msg = f"错误：保存导入的K线数据到数据库时失败 - {e}"
+            self.write_log(msg)
+            traceback.print_exc()
+            return False, msg
+
+    def import_data_from_qlib(
+        self,
+        qlib_dir: str,
+        symbol: str,
+        exchange: Exchange,
+        interval: Interval,
+        start_date: Optional[datetime] = None,
+        end_date: Optional[datetime] = None
+    ) -> Tuple[bool, str]:
+        """从Qlib格式导入K线数据"""
+        self.write_log(f"开始从Qlib导入数据: {qlib_dir}, 合约: {symbol}.{exchange.value}, 周期: {interval.value}")
+
+        # 1. 检查目录是否存在
+        if not os.path.exists(qlib_dir):
+            msg = f"错误：Qlib数据目录不存在 {qlib_dir}"
+            self.write_log(msg)
+            return False, msg
+
+        # 2. 使用QlibDataImporter导入数据
+        try:
+            importer = QlibDataImporter()
+            success, message, bars = importer.import_data(
+                qlib_dir=qlib_dir,
+                symbol=symbol,
+                exchange=exchange,
+                interval=interval,
+                start_date=start_date,
+                end_date=end_date
+            )
+
+            if not success or not bars:
+                self.write_log(f"从Qlib导入数据失败: {message}")
+                return False, message
+
+            # 3. 保存数据到数据库
+            try:
+                database_manager.save_bar_data(bars)
+                success_msg = f"成功从Qlib导入 {len(bars)} 条K线数据到数据库。"
+                self.write_log(success_msg)
+                return True, success_msg
+            except Exception as e:
+                msg = f"错误：保存从Qlib导入的K线数据到数据库时失败 - {e}"
+                self.write_log(msg)
+                traceback.print_exc()
+                return False, msg
+
+        except Exception as e:
+            msg = f"错误：从Qlib导入数据时发生异常 - {e}"
             self.write_log(msg)
             traceback.print_exc()
             return False, msg
