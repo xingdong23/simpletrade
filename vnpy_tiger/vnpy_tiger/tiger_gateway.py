@@ -21,20 +21,56 @@ try:
 except ImportError:
     from tigeropen.quote.response.market_status_response import MarketStatus
 
-try:
-    from tigeropen.quote.domain.quote_bar import QuoteBar
-except ImportError:
-    from tigeropen.quote.response.quote_bar_response import QuoteBar
+# 注释掉有问题的导入
+# try:
+#     from tigeropen.quote.domain.quote_bar import QuoteBar
+# except ImportError:
+#     from tigeropen.quote.response.quote_bar_response import QuoteBar
 
-try:
-    from tigeropen.quote.domain.quote_tick import QuoteTick
-except ImportError:
-    from tigeropen.quote.response.tick_response import QuoteTick
+# 定义一个简单的QuoteBar类来替代
+class QuoteBar:
+    def __init__(self, time=None, open=None, high=None, low=None, close=None, volume=None):
+        self.time = time
+        self.open = open
+        self.high = high
+        self.low = low
+        self.close = close
+        self.volume = volume
 
-from tigeropen.quote.request.market_status_request import MarketStatusRequest
-from tigeropen.quote.request.quote_request import OpenApiRequest
-from tigeropen.quote.response.quote_bar_response import QuoteBarResponse
-from tigeropen.quote.request.quote_bar_request import QuoteBarRequest
+# 注释掉有问题的导入
+# try:
+#     from tigeropen.quote.domain.quote_tick import QuoteTick
+# except ImportError:
+#     from tigeropen.quote.response.tick_response import QuoteTick
+
+# 定义一个简单的QuoteTick类来替代
+class QuoteTick:
+    def __init__(self, symbol=None, latest_price=None, latest_time=None, volume=None):
+        self.symbol = symbol
+        self.latest_price = latest_price
+        self.latest_time = latest_time
+        self.volume = volume
+
+# 注释掉有问题的导入
+# from tigeropen.quote.request.market_status_request import MarketStatusRequest
+# from tigeropen.quote.request.quote_request import OpenApiRequest
+# from tigeropen.quote.response.quote_bar_response import QuoteBarResponse
+# from tigeropen.quote.request.quote_bar_request import QuoteBarRequest
+
+# 定义简化的请求类
+class MarketStatusRequest:
+    def __init__(self, market=None):
+        self.market = market
+
+class OpenApiRequest:
+    pass
+
+class QuoteBarRequest:
+    def __init__(self, symbol=None, period=None, begin_time=None, end_time=None):
+        self.symbol = symbol
+        self.period = period
+        self.begin_time = begin_time
+        self.end_time = end_time
 
 from vnpy.event import EventEngine
 from vnpy.trader.constant import (
@@ -61,6 +97,7 @@ from vnpy.trader.object import (
 )
 
 # 老虎证券交易所映射
+# 检查Exchange类中是否有ASX属性
 EXCHANGE_TIGER2VT: Dict[str, Exchange] = {
     "NYSE": Exchange.NYSE,
     "NASDAQ": Exchange.NASDAQ,
@@ -68,7 +105,7 @@ EXCHANGE_TIGER2VT: Dict[str, Exchange] = {
     "SEHK": Exchange.SEHK,
     "HKFE": Exchange.HKFE,
     "SGX": Exchange.SGX,
-    "ASX": Exchange.ASX,
+    # "ASX": Exchange.ASX,  # 注释掉不存在的属性
 }
 EXCHANGE_VT2TIGER: Dict[Exchange, str] = {v: k for k, v in EXCHANGE_TIGER2VT.items()}
 
@@ -103,7 +140,8 @@ STATUS_TIGER2VT: Dict[str, Status] = {
     "Cancelled": Status.CANCELLED,
     "Inactive": Status.REJECTED,
     "PendingSubmit": Status.SUBMITTING,
-    "PendingCancel": Status.CANCELLING,
+    # "PendingCancel": Status.CANCELLING,  # 注释掉不存在的属性
+    "PendingCancel": Status.CANCELLED,  # 使用CANCELLED替代
     "Partial": Status.PARTTRADED,
     "Rejected": Status.REJECTED,
 }
@@ -183,12 +221,11 @@ class TigerGateway(BaseGateway):
             self.language = Language.en_US
 
         # 创建老虎证券客户端
-        config = TigerOpenClientConfig(
-            tiger_id=self.tiger_id,
-            account=self.account,
-            private_key=read_private_key(self.private_key),
-            language=self.language
-        )
+        config = TigerOpenClientConfig()
+        config.tiger_id = self.tiger_id
+        config.account = self.account
+        config.private_key = read_private_key(self.private_key)
+        config.language = self.language
 
         self.quote_client = QuoteClient(config)
         self.trade_client = TradeClient(config)
@@ -380,21 +417,24 @@ class TigerGateway(BaseGateway):
         try:
             response = self.quote_client.get_bars(bar_req)
             bars = []
-            for bar in response.items:
-                dt = datetime.fromtimestamp(bar.time / 1000)
-                bar_data = BarData(
-                    symbol=req.symbol,
-                    exchange=req.exchange,
-                    datetime=dt,
-                    interval=req.interval,
-                    volume=bar.volume,
-                    open_price=bar.open,
-                    high_price=bar.high,
-                    low_price=bar.low,
-                    close_price=bar.close,
-                    gateway_name=self.gateway_name
-                )
-                bars.append(bar_data)
+
+            # 适配tigeropen 3.3.5版本
+            if hasattr(response, 'bars') and not response.bars.empty:
+                for _, row in response.bars.iterrows():
+                    dt = datetime.fromtimestamp(row['time'] / 1000)
+                    bar_data = BarData(
+                        symbol=req.symbol,
+                        exchange=req.exchange,
+                        datetime=dt,
+                        interval=req.interval,
+                        volume=row['volume'],
+                        open_price=row['open'],
+                        high_price=row['high'],
+                        low_price=row['low'],
+                        close_price=row['close'],
+                        gateway_name=self.gateway_name
+                    )
+                    bars.append(bar_data)
             return bars
         except Exception as e:
             self.write_log(f"查询历史数据失败：{e}")

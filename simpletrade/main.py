@@ -20,7 +20,7 @@ from pathlib import Path
 
 # 配置日志
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.DEBUG,  # 修改为DEBUG级别
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[logging.StreamHandler()]
 )
@@ -32,7 +32,7 @@ vnpy_tiger_path = os.path.join(project_root, 'vnpy_tiger')
 if os.path.exists(vnpy_tiger_path) and vnpy_tiger_path not in sys.path:
     logger.info(f"Adding vnpy_tiger path to sys.path: {vnpy_tiger_path}")
     sys.path.insert(0, vnpy_tiger_path)
-    
+
 # 显示Python搜索路径
 logger.debug("Python search paths:")
 for i, path in enumerate(sys.path):
@@ -81,6 +81,35 @@ if IbGateway:
 if TigerGateway:
     main_engine.add_gateway(TigerGateway)
     logger.info("Global: Tiger Gateway registered.")
+
+    # 尝试连接老虎证券网关
+    try:
+        import json
+        from pathlib import Path
+
+        # 读取老虎证券配置文件
+        tiger_config_path = Path.home().joinpath(".vnpy", "connect_tiger.json")
+        if tiger_config_path.exists():
+            with open(tiger_config_path, "r") as f:
+                tiger_configs = json.load(f)
+                if tiger_configs and isinstance(tiger_configs, list) and len(tiger_configs) > 0:
+                    tiger_config = tiger_configs[0]
+                    logger.info(f"Found Tiger config: {tiger_config['tiger_id']}, {tiger_config['account']}")
+
+                    # 连接老虎证券网关
+                    setting = {
+                        "tiger_id": tiger_config["tiger_id"],
+                        "account": tiger_config["account"],
+                        "private_key": tiger_config["private_key"],
+                        "server": "标准",  # 标准服务器
+                        "language": "中文"   # 中文
+                    }
+                    main_engine.connect(setting, "TIGER")
+                    logger.info("Tiger Gateway connected.")
+        else:
+            logger.warning(f"Tiger config file not found: {tiger_config_path}")
+    except Exception as e:
+        logger.error(f"Failed to connect Tiger Gateway: {e}")
 else:
     logger.warning("Tiger Gateway not registered due to import failure.")
 
@@ -117,7 +146,7 @@ from pathlib import Path
 
 # 配置日志
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.DEBUG,  # 修改为DEBUG级别
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[logging.StreamHandler()]
 )
@@ -129,7 +158,7 @@ vnpy_tiger_path = os.path.join(project_root, 'vnpy_tiger')
 if os.path.exists(vnpy_tiger_path) and vnpy_tiger_path not in sys.path:
     logger.info(f"Adding vnpy_tiger path to sys.path: {vnpy_tiger_path}")
     sys.path.insert(0, vnpy_tiger_path)
-    
+
 # 显示Python搜索路径
 logger.debug("Python search paths:")
 for i, path in enumerate(sys.path):
@@ -154,7 +183,7 @@ def main():
         logger.info("Shutting down SimpleTrade...")
         main_engine.close()
         logger.info("SimpleTrade shutdown completed.")
-        
+
     return main_engine, event_engine
 
 if __name__ == "__main__":

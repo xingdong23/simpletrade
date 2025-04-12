@@ -44,15 +44,36 @@ class APIServer:
 
 def create_server(main_engine=None, event_engine=None):
     """创建API服务器"""
+    import logging
+    logger = logging.getLogger("simpletrade.api.server")
+    logger.setLevel(logging.DEBUG)
+
     server = APIServer()
+    logger.debug("API Server created")
+
+    # 检查main_engine是否已初始化
+    if main_engine:
+        logger.debug(f"Using provided main_engine: {main_engine}")
+    else:
+        logger.debug("No main_engine provided, using global instance from simpletrade.main")
+        try:
+            from simpletrade.main import main_engine as global_main_engine
+            main_engine = global_main_engine
+            logger.debug(f"Global main_engine loaded: {main_engine}")
+
+            # 检查可用的网关
+            all_gateways = main_engine.get_all_gateway_names()
+            logger.debug(f"Available gateways: {all_gateways}")
+        except Exception as e:
+            logger.error(f"Failed to load global main_engine: {e}")
 
     # 添加数据管理API路由
     try:
         from simpletrade.apps.st_datamanager.api import router as data_router
         server.add_router(data_router)
-        print("Data management API routes added.")
+        logger.debug("Data management API routes added.")
     except Exception as e:
-        print(f"Failed to add data management API routes: {e}")
+        logger.error(f"Failed to add data management API routes: {e}")
 
     # 添加微信小程序API路由
     try:

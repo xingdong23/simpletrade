@@ -90,6 +90,7 @@ class ApiResponse(BaseModel):
 
 # 依赖注入：获取数据管理引擎
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)  # 设置为DEBUG级别
 
 def get_data_manager_engine():
     """获取数据管理引擎"""
@@ -140,14 +141,14 @@ async def get_data_overview(
                 "symbol": overview.symbol,
                 "exchange": overview.exchange.value,
                 # Tick data does not have interval
-                "interval": None, 
+                "interval": None,
                 "count": overview.count,
                 # Use appropriate formatting for potentially high-precision timestamps
-                "start": overview.start.strftime("%Y-%m-%d %H:%M:%S.%f") if overview.start else None, 
+                "start": overview.start.strftime("%Y-%m-%d %H:%M:%S.%f") if overview.start else None,
                 "end": overview.end.strftime("%Y-%m-%d %H:%M:%S.%f") if overview.end else None,
                 "type": "tick"
             })
-            
+
         logger.info("数据概览转换完成，准备返回响应.")
         return {
             "success": True,
@@ -177,7 +178,7 @@ async def get_bars(
         end = datetime.now()
         if end_date:
             end = datetime.strptime(end_date, "%Y-%m-%d")
-        
+
         # 获取数据
         bars = engine.get_bar_data(
             symbol=symbol,
@@ -186,7 +187,7 @@ async def get_bars(
             start=start,
             end=end
         )
-        
+
         # 转换为API模型
         result = []
         for bar in bars:
@@ -199,7 +200,7 @@ async def get_bars(
                 "volume": bar.volume,
                 "open_interest": bar.open_interest
             })
-        
+
         return {
             "success": True,
             "message": f"获取K线数据成功，共 {len(result)} 条",
@@ -222,7 +223,7 @@ async def download_data(
         end = datetime.now()
         if request.end_date:
             end = datetime.strptime(request.end_date, "%Y-%m-%d")
-        
+
         # 下载数据
         success = engine.download_bar_data(
             symbol=request.symbol,
@@ -231,7 +232,7 @@ async def download_data(
             start=start,
             end=end
         )
-        
+
         if success:
             return {
                 "success": True,
@@ -255,7 +256,7 @@ async def import_data(
         # 解析参数
         exchange_obj = Exchange(request.exchange)
         interval_obj = Interval(request.interval)
-        
+
         # 导入数据
         success, msg = engine.import_data_from_csv(
             file_path=request.file_path,
@@ -271,7 +272,7 @@ async def import_data(
             open_interest_head=request.open_interest_head,
             datetime_format=request.datetime_format
         )
-        
+
         return {
             "success": success,
             "message": msg
@@ -291,7 +292,7 @@ async def export_data(
         interval_obj = Interval(request.interval)
         start = datetime.strptime(request.start_date, "%Y-%m-%d")
         end = datetime.strptime(request.end_date, "%Y-%m-%d")
-        
+
         # 导出数据
         success, msg = engine.export_data_to_csv(
             symbol=request.symbol,
@@ -301,7 +302,7 @@ async def export_data(
             end=end,
             file_path=request.file_path
         )
-        
+
         return {
             "success": success,
             "message": msg
@@ -318,7 +319,7 @@ async def delete_data(
     try:
         # 解析参数
         exchange_obj = Exchange(request.exchange)
-        
+
         # 删除数据
         if request.interval:
             interval_obj = Interval(request.interval)
@@ -332,7 +333,7 @@ async def delete_data(
                 symbol=request.symbol,
                 exchange=exchange_obj
             )
-        
+
         return {
             "success": success,
             "message": msg

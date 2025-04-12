@@ -196,10 +196,14 @@ class STDataManagerEngine(STBaseEngine):
     ) -> bool:
         """下载K线数据"""
         self.write_log(f"收到K线数据下载请求: {symbol=}, {exchange=}, {interval=}, {start=}, {end=}, {gateway_name=}")
-        
+
         if end is None:
             end = datetime.now()
             self.write_log(f"结束时间未指定，使用当前时间: {end}")
+
+        # 检查可用的网关
+        all_gateways = self.main_engine.get_all_gateway_names()
+        self.write_log(f"可用的网关: {all_gateways}")
 
         # 从 main_engine 获取 gateway 实例
         gateway = self.main_engine.get_gateway(gateway_name)
@@ -245,7 +249,7 @@ class STDataManagerEngine(STBaseEngine):
             start=start,
             end=end
         )
-        
+
         # 发送请求到 gateway
         try:
             gateway.query_history(req)

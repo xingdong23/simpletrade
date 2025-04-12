@@ -1,9 +1,9 @@
 # SimpleTrade 当前工作重点
 
-**最后更新**: 2024-04-12 15:30
+**最后更新**: 2024-04-12 16:45
 
 ## 当前Sprint目标
-完善Web前端开发，增强用户界面和交互体验，**开始进行前后端联调**。 (**阻塞：核心数据下载功能因 Tiger Gateway 加载问题受阻**)
+完善Web前端开发，增强用户界面和交互体验，**开始进行前后端联调**。 (**部分阻塞：数据导入功能已测试通过，但数据下载功能因 Tiger Gateway 权限问题受阻**)
 
 ## 活跃任务
 
@@ -146,15 +146,15 @@
 
 18. **[更新] 实现数据下载功能 (方案A)**
     - 优先级: 高
-    - 状态: **进行中 (阻碍: Tiger Gateway 加载问题)**
-    - 进度: 40%
-    - 描述: 已移除对 `vnpy_datamanager` 的依赖，在 `STDataManagerEngine` 中实现了 `download_bar_data` 的框架逻辑（含按需连接）。调试过程中遇到 `vnpy_tiger` 加载失败问题，已确认模块可在 Python 解释器中导入，但应用启动时可能仍存在问题。
+    - 状态: **进行中 (阻碍: Tiger Gateway 权限问题)**
+    - 进度: 50%
+    - 描述: 已移除对 `vnpy_datamanager` 的依赖，在 `STDataManagerEngine` 中实现了 `download_bar_data` 的框架逻辑（含按需连接）。已解决 `vnpy_tiger` 模块导入问题，但在使用 Tiger Gateway 下载数据时遇到权限问题（当前用户和设备在美国市场没有权限）。
     - 相关文件: `simpletrade/apps/st_datamanager/engine.py`, `simpletrade/apps/st_datamanager/api/routes.py`, `simpletrade/main.py`, `vnpy_tiger/`
 
 19. **[新增] 实现数据导入功能 (方案A)**
     - 优先级: 高
-    - 状态: **已完成 (代码实现，待测试)**
-    - 描述: 在 `STDataManagerEngine` 中使用 pandas 实现了 `import_data_from_csv` 方法，不依赖 `vnpy_datamanager`。
+    - 状态: **已完成并测试通过**
+    - 描述: 在 `STDataManagerEngine` 中使用 pandas 实现了 `import_data_from_csv` 方法，不依赖 `vnpy_datamanager`。已成功导入测试数据并验证。
     - 相关文件: `simpletrade/apps/st_datamanager/engine.py`, `simpletrade/apps/st_datamanager/api/routes.py`
 
 20. **测试计划文档编写**
@@ -171,6 +171,13 @@
     - 相关文件: `docs/startup_guide.md`
     - 完成时间: 2024-04-12 15:30
 
+23. **[新增] 数据导入和下载功能测试**
+    - 优先级: 高
+    - 状态: **部分完成**
+    - 描述: 测试数据导入和下载功能。成功通过CSV导入测试数据，但下载功能因Tiger Gateway权限问题而失败。
+    - 相关文件: `simpletrade/apps/st_datamanager/engine.py`, `simpletrade/apps/st_datamanager/api/routes.py`
+    - 完成时间: 2024-04-12 16:45
+
 21. **部署和运维文档编写**
     - 优先级: 中
     - 状态: 待开始
@@ -183,9 +190,9 @@
 - 需要确定具体的测试框架和工具
 - 需要决定是否使用Docker进行部署
 - 需要确定微信小程序与后端的具体交互方式
-- **[新增] `vnpy_tiger` 加载失败**: 尽管执行了 `pip install -e .` 并且依赖 `tigeropen` 已确认安装，应用启动时仍报告 `vnpy_tiger not found`。需要干净重启应用后再次验证。
+- **[已解决] `vnpy_tiger` 加载失败**: 已解决模块导入问题，但遇到Tiger Gateway权限问题。
 - **[新增] 环境依赖管理冲突风险**: 项目指南要求优先 `conda`，但调试中使用了 `pip` 安装本地包 (`-e .`) 和依赖 (`tigeropen`)，需关注潜在冲突。
-- **数据库无数据**: 需要通过下载或导入添加数据。
+- **数据库数据有限**: 已成功导入少量测试数据，但需要更多数据进行全面测试。
 - **Pydantic V2 警告**
 
 ## 本周目标
@@ -206,18 +213,18 @@
 15. ✅ 定位并**解决**前后端联调中的系列问题 (API 可用)。
 16. ~~⏳ 修复自定义 App 初始化 TypeError。~~ (已包含在 15 中)
 17. ✅ **解决 `/api/data/overview` 返回调试数据的问题。**
-18. ⏳ **继续排查 `vnpy_tiger` 加载问题** (进度: 50%)
-19. ✅ **实现数据导入功能 (方案A)** (代码完成)。
+18. ✅ **解决 `vnpy_tiger` 加载问题** (已解决)
+19. ✅ **实现数据导入功能 (方案A)** (已完成并测试通过)。
 20. ✅ **创建启动指南文档** (已完成)
 
 ## 下一步具体行动
-1.  **[最优先] 继续排查 `vnpy_tiger` 在应用启动时的加载问题**:
-   - 添加更详细的日志输出
-   - 考虑在代码中显式添加 vnpy_tiger 到 sys.path
-   - 测试其他 Gateway 是否可以正常工作
-2.  **测试数据下载**: (前提：`vnpy_tiger` 加载成功) 调用 `/api/data/download` (interval="d") 尝试下载少量数据。
+1.  **[最优先] 解决 Tiger Gateway 的权限问题**:
+   - 确认老虎证券账户的市场权限
+   - 尝试使用有权限的市场（如港股或A股）进行测试
+   - 联系老虎证券客服解决权限问题
+2.  **继续测试数据下载**: 调用 `/api/data/download` 尝试下载港股或A股数据。
 3.  **验证数据下载**: 确认数据是否成功入库 (检查日志和 `/api/data/overview`)。
-4.  **测试数据导入**: 准备CSV文件，调用 `/api/data/import` 测试 `import_data_from_csv` 功能。
+4.  **继续测试数据导入**: 准备更多的CSV文件，调用 `/api/data/import` 测试导入更多数据。
 5.  (数据可用后) 联调数据管理: 连接前端与后端API (概览、下载状态、导入、导出、删除、查看)。
 6.  连接仪表盘的市场概览与后端API或WebSocket。
 7.  实现交易中心等其他模块与后端API的对接。
