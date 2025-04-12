@@ -12,7 +12,7 @@ from pathlib import Path
 
 # 项目根目录
 ROOT_DIR = Path(__file__).parent.parent.absolute()
-VNPY_DIR = ROOT_DIR / "vnpy"
+VNPY_DIR = ROOT_DIR / "vendors" / "vnpy"
 
 def update_vnpy(target_version=None):
     """
@@ -62,7 +62,7 @@ def update_vnpy(target_version=None):
 
         # 更新子模块引用
         subprocess.check_call(
-            ["git", "add", "vnpy"],
+            ["git", "add", "vendors/vnpy"],
             cwd=ROOT_DIR
         )
 

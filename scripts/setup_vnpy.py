@@ -12,7 +12,7 @@ from pathlib import Path
 
 # 项目根目录
 ROOT_DIR = Path(__file__).parent.parent.absolute()
-VNPY_DIR = ROOT_DIR / "vnpy"
+VNPY_DIR = ROOT_DIR / "vendors" / "vnpy"
 
 def install_dependencies():
     """安装vnpy依赖"""
@@ -97,11 +97,11 @@ def install_ibapi():
 
 def install_external_modules():
     """安装外部模块"""
-    # 外部模块目录
-    external_dir = ROOT_DIR / "external"
+    # 第三方依赖目录
+    vendors_dir = ROOT_DIR / "vendors"
 
     # 安装 vnpy_datamanager
-    datamanager_dir = external_dir / "vnpy_datamanager"
+    datamanager_dir = vendors_dir / "vnpy_datamanager"
     if datamanager_dir.exists():
         print(f"Installing vnpy_datamanager from {datamanager_dir}")
         subprocess.check_call([
@@ -111,7 +111,7 @@ def install_external_modules():
         print(f"Warning: vnpy_datamanager directory not found at {datamanager_dir}")
 
     # 安装 vnpy_ib
-    ib_dir = external_dir / "vnpy_ib"
+    ib_dir = vendors_dir / "vnpy_ib"
     if ib_dir.exists():
         print(f"Installing vnpy_ib from {ib_dir}")
         subprocess.check_call([
@@ -119,6 +119,16 @@ def install_external_modules():
         ])
     else:
         print(f"Warning: vnpy_ib directory not found at {ib_dir}")
+
+    # 安装 vnpy_tiger
+    tiger_dir = vendors_dir / "vnpy_tiger"
+    if tiger_dir.exists():
+        print(f"Installing vnpy_tiger from {tiger_dir}")
+        subprocess.check_call([
+            sys.executable, "-m", "pip", "install", "-e", str(tiger_dir)
+        ])
+    else:
+        print(f"Warning: vnpy_tiger directory not found at {tiger_dir}")
 
 if __name__ == "__main__":
     install_dependencies()

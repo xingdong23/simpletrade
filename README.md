@@ -27,30 +27,30 @@ SimpleTrade是一个为个人投资者设计的量化交易平台，旨在让普
 
 ```
 simpletrade/
+├── ai_context/            # AI协作上下文
 ├── docs/                  # 项目文档
+├── examples/              # 示例代码
+├── scripts/               # 脚本工具
 ├── simpletrade/           # 主要代码包
 │   ├── api/               # API接口
-│   │   ├── data.py        # 数据管理API
-│   │   ├── analysis.py    # 数据分析API
 │   │   ├── server.py      # API服务器
 │   │   └── wechat/        # 微信小程序API
+│   ├── apps/              # 应用模块
+│   │   └── st_datamanager/ # 数据管理应用
 │   ├── core/              # 核心功能
 │   │   ├── data/          # 数据管理
 │   │   ├── message/       # 消息处理
 │   │   └── analysis/      # 数据分析
-│   └── apps/              # 应用模块
-│       └── st_datamanager/ # 数据管理应用
+│   └── main.py            # 主程序入口
+├── test_data/             # 测试数据目录
 ├── tests/                 # 测试代码
-│   ├── unit/              # 单元测试
-│   ├── integration/       # 集成测试
-│   ├── scripts/           # 测试脚本
-│   └── conftest.py        # 测试配置
-├── examples/              # 示例代码
-├── scripts/               # 脚本工具
-├── vnpy/                  # vnpy子模块
-├── vnpy_tiger/            # 老虎证券Gateway
+├── ui/                    # UI设计文件
+├── vendors/               # 第三方依赖
+│   ├── vnpy/              # vnpy子模块
+│   ├── vnpy_datamanager/   # vnpy数据管理模块
+│   ├── vnpy_ib/           # IB接口模块
+│   └── vnpy_tiger/        # 老虎证券Gateway
 ├── web-frontend/          # Web前端
-├── ai_context/            # AI协作上下文
 ├── setup.py               # 包安装配置
 └── README.md              # 项目说明
 ```
@@ -77,9 +77,14 @@ conda activate simpletrade
 
 ```bash
 # 安装vnpy
-cd vnpy
+cd vendors/vnpy
 pip install -e .
-cd ..
+cd ../..
+
+# 安装vnpy_tiger
+cd vendors/vnpy_tiger
+pip install -e .
+cd ../..
 
 # 安装simpletrade
 pip install -e .
@@ -147,7 +152,7 @@ npm run serve
 
 前端服务启动后，留意终端输出的确切访问地址，然后在浏览器中打开该地址。
 
-**重要提示**: 
+**重要提示**:
 - 两个服务都需要保持运行状态。
 - 所有后端相关的操作（包括启动 uvicorn）**必须**在激活的 `simpletrade` Conda 环境中进行。
 

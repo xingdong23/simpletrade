@@ -25,7 +25,7 @@ from vnpy.trader.database import get_database
 try:
     from vnpy_tiger import TigerGateway
 except ImportError:
-    print("请先安装vnpy_tiger: pip install -e ./vnpy_tiger")
+    print("请先安装vnpy_tiger: pip install -e ./vendors/vnpy_tiger")
     sys.exit(1)
 
 # 老虎证券账户配置
@@ -48,48 +48,48 @@ SYMBOLS = [
 
 class TickRecorder:
     """Tick数据记录器"""
-    
+
     def __init__(self):
         """初始化"""
         self.database = get_database()
         self.ticks = []
         self.tick_count = 0
         self.last_save_time = datetime.now()
-        
+
         # 创建事件引擎和主引擎
         self.event_engine = EventEngine()
         self.main_engine = MainEngine(self.event_engine)
-        
+
         # 添加老虎证券Gateway
         self.main_engine.add_gateway(TigerGateway)
-        
+
         # 注册行情回调函数
         self.event_engine.register("TICK", self.process_tick_event)
-    
+
     def start(self):
         """启动记录器"""
         # 连接老虎证券Gateway
         self.main_engine.connect(TIGER_SETTING, "TIGER")
-        
+
         # 等待连接成功
         print("等待连接成功...")
         time.sleep(5)
-        
+
         # 订阅行情
         for stock in SYMBOLS:
             symbol = stock["symbol"]
             exchange = stock["exchange"]
-            
+
             req = SubscribeRequest(
                 symbol=symbol,
                 exchange=exchange
             )
             self.main_engine.subscribe(req, "TIGER")
             print(f"已订阅 {symbol} 的实时行情")
-        
+
         print("所有股票订阅完成，正在接收实时行情...")
         print("按Ctrl+C退出")
-        
+
         # 主循环
         try:
             while True:
@@ -97,32 +97,32 @@ class TickRecorder:
                 if (datetime.now() - self.last_save_time).total_seconds() >= 10:
                     self.save_ticks()
                     self.last_save_time = datetime.now()
-                
+
                 time.sleep(1)
         except KeyboardInterrupt:
             print("用户中断，正在退出...")
             self.save_ticks()  # 保存剩余的Tick数据
             self.main_engine.close()
-    
+
     def process_tick_event(self, event):
         """处理Tick事件"""
         tick = event.data
         self.ticks.append(tick)
         self.tick_count += 1
-        
+
         # 打印Tick数据
         print(f"收到Tick数据: {tick.symbol} {tick.datetime} 最新价: {tick.last_price}")
-    
+
     def save_ticks(self):
         """保存Tick数据到数据库"""
         if not self.ticks:
             return
-        
+
         # 保存到数据库
         self.database.save_tick_data(self.ticks)
-        
+
         print(f"已保存 {len(self.ticks)} 条Tick数据到数据库，总计: {self.tick_count}")
-        
+
         # 清空缓存
         self.ticks = []
 
@@ -131,7 +131,7 @@ if __name__ == "__main__":
     if not TIGER_SETTING["tiger_id"] or not TIGER_SETTING["account"] or not TIGER_SETTING["private_key"]:
         print("请先填写老虎证券账户配置")
         sys.exit(1)
-    
+
     # 启动Tick记录器
     recorder = TickRecorder()
     recorder.start()
