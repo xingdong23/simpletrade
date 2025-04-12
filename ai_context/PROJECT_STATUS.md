@@ -173,3 +173,31 @@ SimpleTrade是一个简单易用的个人量化交易平台，采用微信小程
 7.  (数据可用后) 继续前后端联调。
 8.  完善各模块功能、文档和测试。
 9.  处理 Pydantic V2 警告。
+
+## Development Status & Next Steps (2025-04-12 End of Day)
+
+### Resolved Issues
+
+*   Fixed `NameError` in `simpletrade/core/app.py` caused by early reference to `os` and `sys`. Removed unnecessary `sys.path` modification.
+
+### Current Major Issues
+
+*   **`STBaseApp` Initialization Error:** `TypeError: STBaseApp.__init__() missing 2 required positional arguments: 'main_engine' and 'event_engine'` when running `uvicorn`.
+    *   **Analysis:** Occurs during `main_engine.add_app()`. Custom App classes (`STTraderApp`, `STDataManagerApp`, `STMessageApp`) don't define `__init__` and should inherit from `STBaseApp`, which defines and calls `super().__init__` correctly. The `MainEngine.add_app` should pass these arguments. Root cause is under investigation - potentially an issue in vnpy's internal mechanism or incorrect App instantiation elsewhere (e.g., API server).
+*   **`ApiResponse` Undefined:** `NameError: name 'ApiResponse' is not defined` when loading API routes (data manager, wechat, analysis).
+    *   **Cause:** `ApiResponse` model is currently defined within `simpletrade/apps/st_datamanager/api/routes.py`, making it inaccessible to other API modules.
+
+### Minor Issues / Warnings
+
+*   Warnings/errors about missing optional modules (`vnpy_datamanager`, `vnpy_ib`, `vnpy_tiger`). Not blocking core startup for now; will install as needed later.
+
+### Next Steps (Tomorrow)
+
+1.  **Investigate `STBaseApp` Init Error:**
+    *   Check `simpletrade/api/server.py` and FastAPI startup logic for manual App instantiation.
+    *   Review `vnpy`'s `MainEngine.add_app` source code to understand its App instantiation process.
+    *   Verify that `STMainEngine` doesn't unexpectedly override `add_app`.
+2.  **Refactor `ApiResponse`:**
+    *   Move the `ApiResponse` class definition to a common location, e.g., create `simpletrade/api/schemas.py`.
+3.  **Fix `ApiResponse` Imports:**
+    *   Update imports in `simpletrade/api/data_manager/api.py`, `simpletrade/api/wechat/auth.py`, `simpletrade/api/analysis/api.py`, etc., to import `ApiResponse` from the new location.

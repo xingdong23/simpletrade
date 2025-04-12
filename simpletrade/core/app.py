@@ -42,6 +42,12 @@ class STBaseApp(BaseApp):
         """
         super().__init__(main_engine, event_engine)
 
+        # 创建应用引擎实例
+        if self.engine_class:
+            self.engine = self.engine_class(main_engine, event_engine, self.app_name)
+        else:
+            self.engine = None
+
 class STBaseEngine(BaseEngine):
     """
     SimpleTrade基础引擎类
