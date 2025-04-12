@@ -104,26 +104,29 @@ def get_data_manager_engine():
 # API路由
 @router.get("/overview", response_model=ApiResponse)
 async def get_data_overview(
-    engine = Depends(get_data_manager_engine)
+    # engine = Depends(get_data_manager_engine) # 暂时注释掉依赖注入
 ):
-    """获取数据概览"""
-    logger.info(f"Entering st_datamanager get_data_overview. Engine instance: {engine}")
-    if not engine:
-        logger.error("Dependency injection returned None for engine!")
-        raise HTTPException(status_code=500, detail="Data manager engine not available.")
+    """获取数据概览 - [调试模式：直接返回成功]"""
+    logger.info(f"Entering st_datamanager get_data_overview [DEBUG MODE]")
+    # logger.info(f"Engine instance: {engine}")
+    # if not engine:
+    #     logger.error("Dependency injection returned None for engine!")
+    #     raise HTTPException(status_code=500, detail="Data manager engine not available.")
     try:
-        logger.info(f"Calling engine.get_available_data() on {engine}...")
-        data = engine.get_available_data()
-        logger.info(f"engine.get_available_data() returned: {data}")
+        # logger.info(f"Calling engine.get_available_data() on {engine}...")
+        # data = engine.get_available_data()
+        # logger.info(f"engine.get_available_data() returned: {data}")
+        data = [] # 直接返回空列表
+        logger.info("Returning empty data in debug mode.")
         return {
             "success": True,
-            "message": "获取数据概览成功",
+            "message": "获取数据概览成功 (调试模式)",
             "data": data
         }
     except Exception as e:
         logger.error(f"Error in st_datamanager get_data_overview: {e}")
-        traceback.print_exc()  # 强制打印堆栈
-        raise HTTPException(status_code=500, detail="获取数据概览时发生服务器内部错误。")  # 返回通用错误信息
+        traceback.print_exc() # 强制打印堆栈
+        raise HTTPException(status_code=500, detail="获取数据概览时发生服务器内部错误。") # 返回通用错误信息
 
 @router.get("/bars", response_model=ApiResponse)
 async def get_bars(

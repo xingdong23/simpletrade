@@ -11,9 +11,9 @@ from simpletrade.core.app import STBaseEngine
 class STMessageEngine(STBaseEngine):
     """SimpleTrade消息系统引擎"""
 
-    def __init__(self, main_engine, event_engine):
+    def __init__(self, main_engine, event_engine, engine_name: str):
         """初始化"""
-        super().__init__(main_engine, event_engine, "st_message")
+        super().__init__(main_engine, event_engine, engine_name)
         
         # 命令处理器字典
         self.processors = {}
@@ -22,7 +22,7 @@ class STMessageEngine(STBaseEngine):
     
     def write_log(self, msg: str):
         """写入日志"""
-        self.main_engine.write_log(msg, source=self.app_name)
+        self.main_engine.write_log(msg, source=self.engine_name)
     
     def register_processor(self, prefix: str, processor):
         """注册命令处理器"""

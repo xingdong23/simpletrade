@@ -16,15 +16,16 @@ class STTraderEngine(STBaseEngine):
     提供交易功能的增强，包括订单管理、持仓管理等。
     """
 
-    def __init__(self, main_engine, event_engine):
+    def __init__(self, main_engine, event_engine, engine_name: str):
         """
         初始化
         
         参数:
             main_engine (MainEngine): 主引擎
             event_engine (EventEngine): 事件引擎
+            engine_name (str): 引擎名称
         """
-        super().__init__(main_engine, event_engine, "st_trader")
+        super().__init__(main_engine, event_engine, engine_name)
         
         # 注册事件处理函数
         self.register_event()

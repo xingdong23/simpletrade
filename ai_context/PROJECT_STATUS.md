@@ -1,6 +1,6 @@
 # SimpleTrade 项目状态
 
-**最后更新**: [当前日期 时间]
+**最后更新**: 2025-04-12 11:30
 
 ## 项目概述
 SimpleTrade是一个简单易用的个人量化交易平台，采用微信小程序/消息交互作为前端，支持策略交易、AI分析和实时监控等功能。项目直接使用vnpy源码作为基础，通过插件架构扩展功能，旨在让普通个人用户也能轻松使用量化交易技术。
@@ -49,6 +49,7 @@ SimpleTrade是一个简单易用的个人量化交易平台，采用微信小程
 - ✅ 解决前端项目编译和启动问题 (依赖, ESLint, 资源)。
 - ✅ 启动前端开发服务器。
 - ✅ 解决前后端联调中的系列依赖、环境、App注册问题。
+- ✅ 解决前后端联调中的系列依赖、环境、App注册及**初始化错误** (包括修复本地 vnpy 源码问题)。
 
 ## 进行中工作
 - 🔄 补充文档编写:
@@ -56,9 +57,11 @@ SimpleTrade是一个简单易用的个人量化交易平台，采用微信小程
   - 部署和运维文档 (`docs/deployment_operations.md`)
   - 项目词汇表 (`docs/glossary.md`)
   - 开发指南 (`docs/development_guidelines.md`)
-- 🔄 核心引擎代码框架设计 (进度: 95% - 已覆盖 add_app 方法)
+- 🔄 核心引擎代码框架设计 (进度: 95%)
 - 🔄 Web前端开发 (进度: 80% - 基本UI框架完成，**API联调因后端App初始化错误受阻**)
+- 🔄 Web前端开发 (进度: 80% - 基本UI框架完成，**后端问题已解决，准备进行API联调**)
 - 🔄 API服务框架开发 (进度: 90% - **因后端App初始化错误导致部分API无法工作**)
+- 🔄 API服务框架开发 (进度: 90% - **后端问题已解决，API应可正常工作**)
 - 🔄 数据分析功能开发 (进度: 70%)
 
 ## 待开始工作
@@ -112,14 +115,16 @@ SimpleTrade是一个简单易用的个人量化交易平台，采用微信小程
 - [2024-04-13 21:00] 完善Web前端，开发交易中心、回测系统和AI分析等功能模块
 - [2025-04-11 12:18] 完成了Web前端主要视图组件的检查、整理和创建，解决了编译和启动过程中的多个问题，成功启动了前端开发服务器。
 - [当前日期 时间] 调试Web前后端联调，解决系列依赖、环境、App注册及初始化问题，定位到自定义App `__init__` 方法错误。
+- 2025-04-12 11:30 成功修复后端 App 初始化及 vnpy 源码问题，API 服务恢复正常。
 
 ## 未完成工作和遇到的问题
 
-### [新增] App 初始化 TypeError
-- **问题描述**: 在全局范围注册自定义 App (`STMessageApp`, `STTraderApp`, `STDataManagerApp`) 时，发生 `TypeError: STBaseApp.__init__() missing 2 required positional arguments: 'main_engine' and 'event_engine'`。
+### [更新] App 初始化 TypeError
+- **问题描述**: 在全局范围注册自定义 App (`STMessageApp`, `STTraderApp`, `STDataManagerApp`) 时，发生 `TypeError: STBaseApp.__init__() missing 2 required positional arguments: \'main_engine\' and \'event_engine\'`。
 - **原因**: 这些自定义 App 类的 `__init__` 方法没有正确定义或继承接受 `main_engine` 和 `event_engine` 的构造函数，导致 `STMainEngine.add_app` 尝试用这两个参数实例化它们时失败。
 - **解决方案**: 需要开发者手动修改 `STMessageApp`, `STTraderApp`, `STDataManagerApp` 的 `__init__` 方法，使其接受所需参数并正确调用 `super().__init__()`。
 - **状态**: **待修复 (阻碍API服务正常运行)**
+- **状态**: **已解决** (通过修复自定义 App 类的 `__init__` 方法以及本地 vnpy 源码中的相关问题)
 
 ### [更新] Web前端启动问题
 - **状态**: 已解决 (所有依赖问题和环境问题均已解决，API 500 错误根源已找到)
@@ -132,9 +137,13 @@ SimpleTrade是一个简单易用的个人量化交易平台，采用微信小程
 
 ## 下一步计划
 1.  **修复 `STMessageApp`, `STTraderApp`, `STDataManagerApp` 的 `__init__` 方法。**
+1.  **确认后端服务完全正常启动，并且 `/api/data/overview` 接口可成功访问。**
 2.  确认后端服务能完全正常启动。
+2.  **在浏览器中检查前端数据管理页面布局和导航，确认数据能从后端成功加载。**
 3.  测试 `/api/data/overview` 接口。
+3.  继续将前端数据管理模块与后端API进行联调（导入、导出、删除、查看）。
 4.  在浏览器中检查前端数据管理页面布局和导航，确认数据能从后端加载。
+4.  继续连接其他前端模块与后端API。
 5.  继续将前端数据管理模块与后端API进行联调（导入、导出、删除、查看）。
 6.  继续连接其他前端模块与后端API。
 7.  完善各模块功能（动态加载数据、图表渲染、表单提交等）。

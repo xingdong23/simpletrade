@@ -108,6 +108,49 @@ pytest tests/unit
 pytest tests/integration
 ```
 
+## 运行项目 (开发模式)
+
+确保您已按照"安装与配置"部分设置好环境。
+
+### 1. 启动后端 API 服务
+
+在项目根目录下的**系统终端**中执行以下命令：
+
+```bash
+# 激活 Conda 环境
+conda activate simpletrade
+
+# 启动 Uvicorn 服务器 (监听 0.0.0.0:8000，带自动重载)
+# 注意：必须在激活的 simpletrade 环境中运行
+uvicorn simpletrade.api.server:app --host 0.0.0.0 --port 8000 --reload
+```
+
+后端服务启动后，可以通过 `http://localhost:8000/docs` 访问 API 文档。
+
+### 2. 启动前端开发服务器
+
+在项目根目录下的**另一个系统终端**中执行以下命令：
+
+```bash
+# 激活 Conda 环境 (如果需要 Node/npm，确保它们在此环境或系统路径中)
+conda activate simpletrade
+
+# 进入前端目录
+cd web-frontend
+
+# 安装依赖 (如果尚未安装)
+npm install
+
+# 启动开发服务器 (通常监听 localhost:8080 或类似端口)
+npm run serve
+```
+
+前端服务启动后，留意终端输出的确切访问地址，然后在浏览器中打开该地址。
+
+**重要提示**: 
+- 两个服务都需要保持运行状态。
+- 所有后端相关的操作（包括启动 uvicorn）**必须**在激活的 `simpletrade` Conda 环境中进行。
+
 ## 开发指南
 
 ### 1. 环境设置
