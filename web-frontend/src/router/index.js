@@ -15,6 +15,12 @@ const routes = [
     component: () => import(/* webpackChunkName: "strategy" */ '../views/StrategyCenterView.vue')
   },
   {
+    path: '/strategy-detail/:id',
+    name: 'strategyDetail',
+    component: () => import(/* webpackChunkName: "strategy" */ '../views/StrategyDetailView.vue'),
+    props: true
+  },
+  {
     path: '/trading-center',
     name: 'tradingCenter',
     component: () => import(/* webpackChunkName: "trading" */ '../views/TradingCenterView.vue')

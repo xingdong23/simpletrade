@@ -2,11 +2,12 @@
   <div>
     <!-- 顶部标签导航 -->
     <el-tabs v-model="activeTab" type="border-card">
-      <el-tab-pane label="策略库" name="library">
+      <!-- 基础策略标签页 -->
+      <el-tab-pane label="基础策略" name="basic-strategies">
         <div style="margin-bottom: 20px;">
           <el-row type="flex" justify="space-between" align="middle">
             <el-col :span="12">
-              <h2 style="font-size: 20px; font-weight: 600; margin: 0;">策略库</h2>
+              <h2 style="font-size: 20px; font-weight: 600; margin: 0;">基础策略</h2>
             </el-col>
             <el-col :span="12" style="text-align: right;">
               <el-input
@@ -16,13 +17,9 @@
               ></el-input>
               <el-select placeholder="所有类型" style="width: 150px;">
                 <el-option label="所有类型" value="all"></el-option>
-                <el-option label="CTA策略" value="cta"></el-option>
-                <el-option label="AI策略" value="ai"></el-option>
-                <el-option label="网格交易" value="grid"></el-option>
-                <el-option label="缠论策略" value="chan"></el-option>
-                <el-option label="道氏理论" value="dow"></el-option>
-                <el-option label="波浪理论" value="wave"></el-option>
-                <el-option label="价值投资" value="value"></el-option>
+                <el-option label="技术指标策略" value="technical"></el-option>
+                <el-option label="基本面策略" value="fundamental"></el-option>
+                <el-option label="事件驱动策略" value="event"></el-option>
               </el-select>
             </el-col>
           </el-row>
@@ -35,15 +32,22 @@
               <div class="strategy-card-content">
                 <div class="strategy-card-header">
                   <h3 class="strategy-title">双均线突破策略</h3>
-                  <el-tag size="small" type="primary">CTA策略</el-tag>
+                  <el-tag size="small" type="primary">技术指标策略</el-tag>
                 </div>
                 <p class="strategy-description">基于双均线的突破交易策略，适用于趋势型市场。</p>
                 <div class="strategy-metrics">
                   <span class="metric">胜率: <span class="metric-value positive">58%</span></span>
                   <span class="metric">年化收益: <span class="metric-value positive">15.2%</span></span>
                 </div>
+                <div class="strategy-complexity">
+                  <span>复杂度: <el-rate v-model="2" disabled text-color="#ff9900" score-template="{value}"></el-rate></span>
+                </div>
+                <div class="strategy-resources">
+                  <span>资源需求: <el-tag size="mini" type="success">低</el-tag></span>
+                  <span style="margin-left: 10px;">运行速度: <el-tag size="mini" type="success">快</el-tag></span>
+                </div>
                 <div class="strategy-actions">
-                  <el-button type="primary" size="small">查看详情</el-button>
+                  <el-button type="primary" size="small" @click="navigateToDetail('strategy1')">查看详情</el-button>
                   <el-button size="small">使用策略</el-button>
                 </div>
               </div>
@@ -63,7 +67,7 @@
                   <span class="metric">年化收益: <span class="metric-value positive">18.7%</span></span>
                 </div>
                 <div class="strategy-actions">
-                  <el-button type="primary" size="small">查看详情</el-button>
+                  <el-button type="primary" size="small" @click="navigateToDetail('strategy2')">查看详情</el-button>
                   <el-button size="small">使用策略</el-button>
                 </div>
               </div>
@@ -83,7 +87,7 @@
                   <span class="metric">年化收益: <span class="metric-value positive">22.1%</span></span>
                 </div>
                 <div class="strategy-actions">
-                  <el-button type="primary" size="small">查看详情</el-button>
+                  <el-button type="primary" size="small" @click="navigateToDetail('strategy3')">查看详情</el-button>
                   <el-button size="small">使用策略</el-button>
                 </div>
               </div>
@@ -172,28 +176,157 @@
         </el-row>
       </el-tab-pane>
 
-      <el-tab-pane label="选股器" name="stock-picker">
+      <!-- 高级策略标签页 -->
+      <el-tab-pane label="高级策略" name="advanced-strategies">
         <div style="margin-bottom: 20px;">
           <el-row type="flex" justify="space-between" align="middle">
             <el-col :span="12">
-              <h2 style="font-size: 20px; font-weight: 600; margin: 0;">选股器</h2>
+              <h2 style="font-size: 20px; font-weight: 600; margin: 0;">高级策略</h2>
             </el-col>
             <el-col :span="12" style="text-align: right;">
               <el-input
-                placeholder="搜索选股策略..."
+                placeholder="搜索策略..."
                 prefix-icon="el-icon-search"
                 style="width: 200px; margin-right: 10px;"
               ></el-input>
               <el-select placeholder="所有类型" style="width: 150px;">
                 <el-option label="所有类型" value="all"></el-option>
-                <el-option label="基本面选股" value="fundamental"></el-option>
-                <el-option label="技术面选股" value="technical"></el-option>
-                <el-option label="量化因子" value="factor"></el-option>
-                <el-option label="行业轮动" value="industry"></el-option>
+                <el-option label="多因子策略" value="multi-factor"></el-option>
+                <el-option label="AI策略" value="ai"></el-option>
+                <el-option label="组合策略" value="portfolio"></el-option>
               </el-select>
             </el-col>
           </el-row>
         </div>
+
+        <!-- 高级策略卡片列表 -->
+        <el-row :gutter="20">
+          <el-col :xs="24" :sm="12" :md="8" :lg="8" :xl="8" style="margin-bottom: 20px;">
+            <el-card shadow="hover" class="strategy-card">
+              <div class="strategy-card-content">
+                <div class="strategy-card-header">
+                  <h3 class="strategy-title">可视化AI策略</h3>
+                  <el-tag size="small" type="danger">AI策略</el-tag>
+                </div>
+                <p class="strategy-description">训练AI模型进行未来因子权重预测，以期增强策略收益。</p>
+                <div class="strategy-metrics">
+                  <span class="metric">胜率: <span class="metric-value positive">62%</span></span>
+                  <span class="metric">年化收益: <span class="metric-value positive">32.5%</span></span>
+                </div>
+                <div class="strategy-complexity">
+                  <span>复杂度: <el-rate v-model="4" disabled text-color="#ff9900" score-template="{value}"></el-rate></span>
+                </div>
+                <div class="strategy-actions">
+                  <el-button type="primary" size="small" @click="navigateToDetail('ai-strategy1')">查看详情</el-button>
+                  <el-button size="small">使用策略</el-button>
+                </div>
+              </div>
+            </el-card>
+          </el-col>
+
+          <el-col :xs="24" :sm="12" :md="8" :lg="8" :xl="8" style="margin-bottom: 20px;">
+            <el-card shadow="hover" class="strategy-card">
+              <div class="strategy-card-content">
+                <div class="strategy-card-header">
+                  <h3 class="strategy-title">多因子线性策略</h3>
+                  <el-tag size="small" type="warning">多因子策略</el-tag>
+                </div>
+                <p class="strategy-description">通过预计算因子权重，结合多因子线性组合实现选股和排序。</p>
+                <div class="strategy-metrics">
+                  <span class="metric">胜率: <span class="metric-value positive">59%</span></span>
+                  <span class="metric">年化收益: <span class="metric-value positive">26.8%</span></span>
+                </div>
+                <div class="strategy-complexity">
+                  <span>复杂度: <el-rate v-model="3" disabled text-color="#ff9900" score-template="{value}"></el-rate></span>
+                </div>
+                <div class="strategy-actions">
+                  <el-button type="primary" size="small" @click="navigateToDetail('multi-factor1')">查看详情</el-button>
+                  <el-button size="small">使用策略</el-button>
+                </div>
+              </div>
+            </el-card>
+          </el-col>
+        </el-row>
+      </el-tab-pane>
+
+      <!-- 组件库标签页 -->
+      <el-tab-pane label="组件库" name="component-library">
+        <div style="margin-bottom: 20px;">
+          <el-row type="flex" justify="space-between" align="middle">
+            <el-col :span="12">
+              <h2 style="font-size: 20px; font-weight: 600; margin: 0;">组件库</h2>
+            </el-col>
+            <el-col :span="12" style="text-align: right;">
+              <el-input
+                placeholder="搜索组件..."
+                prefix-icon="el-icon-search"
+                style="width: 200px; margin-right: 10px;"
+              ></el-input>
+            </el-col>
+          </el-row>
+        </div>
+
+        <!-- 组件库子标签页 -->
+        <el-tabs v-model="componentActiveTab" type="card" class="component-tabs">
+          <el-tab-pane label="因子库" name="factor-library">
+            <div style="margin-bottom: 20px;">
+              <el-row type="flex" justify="space-between" align="middle">
+                <el-col :span="12">
+                  <h3 style="font-size: 18px; font-weight: 600; margin: 0;">因子库</h3>
+                </el-col>
+                <el-col :span="12" style="text-align: right;">
+                  <el-select placeholder="因子类型" style="width: 150px;">
+                    <el-option label="所有类型" value="all"></el-option>
+                    <el-option label="技术因子" value="technical"></el-option>
+                    <el-option label="基本面因子" value="fundamental"></el-option>
+                    <el-option label="情绪因子" value="sentiment"></el-option>
+                    <el-option label="AI因子" value="ai"></el-option>
+                  </el-select>
+                </el-col>
+              </el-row>
+            </div>
+
+            <!-- 因子卡片列表 -->
+            <el-row :gutter="20">
+              <el-col :xs="24" :sm="12" :md="8" :lg="8" :xl="8" style="margin-bottom: 20px;">
+                <el-card shadow="hover" class="strategy-card">
+                  <div class="strategy-card-content">
+                    <div class="strategy-card-header">
+                      <h3 class="strategy-title">RSI动量因子</h3>
+                      <el-tag size="small" type="success">技术因子</el-tag>
+                    </div>
+                    <p class="strategy-description">相对强弱指标(RSI)的动量因子，用于捕捉价格超买和超卖区域。</p>
+                    <div class="strategy-metrics">
+                      <span class="metric">信息比: <span class="metric-value positive">0.65</span></span>
+                      <span class="metric">有效期: <span class="metric-value">3个月</span></span>
+                    </div>
+                    <div class="strategy-actions">
+                      <el-button type="primary" size="small">查看详情</el-button>
+                      <el-button size="small">使用因子</el-button>
+                    </div>
+                  </div>
+                </el-card>
+              </el-col>
+            </el-row>
+          </el-tab-pane>
+
+          <el-tab-pane label="选股器" name="stock-picker">
+            <div style="margin-bottom: 20px;">
+              <el-row type="flex" justify="space-between" align="middle">
+                <el-col :span="12">
+                  <h3 style="font-size: 18px; font-weight: 600; margin: 0;">选股器</h3>
+                </el-col>
+                <el-col :span="12" style="text-align: right;">
+                  <el-select placeholder="所有类型" style="width: 150px;">
+                    <el-option label="所有类型" value="all"></el-option>
+                    <el-option label="基本面选股" value="fundamental"></el-option>
+                    <el-option label="技术面选股" value="technical"></el-option>
+                    <el-option label="量化因子" value="factor"></el-option>
+                    <el-option label="行业轮动" value="industry"></el-option>
+                  </el-select>
+                </el-col>
+              </el-row>
+            </div>
 
         <!-- 选股器卡片列表 -->
         <el-row :gutter="20">
@@ -263,14 +396,9 @@
         <div style="margin-bottom: 20px;">
           <el-row type="flex" justify="space-between" align="middle">
             <el-col :span="12">
-              <h2 style="font-size: 20px; font-weight: 600; margin: 0;">交易战法</h2>
+              <h3 style="font-size: 18px; font-weight: 600; margin: 0;">交易战法</h3>
             </el-col>
             <el-col :span="12" style="text-align: right;">
-              <el-input
-                placeholder="搜索交易战法..."
-                prefix-icon="el-icon-search"
-                style="width: 200px; margin-right: 10px;"
-              ></el-input>
               <el-select placeholder="所有类型" style="width: 150px;">
                 <el-option label="所有类型" value="all"></el-option>
                 <el-option label="缠论战法" value="chan"></el-option>
@@ -281,7 +409,6 @@
             </el-col>
           </el-row>
         </div>
-
         <!-- 交易战法卡片列表 -->
         <el-row :gutter="20">
           <el-col :xs="24" :sm="12" :md="8" :lg="8" :xl="8" style="margin-bottom: 20px;">
@@ -345,12 +472,29 @@
           </el-col>
         </el-row>
       </el-tab-pane>
+      </el-tabs>
+      </el-tab-pane>
 
       <el-tab-pane label="策略构建器" name="builder">
-        <el-card shadow="hover">
+        <div style="margin-bottom: 20px;">
+          <el-row type="flex" justify="space-between" align="middle">
+            <el-col :span="12">
+              <h2 style="font-size: 20px; font-weight: 600; margin: 0;">策略构建器</h2>
+            </el-col>
+            <el-col :span="12" style="text-align: right;">
+              <el-radio-group v-model="builderMode" size="small">
+                <el-radio-button label="visual">可视化构建器</el-radio-button>
+                <el-radio-button label="code">代码编辑器</el-radio-button>
+              </el-radio-group>
+            </el-col>
+          </el-row>
+        </div>
+
+        <!-- 可视化构建器 -->
+        <el-card shadow="hover" v-if="builderMode === 'visual'">
           <div slot="header">
-            <h2 style="margin: 0; font-size: 20px; font-weight: 600;">策略构建器</h2>
-            <p style="margin: 10px 0 0; color: #606266;">使用策略构建器创建自定义策略，无需编写代码。</p>
+            <h3 style="margin: 0; font-size: 18px; font-weight: 600;">可视化构建器</h3>
+            <p style="margin: 10px 0 0; color: #606266;">使用可视化构建器创建自定义策略，无需编写代码。</p>
           </div>
 
           <el-form label-position="top" label-width="100px">
@@ -358,15 +502,14 @@
               <el-col :span="12">
                 <el-form-item label="选择策略类型">
                   <el-radio-group v-model="strategyType">
-                    <el-radio label="cta">CTA策略</el-radio>
+                    <el-radio label="cta">技术指标策略</el-radio>
+                    <el-radio label="factor">因子策略</el-radio>
                     <el-radio label="ai">AI策略</el-radio>
-                    <el-radio label="chan">缠论策略</el-radio>
-                    <el-radio label="dow">道氏理论</el-radio>
-                    <el-radio label="wave">波浪理论</el-radio>
+                    <el-radio label="portfolio">组合策略</el-radio>
                   </el-radio-group>
                 </el-form-item>
 
-                <el-form-item label="选择指标">
+                <el-form-item label="选择指标/因子">
                   <el-checkbox-group v-model="indicators">
                     <el-checkbox label="ma">移动平均线 (MA)</el-checkbox>
                     <el-checkbox label="rsi">相对强弱指标 (RSI)</el-checkbox>
@@ -374,9 +517,9 @@
                     <el-checkbox label="bollinger">布林带 (Bollinger Bands)</el-checkbox>
                     <el-checkbox label="kdj">KDJ指标</el-checkbox>
                     <el-checkbox label="volume">成交量分析</el-checkbox>
-                    <el-checkbox label="chan" v-if="strategyType === 'chan'">缠论符号</el-checkbox>
-                    <el-checkbox label="wave" v-if="strategyType === 'wave'">波浪分析</el-checkbox>
-                    <el-checkbox label="dow" v-if="strategyType === 'dow'">道氏理论符号</el-checkbox>
+                    <el-checkbox label="momentum" v-if="strategyType === 'factor'">动量因子</el-checkbox>
+                    <el-checkbox label="value" v-if="strategyType === 'factor'">价值因子</el-checkbox>
+                    <el-checkbox label="quality" v-if="strategyType === 'factor'">质量因子</el-checkbox>
                   </el-checkbox-group>
                 </el-form-item>
               </el-col>
@@ -400,9 +543,73 @@
 
                 <el-form-item>
                   <el-button type="primary">创建策略</el-button>
+                  <el-button>预览代码</el-button>
                 </el-form-item>
               </el-col>
             </el-row>
+          </el-form>
+        </el-card>
+
+        <!-- 代码编辑器 -->
+        <el-card shadow="hover" v-else>
+          <div slot="header">
+            <h3 style="margin: 0; font-size: 18px; font-weight: 600;">代码编辑器</h3>
+            <p style="margin: 10px 0 0; color: #606266;">使用代码编辑器创建自定义策略，可实现更复杂的逻辑。</p>
+          </div>
+
+          <el-form label-position="top">
+            <el-form-item label="策略名称">
+              <el-input v-model="strategyName" placeholder="输入策略名称"></el-input>
+            </el-form-item>
+
+            <el-form-item label="策略代码">
+              <div style="border: 1px solid #dcdfe6; border-radius: 4px; height: 400px; padding: 10px; background-color: #f5f7fa; font-family: monospace; overflow: auto;">
+                <pre style="margin: 0;"># 策略模板
+from vnpy.trader.constant import Direction
+from vnpy.app.cta_strategy import (
+    CtaTemplate,
+    StopOrder,
+    TickData,
+    BarData,
+    TradeData,
+    OrderData
+)
+
+class MyStrategy(CtaTemplate):
+    """自定义策略"""
+
+    # 策略参数
+    fast_window = 10
+    slow_window = 20
+    rsi_window = 14
+    rsi_level = 30
+
+    # 变量初始化
+    fast_ma = 0.0
+    slow_ma = 0.0
+    ma_trend = 0
+    rsi_value = 0.0
+
+    def __init__(self, cta_engine, strategy_name, vt_symbol, setting):
+        super().__init__(cta_engine, strategy_name, vt_symbol, setting)
+
+    def on_init(self):
+        """Initialize strategy variables."""
+        self.write_log("Strategy initialized")
+        self.load_bar(10)
+
+    def on_bar(self, bar: BarData):
+        """Strategy logic on bar data update."""
+        # 更新技术指标
+        # 实现交易逻辑
+        pass</pre>
+              </div>
+            </el-form-item>
+
+            <el-form-item>
+              <el-button type="primary">保存策略</el-button>
+              <el-button>运行回测</el-button>
+            </el-form-item>
           </el-form>
         </el-card>
       </el-tab-pane>
@@ -434,7 +641,7 @@
           </el-table-column>
           <el-table-column label="操作">
             <template slot-scope="scope">
-              <el-button size="mini" type="text" @click="handleView(scope.row)">查看</el-button>
+              <el-button size="mini" type="text" @click="navigateToDetail(scope.row.id || 'strategy' + $index)">查看</el-button>
               <el-button size="mini" type="text" @click="handleBacktest(scope.row)">回测</el-button>
               <el-button size="mini" type="text" @click="handleOptimize(scope.row)">优化</el-button>
               <el-button
@@ -776,14 +983,21 @@ export default {
   name: 'StrategyCenterView',
   data() {
     return {
-      activeTab: 'library',
+      activeTab: 'basic-strategies',
       // 所有标签页
       tabOptions: [
-        { name: 'library', label: '策略库' },
-        { name: 'stock-picker', label: '选股器' },
-        { name: 'trading-tactics', label: '交易战法' },
+        { name: 'basic-strategies', label: '基础策略' },
+        { name: 'advanced-strategies', label: '高级策略' },
+        { name: 'component-library', label: '组件库' },
         { name: 'builder', label: '策略构建器' },
         { name: 'my-strategies', label: '我的策略' }
+      ],
+      // 组件库子标签页
+      componentActiveTab: 'factor-library',
+      componentTabOptions: [
+        { name: 'factor-library', label: '因子库' },
+        { name: 'stock-picker', label: '选股器' },
+        { name: 'trading-tactics', label: '交易战法' }
       ],
       strategyType: 'cta',
       indicators: [],
@@ -791,6 +1005,7 @@ export default {
       maPeriod: 20,
       rsiPeriod: 14,
       positionSize: 10,
+      builderMode: 'visual',
       myStrategies: [
         {
           name: '我的双均线策略',
@@ -857,6 +1072,11 @@ export default {
     }
   },
   methods: {
+    // 导航到策略详情页面
+    navigateToDetail(strategyId) {
+      this.$router.push(`/strategy-detail/${strategyId}`);
+    },
+
     // 查看策略详情
     handleView(row) {
       this.currentStrategy = JSON.parse(JSON.stringify(row));
@@ -1140,7 +1360,7 @@ export default {
 
 .strategy-metrics {
   display: flex;
-  margin-bottom: 15px;
+  margin-bottom: 10px;
   font-size: 14px;
   color: #909399;
 }
@@ -1161,9 +1381,30 @@ export default {
   color: #F56C6C;
 }
 
+.strategy-complexity {
+  margin-bottom: 10px;
+  font-size: 14px;
+  color: #909399;
+}
+
+.strategy-resources {
+  display: flex;
+  margin-bottom: 15px;
+  font-size: 14px;
+  color: #909399;
+}
+
 .strategy-actions {
   display: flex;
   justify-content: space-between;
   margin-top: auto;
+}
+
+.component-tabs .el-tabs__header {
+  margin-bottom: 15px;
+}
+
+.component-tabs .el-tabs__nav {
+  border-radius: 4px;
 }
 </style>
