@@ -20,7 +20,7 @@ SimpleTrade是一个为个人投资者设计的量化交易平台，旨在让普
 - 后端: Python, vnpy框架 (标准库安装), FastAPI
 - API: FastAPI
 - 数据库: SQLite
-- 前端: 微信小程序, H5
+- 前端: Vue 2.x, Element UI, ECharts, 微信小程序
 - AI: Scikit-learn, PyTorch, OpenAI API
 - **特殊组件**: 自定义 `vnpy_tiger` (存放于 `vendors/` 目录)
 

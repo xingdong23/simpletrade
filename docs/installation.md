@@ -31,7 +31,7 @@ source simpletrade_env/bin/activate  # Linux/macOS
 # simpletrade_env\Scripts\activate   # Windows
 ```
 
-### 3. 安装依赖
+### 3. 安装后端依赖
 
 + **重要**: 本项目采用混合依赖管理：
 + - vnpy 核心及官方插件通过 `pip` 安装。
@@ -63,7 +63,22 @@ pip install tigeropen
 # pip install pandas numpy scikit-learn ...
 ```
 
-### 4. 验证安装
+### 4. 安装前端依赖
+
+前端使用Vue 2.x和Element UI框架，需要安装Node.js和npm。
+
+```bash
+# 进入前端目录
+cd web-frontend
+
+# 安装依赖
+npm install
+
+# 如果遇到依赖冲突，可以使用以下命令
+npm install --legacy-peer-deps
+```
+
+### 5. 验证安装
 
 ```bash
 # 尝试导入 vnpy
@@ -71,6 +86,9 @@ python -c "import vnpy; print(vnpy.__version__)"
 
 # 运行后端服务 (参见 docs/startup_guide.md)
 # uvicorn simpletrade.api.server:app --reload
+
+# 运行前端服务
+# cd web-frontend && npm run serve
 ```
 
 ## 常见问题

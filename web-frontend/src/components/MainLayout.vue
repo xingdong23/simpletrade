@@ -1,94 +1,70 @@
 <template>
-  <div class="flex h-screen bg-gray-100">
-    <!-- Mobile menu button -->
-    <button
-      @click="toggleSidebar"
-      class="lg:hidden fixed top-4 left-4 z-50 p-2 rounded-md bg-gray-800 text-white focus:outline-none"
-    >
-      <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path v-if="sidebarOpen" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-        <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-      </svg>
-    </button>
-
-    <!-- Backdrop -->
-    <div
-      v-if="sidebarOpen"
-      @click="toggleSidebar"
-      class="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
-    ></div>
-
+  <el-container style="height: 100vh;">
     <!-- Sidebar -->
-    <div
-      :class="[sidebarOpen ? 'translate-x-0' : '-translate-x-full', 'lg:translate-x-0 fixed lg:static inset-y-0 left-0 z-50 w-64 bg-gray-800 text-white transition-transform duration-300 ease-in-out']"
-    >
-      <div class="flex flex-col h-full">
-        <!-- Logo/Brand -->
-        <div class="h-16 flex items-center justify-center text-xl font-bold border-b border-gray-700">
-          SimpleTrade
-        </div>
-
-        <!-- Navigation Links -->
-        <nav class="flex-1 px-4 py-4 space-y-2 overflow-y-auto">
-          <router-link to="/strategy-center" class="flex items-center px-4 py-2 rounded hover:bg-gray-700" :class="{'bg-blue-600': isActive('/strategy-center')}">
-            <svg class="h-5 w-5 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-            </svg>
-            策略中心
-          </router-link>
-
-          <router-link to="/trading-center" class="flex items-center px-4 py-2 rounded hover:bg-gray-700" :class="{'bg-blue-600': isActive('/trading-center')}">
-            <svg class="h-5 w-5 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-            </svg>
-            交易中心
-          </router-link>
-
-          <router-link to="/ai-analysis" class="flex items-center px-4 py-2 rounded hover:bg-gray-700" :class="{'bg-blue-600': isActive('/ai-analysis')}">
-            <svg class="h-5 w-5 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-            </svg>
-            AI分析
-          </router-link>
-
-          <router-link to="/user-center" class="flex items-center px-4 py-2 rounded hover:bg-gray-700" :class="{'bg-blue-600': isActive('/user-center')}">
-            <svg class="h-5 w-5 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-            </svg>
-            用户中心
-          </router-link>
-        </nav>
-
-        <!-- API Status -->
-        <div class="border-t border-gray-700 p-4">
-          <div class="flex items-center justify-between">
-            <span class="text-sm">API状态:</span>
-            <span :class="apiStatus ? 'text-green-400' : 'text-red-400'" class="text-sm font-medium">
-              {{ apiStatus ? '在线' : '离线' }}
-            </span>
-          </div>
-          <button
-            @click="checkApiStatus"
-            class="mt-2 w-full px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded text-sm focus:outline-none"
-          >
-            刷新状态
-          </button>
-        </div>
+    <el-aside width="250px" style="background-color: #304156; color: white;">
+      <div style="height: 60px; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: bold; border-bottom: 1px solid #1f2d3d;">
+        SimpleTrade
       </div>
-    </div>
+
+      <!-- Navigation Menu -->
+      <el-menu
+        :default-active="activeIndex"
+        class="el-menu-vertical"
+        background-color="#304156"
+        text-color="#bfcbd9"
+        active-text-color="#409EFF">
+
+        <el-menu-item index="/strategy-center" @click="$router.push('/strategy-center')">
+          <i class="el-icon-s-data"></i>
+          <span slot="title">策略中心</span>
+        </el-menu-item>
+
+        <el-menu-item index="/trading-center" @click="$router.push('/trading-center')">
+          <i class="el-icon-s-finance"></i>
+          <span slot="title">交易中心</span>
+        </el-menu-item>
+
+        <el-menu-item index="/ai-analysis" @click="$router.push('/ai-analysis')">
+          <i class="el-icon-s-marketing"></i>
+          <span slot="title">AI分析</span>
+        </el-menu-item>
+
+        <el-menu-item index="/user-center" @click="$router.push('/user-center')">
+          <i class="el-icon-user"></i>
+          <span slot="title">用户中心</span>
+        </el-menu-item>
+      </el-menu>
+
+
+    </el-aside>
 
     <!-- Main Content -->
-    <div class="flex-1 flex flex-col overflow-hidden lg:ml-64">
-      <header class="bg-white shadow z-10">
-        <div class="px-4 py-4 flex justify-between items-center">
-          <h2 class="text-xl font-semibold text-gray-800">{{ pageTitle }}</h2>
+    <el-container>
+      <el-header style="background-color: white; box-shadow: 0 1px 4px rgba(0,21,41,.08); line-height: 60px;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <h2 style="font-size: 18px; font-weight: 600; color: #303133;">{{ pageTitle }}</h2>
+          <div>
+            <el-dropdown>
+              <span class="el-dropdown-link">
+                <el-avatar size="small" icon="el-icon-user"></el-avatar>
+                <span style="margin-left: 8px;">张三</span>
+                <i class="el-icon-arrow-down el-icon--right"></i>
+              </span>
+              <el-dropdown-menu slot="dropdown">
+                <el-dropdown-item icon="el-icon-user">个人中心</el-dropdown-item>
+                <el-dropdown-item icon="el-icon-setting">账户设置</el-dropdown-item>
+                <el-dropdown-item divided icon="el-icon-switch-button">退出登录</el-dropdown-item>
+              </el-dropdown-menu>
+            </el-dropdown>
+          </div>
         </div>
-      </header>
-      <main class="flex-1 overflow-auto bg-gray-100 p-6">
+      </el-header>
+
+      <el-main style="background-color: #f0f2f5; padding: 20px;">
         <slot></slot>
-      </main>
-    </div>
-  </div>
+      </el-main>
+    </el-container>
+  </el-container>
 </template>
 
 <script>
@@ -96,8 +72,8 @@ export default {
   name: 'MainLayout',
   data() {
     return {
-      apiStatus: false,
-      sidebarOpen: false
+      sidebarOpen: false,
+      activeIndex: ''
     }
   },
   computed: {
@@ -105,22 +81,14 @@ export default {
       const routeMap = {
         '/strategy-center': '策略中心',
         '/trading-center': '交易中心',
-        '/ai-analysis': 'AI分析中心',
+        '/ai-analysis': 'AI分析',
         '/user-center': '用户中心'
       };
       return routeMap[this.$route.path] || '页面';
     }
   },
   methods: {
-    async checkApiStatus() {
-      try {
-        const response = await fetch('http://localhost:8000/docs');
-        this.apiStatus = response.ok;
-      } catch (error) {
-        this.apiStatus = false;
-        console.error('API连接错误:', error);
-      }
-    },
+
     toggleSidebar() {
       this.sidebarOpen = !this.sidebarOpen;
     },
@@ -128,8 +96,32 @@ export default {
       return this.$route.path.startsWith(path);
     }
   },
+  watch: {
+    $route: {
+      immediate: true,
+      handler(route) {
+        this.activeIndex = route.path;
+      }
+    }
+  },
   mounted() {
-    this.checkApiStatus();
+    // 初始化组件
   }
 }
 </script>
+
+<style>
+.el-menu {
+  border-right: none;
+}
+
+.el-menu-vertical:not(.el-menu--collapse) {
+  width: 250px;
+}
+
+.el-dropdown-link {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+}
+</style>
