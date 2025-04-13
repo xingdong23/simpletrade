@@ -5,10 +5,10 @@ module.exports = {
   },
   extends: [
     'plugin:vue/essential',
-    '@vue/standard'
+    // '@vue/standard' // Temporarily remove this to resolve conflict
   ],
   parserOptions: {
-    parser: '@babel/eslint-parser', // Or just 'babel-eslint' depending on version/setup
+    parser: '@babel/eslint-parser', // Or maybe 'babel-eslint' is needed for older eslint?
     requireConfigFile: false // Needed if not using babel.config.js
   },
   rules: {

@@ -1,168 +1,65 @@
-import Vue from 'vue'
-import VueRouter from 'vue-router'
-import Layout from '../components/Layout.vue'
-
-Vue.use(VueRouter)
+import { createRouter, createWebHistory } from 'vue-router'
+// Remove import for missing HomeView
+// import HomeView from '../views/HomeView.vue'
+// 可能存在的旧数据管理视图导入，需要删除
+// import DataManagement from '../views/DataManagement.vue'
 
 const routes = [
+  // Remove route for HomeView
+  // {
+  //   path: '/',
+  //   name: 'home',
+  //   component: HomeView
+  // },
+  // Remove route for AboutView
+  // {
+  //   path: '/about',
+  //   name: 'about',
+  //   // route level code-splitting
+  //   // this generates a separate chunk (about.[hash].js) for this route
+  //   // which is lazy-loaded when the route is visited.
+  //   component: () => import(/* webpackChunkName: "about" */ '../views/AboutView.vue')
+  // },
+  // --- 开始移除旧路由 ---
+  // {
+  //   path: '/data-management',
+  //   name: 'dataManagement',
+  //   component: DataManagement // 假设存在此视图
+  // },
+  // --- 结束移除旧路由 ---
+
+  // +++ 开始添加新模块的占位路由 +++
   {
+    // Add a default route redirecting to strategy center, for example
     path: '/',
-    component: Layout,
-    redirect: '/dashboard',
-    children: [
-      {
-        path: 'dashboard',
-        name: 'Dashboard',
-        component: () => import('../views/Home.vue'),
-        meta: { title: '仪表盘' }
-      }
-    ]
-  },
-  // { // Comment out or remove old /data route
-  //   path: '/data',
-  //   component: Layout,
-  //   redirect: '/data/index',
-  //   meta: { title: '数据管理' },
-  //   children: [
-  //     {
-  //       path: 'index',
-  //       name: 'DataOverview',
-  //       component: () => import('../views/Data.vue'),
-  //       meta: { title: '数据概览' }
-  //     },
-  //     {
-  //       path: 'import',
-  //       name: 'DataImport',
-  //       component: () => import('../views/data/Import.vue'),
-  //       meta: { title: '数据导入' }
-  //     },
-  //     {
-  //       path: 'export',
-  //       name: 'DataExport',
-  //       component: () => import('../views/data/Export.vue'),
-  //       meta: { title: '数据导出' }
-  //     }
-  //   ]
-  // },
-  {
-    path: '/market-data', // Add new route for MarketData
-    component: Layout,
-    children: [
-      {
-        path: '',
-        name: 'MarketData',
-        component: () => import('../views/MarketData.vue'), // Point to the new component
-        meta: { title: '行情数据' } // Update title
-      }
-    ]
-  },
-  // { // Comment out or remove old /analysis route
-  //   path: '/analysis',
-  //   component: Layout,
-  //   redirect: '/analysis/index',
-  //   meta: { title: '数据分析' },
-  //   children: [
-  //     {
-  //       path: 'index',
-  //       name: 'AnalysisIndex',
-  //       component: () => import('../views/Analysis.vue'),
-  //       meta: { title: '技术指标' }
-  //     },
-  //     {
-  //       path: 'charts',
-  //       name: 'AnalysisCharts',
-  //       component: () => import('../views/analysis/Charts.vue'),
-  //       meta: { title: '图表分析' }
-  //     }
-  //   ]
-  // },
-  {
-    path: '/trading',
-    component: Layout,
-    redirect: '/trading/index',
-    meta: { title: '交易中心' },
-    children: [
-      {
-        path: 'index',
-        name: 'TradingIndex',
-        component: () => import('../views/trading/Index.vue'),
-        meta: { title: '交易下单' }
-      },
-      {
-        path: 'positions',
-        name: 'TradingPositions',
-        component: () => import('../views/trading/Positions.vue'),
-        meta: { title: '持仓管理' }
-      },
-      {
-        path: 'orders',
-        name: 'TradingOrders',
-        component: () => import('../views/trading/Orders.vue'),
-        meta: { title: '订单管理' }
-      }
-    ]
+    redirect: '/strategy-center'
   },
   {
-    path: '/strategy',
-    component: Layout,
-    redirect: '/strategy/index',
-    meta: { title: '策略管理' },
-    children: [
-      {
-        path: 'index',
-        name: 'StrategyIndex',
-        component: () => import('../views/strategy/Index.vue'),
-        meta: { title: '策略列表' }
-      },
-      {
-        path: 'create',
-        name: 'StrategyCreate',
-        component: () => import('../views/strategy/Create.vue'),
-        meta: { title: '创建策略' }
-      }
-    ]
+    path: '/strategy-center',
+    name: 'strategyCenter',
+    // 稍后创建对应的视图组件
+    component: () => import(/* webpackChunkName: "strategy" */ '../views/StrategyCenterView.vue')
   },
   {
-    path: '/backtest',
-    component: Layout,
-    children: [
-      {
-        path: '',
-        name: 'Backtest',
-        component: () => import('../views/Backtest.vue'),
-        meta: { title: '回测系统' }
-      }
-    ]
+    path: '/trading-center',
+    name: 'tradingCenter',
+    component: () => import(/* webpackChunkName: "trading" */ '../views/TradingCenterView.vue')
   },
   {
-    path: '/ai',
-    component: Layout,
-    children: [
-      {
-        path: '',
-        name: 'AI',
-        component: () => import('../views/AI.vue'),
-        meta: { title: 'AI分析' }
-      }
-    ]
+    path: '/ai-analysis',
+    name: 'aiAnalysis',
+    component: () => import(/* webpackChunkName: "ai" */ '../views/AiAnalysisView.vue')
   },
   {
-    path: '/settings',
-    component: Layout,
-    children: [
-      {
-        path: '',
-        name: 'Settings',
-        component: () => import('../views/Settings.vue'),
-        meta: { title: '系统设置' }
-      }
-    ]
+    path: '/user-center',
+    name: 'userCenter',
+    component: () => import(/* webpackChunkName: "user" */ '../views/UserCenterView.vue')
   }
+  // +++ 结束添加新模块的占位路由 +++
 ]
 
-const router = new VueRouter({
-  mode: 'history',
-  base: process.env.BASE_URL,
+const router = createRouter({
+  history: createWebHistory(process.env.BASE_URL),
   routes
 })
 

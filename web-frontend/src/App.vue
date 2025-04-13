@@ -1,21 +1,30 @@
 <template>
   <div id="app">
-    <router-view />
+    <MainLayout>
+      <router-view />
+    </MainLayout>
   </div>
 </template>
 
 <script>
+import MainLayout from '@/components/MainLayout.vue'
+
 export default {
-  name: 'App'
+  name: 'App',
+  components: {
+    MainLayout
+  }
 }
 </script>
 
 <style>
+@import 'https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css';
+
 html, body {
   height: 100%;
   margin: 0;
   padding: 0;
-  font-family: 'Helvetica Neue', Helvetica, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', Arial, sans-serif;
+  font-family: 'Inter', 'Helvetica Neue', Helvetica, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -37,17 +46,5 @@ html, body {
 
 ::-webkit-scrollbar-track {
   background: #f0f2f5;
-}
-</style>
-
-.el-footer {
-  text-align: center;
-  line-height: 60px;
-  color: #909399;
-}
-
-.el-main {
-  background-color: #f0f2f5;
-  padding: 20px;
 }
 </style>
