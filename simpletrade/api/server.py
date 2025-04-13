@@ -44,6 +44,22 @@ class APIServer:
         # uvicorn没有提供优雅停止的API，这里只是占位
         pass
 
+# 创建一个简单的测试路由
+test_router = APIRouter(prefix="/api/test", tags=["test"])
+
+@test_router.get("/hello")
+async def hello():
+    return {"message": "Hello from SimpleTrade API!"}
+
+@test_router.get("/info")
+async def info():
+    return {
+        "status": "ok",
+        "version": "0.1.0",
+        "api": "SimpleTrade API",
+        "time": "2024-04-17"
+    }
+
 def create_server(main_engine=None, event_engine=None):
     """创建API服务器"""
     import logging
@@ -52,6 +68,10 @@ def create_server(main_engine=None, event_engine=None):
 
     server = APIServer()
     logger.debug("API Server created")
+
+    # 添加测试路由
+    server.add_router(test_router)
+    print("Test API routes added successfully.")
 
     # 检查main_engine是否已初始化
     if main_engine:
