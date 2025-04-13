@@ -1,6 +1,6 @@
 # AI_CONTEXT目录说明
 
-**最后更新**: 2023-10-15
+**最后更新**: 2024-04-17
 
 ## 目录用途
 
@@ -10,53 +10,54 @@ AI_CONTEXT目录是SimpleTrade项目的AI协作管理中心，用于存储与AI�
 
 ```
 ai_context/
-├── PROJECT_STATUS.md       # 项目当前状态和进度
-├── CURRENT_FOCUS.md        # 当前工作重点和任务
-├── DECISIONS_LOG.md        # 关键决策记录
+├── CURRENT_STATUS.md        # 项目当前状态和进度
+├── CONVERSATION_HISTORY.md  # 最近对话的摘要
+├── DECISIONS_LOG.md         # 关键决策记录
 ├── AI_COLLABORATION_GUIDE.md  # AI协作指南
 ├── README.md               # 本文件
-├── SESSION_SUMMARIES/      # 会话摘要目录
-│   ├── README.md           # 会话摘要说明
-│   ├── session_20231015_1.md
-│   ├── session_20231015_2.md
+├── REFERENCE/              # 参考资料目录
+│   ├── README.md           # 参考资料说明
+│   ├── VNPY_KEY_COMPONENTS.md
+│   ├── TECHNICAL_INDICATORS.md
+│   ├── API_OVERVIEW.md
 │   └── ...
-└── REFERENCE/              # 参考资料目录
-    ├── README.md           # 参考资料说明
-    ├── VNPY_KEY_COMPONENTS.md
-    ├── TECHNICAL_INDICATORS.md
-    ├── API_OVERVIEW.md
-    └── ...
+└── archive/                # 归档目录
+    ├── PROJECT_STATUS.md      # 已归档
+    ├── CURRENT_FOCUS.md       # 已归档
+    └── SESSION_SUMMARIES/     # 已归档
 ```
 
 ## 核心文件说明
 
-### PROJECT_STATUS.md
+### CURRENT_STATUS.md
 
 **用途**: 提供项目的整体状态和进度概览。
 
 **内容**:
 - 项目概述
 - 当前阶段
-- 已完成/进行中/待开始工作
 - 技术栈
-- 关键决策
-- 最近会话
+- 已完成工作
+- 进行中工作
+- 待开始工作
+- 遇到的问题
 - 下一步计划
+- 最近更新
 
 **更新频率**: 每次会话后
 
-### CURRENT_FOCUS.md
+### CONVERSATION_HISTORY.md
 
-**用途**: 详细描述当前正在处理的具体任务。
+**用途**: 记录最近与AI助手对话的摘要。
 
 **内容**:
-- 当前Sprint目标
-- 活跃任务列表（优先级、状态、描述）
-- 阻碍/问题
-- 本周目标
-- 下一步具体行动
+- 对话日期和主题
+- 讨论内容
+- 决策
+- 行动项
+- 下一步计划
 
-**更新频率**: 每次会话后，或任务优先级/状态变化时
+**更新频率**: 每次会话后
 
 ### DECISIONS_LOG.md
 
@@ -115,40 +116,52 @@ ai_context/
 
 ### 开始新会话
 
-1. 确保`PROJECT_STATUS.md`和`CURRENT_FOCUS.md`是最新的
-2. 复制以下模板，填入相关内容，并发送给AI:
+只需告诉AI：
 
-   ```
-   我正在开发SimpleTrade项目，这是当前项目状态和工作重点:
-   
-   [粘贴PROJECT_STATUS.md内容]
-   
-   [粘贴CURRENT_FOCUS.md内容]
-   
-   基于以上信息，我们今天需要[具体任务描述]。
-   ```
+```
+请查看 ai_context/AI_COLLABORATION_GUIDE.md
+```
+
+AI会自动查看以下核心文档：
+- CURRENT_STATUS.md - 了解项目当前状态和进度
+- CONVERSATION_HISTORY.md - 了解最近对话的内容和决策
+- DECISIONS_LOG.md - 了解项目关键决策
+
+然后AI会主动提供项目状态概述，并询问您今天想要完成的具体任务。
+
+### 会话进行中
+
+可以使用以下命令：
+
+| 命令 | 说明 |
+|-------|--------|
+| `查看项目状态` | 查看CURRENT_STATUS.md文件并提供项目状态概述 |
+| `查看对话历史` | 查看CONVERSATION_HISTORY.md文件并提供最近对话的摘要 |
+| `查看决策日志` | 查看DECISIONS_LOG.md文件并提供决策日志概述 |
+| `记录决策` | 将新的决策添加到DECISIONS_LOG.md文件中 |
 
 ### 结束会话
 
-1. 要求AI生成会话摘要:
-   
-   ```
-   请为本次会话生成一个摘要，包括讨论内容、决策、生成的代码/文档和下一步计划。
-   ```
+当想要结束会话并更新项目状态时，只需说：
 
-2. 将AI生成的摘要保存到`SESSION_SUMMARIES/session_YYYYMMDD_N.md`
-3. 更新`PROJECT_STATUS.md`和`CURRENT_FOCUS.md`
-4. 如有新决策，添加到`DECISIONS_LOG.md`
+```
+更新项目状态
+```
+
+AI会自动生成会话摘要，并更新：
+1. CURRENT_STATUS.md - 更新项目状态、进度和下一步计划
+2. CONVERSATION_HISTORY.md - 添加新的对话摘要
+3. 如有新的重要决策，更新DECISIONS_LOG.md
 
 ## 维护指南
 
 1. **保持文件更新**:
-   - 每次会话后立即更新相关文件
+   - 每次会话后使用“更新项目状态”命令自动更新相关文件
    - 不要积累未记录的变更
 
 2. **定期整理**:
-   - 定期审查状态文件，移除不再相关的信息
-   - 将旧的会话摘要归档，保持当前文件的简洁
+   - 定期审查CURRENT_STATUS.md，移除不再相关的信息
+   - 当CONVERSATION_HISTORY.md变得过长时，将旧的对话摘要移动到archive目录
 
 3. **版本控制**:
    - 将ai_context目录纳入版本控制
@@ -158,4 +171,4 @@ ai_context/
    - 每周回顾项目进度和AI协作效果
    - 根据需要调整协作流程和文件结构
 
-通过维护这个AI上下文管理框架，可以显著提高与AI助手的协作效率，减少重复工作，保持项目信息的一致性，并建立完整的项目知识库。详细的使用指南请参考`AI_COLLABORATION_GUIDE.md`文件。
+通过这个简化的AI上下文管理框架，可以显著提高与AI助手的协作效率，减少重复工作，保持项目信息的一致性，并建立完整的项目知识库。详细的使用指南请参考`AI_COLLABORATION_GUIDE.md`文件。
