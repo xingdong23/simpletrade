@@ -40,7 +40,7 @@
                   <span class="metric">年化收益: <span class="metric-value positive">15.2%</span></span>
                 </div>
                 <div class="strategy-complexity">
-                  <span>复杂度: <el-rate v-model="2" disabled text-color="#ff9900" score-template="{value}"></el-rate></span>
+                  <span>复杂度: <el-rate :value="2" disabled text-color="#ff9900" score-template="{value}"></el-rate></span>
                 </div>
                 <div class="strategy-resources">
                   <span>资源需求: <el-tag size="mini" type="success">低</el-tag></span>
@@ -214,7 +214,7 @@
                   <span class="metric">年化收益: <span class="metric-value positive">32.5%</span></span>
                 </div>
                 <div class="strategy-complexity">
-                  <span>复杂度: <el-rate v-model="4" disabled text-color="#ff9900" score-template="{value}"></el-rate></span>
+                  <span>复杂度: <el-rate :value="4" disabled text-color="#ff9900" score-template="{value}"></el-rate></span>
                 </div>
                 <div class="strategy-actions">
                   <el-button type="primary" size="small" @click="navigateToDetail('ai-strategy1')">查看详情</el-button>
@@ -237,7 +237,7 @@
                   <span class="metric">年化收益: <span class="metric-value positive">26.8%</span></span>
                 </div>
                 <div class="strategy-complexity">
-                  <span>复杂度: <el-rate v-model="3" disabled text-color="#ff9900" score-template="{value}"></el-rate></span>
+                  <span>复杂度: <el-rate :value="3" disabled text-color="#ff9900" score-template="{value}"></el-rate></span>
                 </div>
                 <div class="strategy-actions">
                   <el-button type="primary" size="small" @click="navigateToDetail('multi-factor1')">查看详情</el-button>
@@ -472,7 +472,7 @@
           </el-col>
         </el-row>
       </el-tab-pane>
-      </el-tabs>
+        </el-tabs>
       </el-tab-pane>
 
       <el-tab-pane label="策略构建器" name="builder">
@@ -659,7 +659,7 @@ class MyStrategy(CtaTemplate):
     </el-tabs>
     <!-- 策略详情对话框 -->
     <el-dialog :title="'策略详情: ' + (currentStrategy ? currentStrategy.name : '')" :visible.sync="strategyDetailVisible" width="80%">
-    <el-tabs v-model="detailActiveTab">
+      <el-tabs v-model="detailActiveTab">
       <!-- 策略信息标签页 -->
       <el-tab-pane label="策略信息" name="info">
         <el-descriptions :column="2" border>

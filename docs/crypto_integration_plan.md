@@ -166,3 +166,59 @@ class TriangularArbitrageStrategy:
 
         return None
 ```
+
+## 4. 风险管理增强
+
+### 4.1 加密货币特有风险
+
+- **交易所风险**：实现交易所评分系统，监控交易所安全性和可靠性
+- **流动性风险**：分析交易深度，避免在低流动性市场执行大额订单
+- **监管风险**：监控不同国家/地区的加密货币监管动态
+- **技术风险**：监控区块链网络拥堵、交易确认延迟等技术风险
+
+### 4.2 风险控制实现
+
+```python
+class CryptoRiskManager:
+    """加密货币风险管理器"""
+
+    def __init__(self, ccxt_adapters, config):
+        self.adapters = ccxt_adapters
+        self.config = config
+        self.exchange_scores = self._initialize_exchange_scores()
+
+    def _initialize_exchange_scores(self):
+        """初始化交易所评分"""
+        # 基于历史数据、社区评价等
+        return {
+            'binance': 90,
+            'coinbase': 85,
+            'kraken': 80,
+            # 更多交易所...
+        }
+
+    def calculate_position_size(self, exchange_id, symbol, account_size, risk_per_trade):
+        """计算仓位大小，考虑交易所风险"""
+        exchange_risk_factor = self.exchange_scores[exchange_id] / 100
+        adjusted_risk = risk_per_trade * exchange_risk_factor
+
+        # 获取市场流动性数据
+        orderbook_depth = self._get_orderbook_depth(exchange_id, symbol)
+        liquidity_factor = min(1.0, orderbook_depth / self.config['min_required_depth'])
+
+        final_position_size = account_size * adjusted_risk * liquidity_factor
+        return final_position_size
+
+    def _get_orderbook_depth(self, exchange_id, symbol):
+        """获取订单簿深度"""
+        # 实现逻辑...
+```
+
+## 5. 用户界面优化
+
+### 5.1 加密货币特化功能
+
+- **多交易所资产概览**：展示用户在不同交易所的资产分布
+- **市场深度可视化**：展示不同交易所的订单簿深度对比
+- **套利机会监控**：实时显示跨交易所套利机会
+- **链上数据集成**：展示相关区块链的网络状态和交易数据
