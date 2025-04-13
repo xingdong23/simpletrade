@@ -66,6 +66,13 @@
                   <span class="metric">准确率: <span class="metric-value positive">62%</span></span>
                   <span class="metric">年化收益: <span class="metric-value positive">18.7%</span></span>
                 </div>
+                <div class="strategy-complexity">
+                  <span>复杂度: <el-rate :value="4" disabled text-color="#ff9900" score-template="{value}"></el-rate></span>
+                </div>
+                <div class="strategy-resources">
+                  <span>资源需求: <el-tag size="mini" type="danger">高</el-tag></span>
+                  <span style="margin-left: 10px;">运行速度: <el-tag size="mini" type="warning">中</el-tag></span>
+                </div>
                 <div class="strategy-actions">
                   <el-button type="primary" size="small" @click="navigateToDetail('strategy2')">查看详情</el-button>
                   <el-button size="small">使用策略</el-button>
@@ -85,6 +92,13 @@
                 <div class="strategy-metrics">
                   <span class="metric">胜率: <span class="metric-value positive">42%</span></span>
                   <span class="metric">年化收益: <span class="metric-value positive">22.1%</span></span>
+                </div>
+                <div class="strategy-complexity">
+                  <span>复杂度: <el-rate :value="3" disabled text-color="#ff9900" score-template="{value}"></el-rate></span>
+                </div>
+                <div class="strategy-resources">
+                  <span>资源需求: <el-tag size="mini" type="warning">中</el-tag></span>
+                  <span style="margin-left: 10px;">运行速度: <el-tag size="mini" type="warning">中</el-tag></span>
                 </div>
                 <div class="strategy-actions">
                   <el-button type="primary" size="small" @click="navigateToDetail('strategy3')">查看详情</el-button>
@@ -106,6 +120,13 @@
                   <span class="metric">胜率: <span class="metric-value positive">65%</span></span>
                   <span class="metric">年化收益: <span class="metric-value positive">28.5%</span></span>
                 </div>
+                <div class="strategy-complexity">
+                  <span>复杂度: <el-rate :value="3" disabled text-color="#ff9900" score-template="{value}"></el-rate></span>
+                </div>
+                <div class="strategy-resources">
+                  <span>资源需求: <el-tag size="mini" type="warning">中</el-tag></span>
+                  <span style="margin-left: 10px;">运行速度: <el-tag size="mini" type="success">快</el-tag></span>
+                </div>
                 <div class="strategy-actions">
                   <el-button type="primary" size="small">查看详情</el-button>
                   <el-button size="small">使用策略</el-button>
@@ -125,6 +146,13 @@
                 <div class="strategy-metrics">
                   <span class="metric">胜率: <span class="metric-value positive">55%</span></span>
                   <span class="metric">年化收益: <span class="metric-value positive">24.3%</span></span>
+                </div>
+                <div class="strategy-complexity">
+                  <span>复杂度: <el-rate :value="2" disabled text-color="#ff9900" score-template="{value}"></el-rate></span>
+                </div>
+                <div class="strategy-resources">
+                  <span>资源需求: <el-tag size="mini" type="success">低</el-tag></span>
+                  <span style="margin-left: 10px;">运行速度: <el-tag size="mini" type="success">快</el-tag></span>
                 </div>
                 <div class="strategy-actions">
                   <el-button type="primary" size="small">查看详情</el-button>
@@ -146,6 +174,13 @@
                   <span class="metric">胜率: <span class="metric-value positive">65%</span></span>
                   <span class="metric">年化收益: <span class="metric-value positive">28.5%</span></span>
                 </div>
+                <div class="strategy-complexity">
+                  <span>复杂度: <el-rate :value="3" disabled text-color="#ff9900" score-template="{value}"></el-rate></span>
+                </div>
+                <div class="strategy-resources">
+                  <span>资源需求: <el-tag size="mini" type="warning">中</el-tag></span>
+                  <span style="margin-left: 10px;">运行速度: <el-tag size="mini" type="success">快</el-tag></span>
+                </div>
                 <div class="strategy-actions">
                   <el-button type="primary" size="small">查看详情</el-button>
                   <el-button size="small">使用策略</el-button>
@@ -165,6 +200,13 @@
                 <div class="strategy-metrics">
                   <span class="metric">胜率: <span class="metric-value positive">55%</span></span>
                   <span class="metric">年化收益: <span class="metric-value positive">24.3%</span></span>
+                </div>
+                <div class="strategy-complexity">
+                  <span>复杂度: <el-rate :value="2" disabled text-color="#ff9900" score-template="{value}"></el-rate></span>
+                </div>
+                <div class="strategy-resources">
+                  <span>资源需求: <el-tag size="mini" type="success">低</el-tag></span>
+                  <span style="margin-left: 10px;">运行速度: <el-tag size="mini" type="success">快</el-tag></span>
                 </div>
                 <div class="strategy-actions">
                   <el-button type="primary" size="small">查看详情</el-button>
