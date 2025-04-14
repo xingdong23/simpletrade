@@ -3,14 +3,19 @@ SimpleTrade技术指标模块
 
 提供技术指标计算功能。
 直接使用vnpy的数据模型。
+使用纯Python实现，不依赖talib库。
 """
 
 import numpy as np
 import pandas as pd
 from typing import List, Dict, Any, Optional, Union
+import logging
 
 # 导入vnpy数据模型
 from vnpy.trader.object import BarData
+
+# 配置日志
+logger = logging.getLogger("simpletrade.core.analysis.indicators")
 
 
 def calculate_indicators(bars: List[BarData], indicators: List[Dict[str, Any]]) -> pd.DataFrame:

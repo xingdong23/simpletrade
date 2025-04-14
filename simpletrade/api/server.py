@@ -73,6 +73,16 @@ def create_server(main_engine=None, event_engine=None):
     server.add_router(test_router)
     print("Test API routes added successfully.")
 
+    # 添加健康检查路由
+    health_router = APIRouter(prefix="/api/health", tags=["health"])
+
+    @health_router.get("/")
+    async def health_check():
+        return {"status": "ok", "message": "API服务正常运行"}
+
+    server.add_router(health_router)
+    print("Health check API route added.")
+
     # 检查main_engine是否已初始化
     if main_engine:
         logger.debug(f"Using provided main_engine: {main_engine}")
@@ -95,7 +105,10 @@ def create_server(main_engine=None, event_engine=None):
         server.add_router(data_router)
         logger.debug("Data management API routes added.")
     except Exception as e:
-        logger.error(f"Failed to add data management API routes: {e}")
+        import traceback
+        error_msg = f"Failed to add data management API routes: {e}\n{traceback.format_exc()}"
+        logger.error(error_msg)
+        print(error_msg)
 
     # 添加微信小程序API路由
     try:
@@ -104,7 +117,10 @@ def create_server(main_engine=None, event_engine=None):
         server.add_router(wechat_data_router)
         print("WeChat Mini Program API routes added.")
     except Exception as e:
-        print(f"Failed to add WeChat Mini Program API routes: {e}")
+        import traceback
+        error_msg = f"Failed to add WeChat Mini Program API routes: {e}\n{traceback.format_exc()}"
+        logger.error(error_msg)
+        print(error_msg)
 
     # 添加分析API路由
     try:
@@ -112,7 +128,10 @@ def create_server(main_engine=None, event_engine=None):
         server.add_router(analysis_router)
         print("Analysis API routes added.")
     except Exception as e:
-        print(f"Failed to add Analysis API routes: {e}")
+        import traceback
+        error_msg = f"Failed to add Analysis API routes: {e}\n{traceback.format_exc()}"
+        logger.error(error_msg)
+        print(error_msg)
 
     return server
 
