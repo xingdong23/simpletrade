@@ -15,15 +15,91 @@ conda activate simpletrade
 在项目根目录下执行以下命令启动后端 API 服务：
 
 ```bash
-uvicorn simpletrade.api.server:app --host 0.0.0.0 --port 8000 --reload
+# 方式1：如果已经激活了 simpletrade 环境（更简单，始终显示输出）
+python -m uvicorn simpletrade.api.server:app --host 0.0.0.0 --port 8002 --reload
+
+# 方式2：使用 conda run 命令（不需要先激活环境，更一致的环境设置）
+conda run -n simpletrade python -m uvicorn simpletrade.api.server:app --host 0.0.0.0 --port 8002 --reload
+
+# 如果使用方式2看不到输出，可以添加 --no-capture-output 参数
+conda run --no-capture-output -n simpletrade python -m uvicorn simpletrade.api.server:app --host 0.0.0.0 --port 8002 --reload
 ```
 
 参数说明：
 - `--host 0.0.0.0`：允许从任何 IP 地址访问 API 服务
-- `--port 8000`：API 服务监听的端口
+- `--port 8002`：API 服务监听的端口（避免与其他服务的端口冲突）
 - `--reload`：当代码变更时自动重新加载服务（开发模式）
 
-启动成功后，可以通过访问 http://localhost:8000/docs 查看 API 文档。
+启动成功后，可以通过访问 http://localhost:8002/docs 查看 API 文档。
+
+### 注意事项
+
+1. **使用 conda run 命令**：强烈推荐使用 `conda run -n simpletrade` 命令启动服务，而不是直接使用 `python -m uvicorn`。这是因为：
+   - `conda run` 命令会创建一个完全隔离的环境，确保所有环境变量和路径设置都是正确的
+   - 即使已经激活了 simpletrade 环境，直接使用 `python` 命令仍可能遇到环境变量或导入路径问题
+   - 实际测试表明，`conda run` 命令更可靠，可以避免各种导入错误
+
+2. **确保已安装依赖**：在启动服务前，确保已经安装了所有必要的依赖，包括 TA-Lib 和 vnpy。
+
+3. **开发模式安装**：强烈建议使用开发模式安装 SimpleTrade（`pip install -e .`），以避免模块导入错误。
+
+4. **端口冲突**：如果端口 8002 已被占用，可以尝试其他端口，如 8003、8004 等。
+
+5. **常见错误及解决方法**：
+   - `name 'ApiResponseModel' is not defined` 错误：这是一个命名错误，已修复。如果仍然出现，请将 `simpletrade/api/wechat/data.py` 文件中的 `ApiResponseModel` 改为 `ApiResponse`
+   - `STBaseApp.__init__() missing required arguments` 错误：这是一个初始化错误，但不影响服务的基本功能。确保使用开发模式安装了 SimpleTrade
+   - `symbol not found in flat namespace '_TA_ACCBANDS'` 错误：重新安装 TA-Lib（参见安装指南）
+   - `vnpy_datamanager not found` 等警告：这些是警告，表明某些 vnpy 组件没有安装。如果您不需要这些功能，可以暂时忽略
+
+6. **conda run 命令输出问题**：
+   - `conda run` 命令默认会捕获所有输出，导致用户看不到日志
+   - 添加 `--no-capture-output` 参数可以显示完整输出：`conda run --no-capture-output -n simpletrade ...`
+   - 如果不确定服务是否启动，可以尝试访问 API：`curl http://localhost:8002/api/test/hello`
+   - 或者在浏览器中访问：http://localhost:8002/docs
+
+### Python -m 命令的原理
+
+在启动服务时，我们使用 `python -m uvicorn` 命令。这个命令的工作原理值得理解：
+
+1. **模块执行机制**：
+   - `python -m module_name` 会将指定的模块作为脚本执行
+   - Python 会在 `sys.path` 中查找该模块，导入并执行它
+
+2. **导入路径影响**：
+   - 当前工作目录会被添加到 `sys.path` 的开头
+   - 这意味着当前目录结构对模块导入至关重要
+
+3. **相对导入支持**：
+   - `python -m` 命令支持相对导入（如 `from . import module`）
+   - 这对于复杂的包结构非常重要
+
+4. **两种启动方式的比较**：
+   - **直接使用 `python -m`**：
+     - 更简单，不需要额外的参数
+     - 始终显示输出，方便调试
+     - 需要先激活 conda 环境
+   - **使用 `conda run -n simpletrade`**：
+     - 创建一个完全隔离的环境
+     - 确保所有环境变量和导入路径都正确设置
+     - 不需要先激活环境
+     - 默认不显示输出，需要添加 `--no-capture-output` 参数
+
+5. **常见错误原因**：
+   - 如果项目没有以开发模式安装（`pip install -e .`），可能会出现模块找不到的错误
+   - 如果依赖库（如 TA-Lib）安装不正确，可能会出现符号加载错误
+   - 如果代码中有命名错误（如 `ApiResponseModel`），需要修正这些错误
+
+在正确设置环境并修复代码错误后，两种启动方式都可以正常工作。您可以根据个人偏好选择使用哪种方式。
+
+### 测试 API 服务器
+
+如果您遇到了依赖问题，可以使用测试 API 服务器，该服务器不依赖于 talib 和 vnpy：
+
+```bash
+python scripts/test_api_server.py
+```
+
+测试服务器将在端口 8000 上运行，并提供基本的 API 路由。
 
 ## 启动前端 Web 界面
 

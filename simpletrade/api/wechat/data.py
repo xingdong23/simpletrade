@@ -172,7 +172,7 @@ async def get_bars(
             "message": f"获取K线数据失败: {str(e)}"
         }
 
-@router.get("/ticks", response_model=ApiResponseModel)
+@router.get("/ticks", response_model=ApiResponse)
 async def get_ticks(
     symbol: str,
     exchange: str,

@@ -44,8 +44,8 @@ source simpletrade_env/bin/activate  # Linux/macOS
 # 选择你需要的插件进行安装
 pip install vnpy vnpy_ctp vnpy_ib vnpy_datamanager vnpy_sqlite # 注意：移除了 vnpy_tiger
 
-# 安装 SimpleTrade (通常在开发模式下使用)
-# pip install -e .
+# 以开发模式安装 SimpleTrade (强烈推荐)
+pip install -e .
 
 # 安装 FastAPI 和 Uvicorn (用于 API 服务)
 pip install fastapi uvicorn[standard] pydantic[email]
@@ -56,12 +56,26 @@ pip install tigeropen
 # 如果 vnpy_tiger 有 requirements.txt, 也可以安装它:
 # pip install -r vendors/vnpy_tiger/requirements.txt
 
+# 安装 TA-Lib (技术分析库)
+conda install -c conda-forge ta-lib
+# 或者使用 pip
+# pip install ta-lib
+
 # 安装其他可能需要的依赖 (根据需要)
-# 例如 TA-Lib:
-# conda install -c conda-forge ta-lib
-# 或其他库:
 # pip install pandas numpy scikit-learn ...
 ```
+
+#### 开发模式安装说明
+
+开发模式安装（`pip install -e .`）有以下优势：
+
+1. **不复制代码**：普通安装会将代码复制到 Python 的 site-packages 目录，而开发模式只在 site-packages 中创建一个指向原始代码位置的链接
+
+2. **实时反映代码变化**：当您修改项目代码时，不需要重新安装包，修改会立即生效
+
+3. **解决导入问题**：将项目添加到 Python 路径中，这样 Python 可以正确找到并导入项目中的模块
+
+即使您直接在源码目录中开发，也强烈建议使用开发模式安装，以避免导入错误如 `ModuleNotFoundError: No module named 'simpletrade.api'`。
 
 ### 4. 安装前端依赖
 
