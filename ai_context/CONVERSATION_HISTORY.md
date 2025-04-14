@@ -1,5 +1,28 @@
 # 对话历史
 
+## [2024-04-18 01:30] - 修复 WeChat Mini Program API 路由错误和更新项目文档
+
+### 讨论内容
+- 发现并修复了 WeChat Mini Program API 路由中的 `ApiResponseModel` 命名错误
+- 讨论了两种启动方式的差异：`python -m uvicorn` 和 `conda run -n simpletrade`
+- 更新了项目文档，包括项目结构、安装指南和启动指南
+
+### 决策
+- 将 `simpletrade/api/wechat/data.py` 文件中的 `ApiResponseModel` 改为 `ApiResponse`
+- 在启动指南中提供两种启动方式的详细比较
+- 更新项目文档，使其与当前代码保持一致
+
+### 行动项
+- 修复了 WeChat Mini Program API 路由错误
+- 更新了项目结构文档，反映当前的目录结构
+- 更新了安装指南，添加了开发模式安装的详细说明
+- 更新了启动指南，添加了两种启动方式的比较和 `python -m` 命令的原理
+
+### 下一步
+- 进行前后端集成测试
+- 测试分析 API 功能，包括技术指标计算和策略回测
+- 继续完善前端界面
+
 ## [2024-04-18 00:15] - 开发模式安装和启动命令变化详解
 
 ### 讨论内容
