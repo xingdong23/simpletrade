@@ -1,0 +1,21 @@
+name: simpletrade
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.12
+  - pip
+  - ta-lib=0.4.0
+  - pip:
+    - vnpy
+    - vnpy_sqlite
+    - fastapi
+    - uvicorn[standard]
+    - pydantic[email]
+    - tigeropen
+    # 以下是可选依赖，根据需要取消注释
+    # - vnpy_datamanager
+    # - vnpy_ib
+    # - pandas
+    # - numpy
+    # - matplotlib

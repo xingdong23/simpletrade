@@ -77,6 +77,71 @@ conda install -c conda-forge ta-lib
 
 即使您直接在源码目录中开发，也强烈建议使用开发模式安装，以避免导入错误如 `ModuleNotFoundError: No module named 'simpletrade.api'`。
 
+### 4. 跨平台环境设置
+
+如果您需要在不同的计算机之间切换开发（例如公司电脑和家里的电脑），可以使用以下方法确保环境一致性：
+
+#### 使用环境配置文件
+
+项目根目录下提供了 `environment.yml` 文件，可以用来创建一致的环境：
+
+```bash
+# 使用环境文件创建环境
+conda env create -f environment.yml
+```
+
+#### 使用安装脚本
+
+项目根目录下提供了 `setup_env.sh` 脚本，可以自动化环境设置过程：
+
+```bash
+# 使脚本可执行
+chmod +x setup_env.sh
+
+# 运行脚本
+./setup_env.sh
+```
+
+#### 针对不同平台的注意事项
+
+**Intel Mac**
+
+- TA-Lib 可以直接使用 conda 安装：`conda install -c conda-forge ta-lib`
+- 如果遇到 TA-Lib 符号加载错误，尝试卸载并重新安装：
+  ```bash
+  conda run -n simpletrade pip uninstall -y ta-lib
+  conda run -n simpletrade pip install ta-lib
+  ```
+
+**M1/M2 Mac (Apple Silicon)**
+
+- TA-Lib 可能需要特殊处理，如果 conda 安装失败，可以尝试从源码编译：
+  ```bash
+  # 安装编译工具
+  brew install gcc
+
+  # 下载和编译 TA-Lib
+  wget http://prdownloads.sourceforge.net/ta-lib/ta-lib-0.4.0-src.tar.gz
+  tar -xzf ta-lib-0.4.0-src.tar.gz
+  cd ta-lib/
+  ./configure --prefix=/usr/local
+  make
+  sudo make install
+
+  # 安装 Python 包
+  pip install ta-lib
+  ```
+
+**Windows**
+
+- TA-Lib 在 Windows 上安装可能比较复杂，建议下载预编译的二进制文件：
+  1. 从 [TA-Lib页面](https://www.lfd.uci.edu/~gohlke/pythonlibs/#ta-lib) 下载适合您 Python 版本的 wheel 文件
+  2. 安装下载的 wheel 文件：`pip install TA_Lib-0.4.0-cp312-cp312-win_amd64.whl`
+
+#### 使用 Docker （可选）
+
+如果您经常在不同环境之间切换，可以考虑使用 Docker 容器化开发环境。项目根目录下提供了 Dockerfile，可以用来创建一致的开发环境。
+
 ### 4. 安装前端依赖
 
 前端使用Vue 2.x和Element UI框架，需要安装Node.js和npm。
