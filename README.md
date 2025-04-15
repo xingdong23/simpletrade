@@ -19,7 +19,7 @@ SimpleTrade是一个为个人投资者设计的量化交易平台，旨在让普
 
 - 后端: Python, vnpy框架 (标准库安装), FastAPI
 - API: FastAPI
-- 数据库: SQLite
+- 数据库: MySQL (主数据库), SQLite (本地测试)
 - 前端: Vue 2.x, Element UI, ECharts, 微信小程序
 - AI: Scikit-learn, PyTorch, OpenAI API
 - **特殊组件**: 自定义 `vnpy_tiger` (存放于 `vendors/` 目录)
@@ -98,9 +98,38 @@ pip install tigeropen
 
 # 安装可能需要的额外依赖 (例如 TA-Lib)
 # conda install -c conda-forge ta-lib # (示例，根据需要安装)
+
+# 安装数据库相关依赖
+pip install sqlalchemy pymysql
 ```
 
-### 4. 运行示例
+### 4. 设置数据库
+
+#### MySQL 数据库设置
+
+```bash
+# 确保已安装 MySQL 并启动服务
+
+# 运行数据库初始化脚本
+bash scripts/setup_mysql.sh
+
+# 或者手动创建数据库并初始化
+# 1. 创建数据库
+mysql -uroot -pCz159csa -e "CREATE DATABASE IF NOT EXISTS simpletrade DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+
+# 2. 初始化数据库表和示例数据
+python scripts/init_database.py
+```
+
+数据库配置参数可以在 `simpletrade/config/database.py` 文件中修改，或者通过环境变量设置：
+
+- `DB_USER`: 数据库用户名（默认："root"）
+- `DB_PASSWORD`: 数据库密码（默认："Cz159csa"）
+- `DB_HOST`: 数据库主机（默认："localhost"）
+- `DB_PORT`: 数据库端口（默认："3306"）
+- `DB_NAME`: 数据库名称（默认："simpletrade"）
+
+### 5. 运行示例
 
 ```bash
 # 运行数据管理示例

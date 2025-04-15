@@ -133,6 +133,17 @@ def create_server(main_engine=None, event_engine=None):
         logger.error(error_msg)
         print(error_msg)
 
+    # 添加策略API路由
+    try:
+        from simpletrade.api.strategies import router as strategies_router
+        server.add_router(strategies_router)
+        print("Strategies API routes added.")
+    except Exception as e:
+        import traceback
+        error_msg = f"Failed to add Strategies API routes: {e}\n{traceback.format_exc()}"
+        logger.error(error_msg)
+        print(error_msg)
+
     return server
 
 # 创建FastAPI应用实例，用于uvicorn直接运行

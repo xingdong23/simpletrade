@@ -4,7 +4,7 @@
 
 import axios from 'axios'
 
-const API_BASE_URL = 'http://localhost:8000/api'
+const API_BASE_URL = 'http://localhost:8003/api'
 
 /**
  * 获取数据概览
@@ -23,11 +23,11 @@ export function getDataOverview() {
  */
 export function getBarData(symbol, exchange, interval, startDate, endDate) {
   let url = `${API_BASE_URL}/data/bars?symbol=${symbol}&exchange=${exchange}&interval=${interval}&start_date=${startDate}`
-  
+
   if (endDate) {
     url += `&end_date=${endDate}`
   }
-  
+
   return axios.get(url)
 }
 

@@ -62,19 +62,19 @@
 <body>
     <div class="container">
         <h1>SimpleTrade 简单版</h1>
-        
+
         <div class="card">
             <h2>API服务器状态</h2>
             <button id="checkApi">检查API服务器</button>
             <div id="apiStatus">未检查</div>
         </div>
-        
+
         <div class="card">
             <h2>数据管理</h2>
             <button id="getSymbols">获取交易品种列表</button>
             <pre id="symbolsResult">点击按钮获取数据</pre>
         </div>
-        
+
         <div class="card">
             <h2>数据分析</h2>
             <button id="getIndicators">获取可用指标</button>
@@ -84,13 +84,13 @@
 
     <script>
         // API基础URL
-        const API_BASE_URL = 'http://localhost:8000';
-        
+        const API_BASE_URL = 'http://localhost:8003';
+
         // 检查API服务器
         document.getElementById('checkApi').addEventListener('click', async () => {
             const statusElement = document.getElementById('apiStatus');
             statusElement.textContent = '正在检查...';
-            
+
             try {
                 const response = await fetch(`${API_BASE_URL}/docs`);
                 if (response.ok) {
@@ -105,12 +105,12 @@
                 statusElement.style.color = 'red';
             }
         });
-        
+
         // 获取交易品种列表
         document.getElementById('getSymbols').addEventListener('click', async () => {
             const resultElement = document.getElementById('symbolsResult');
             resultElement.textContent = '正在获取数据...';
-            
+
             try {
                 const response = await fetch(`${API_BASE_URL}/api/data/symbols`);
                 const data = await response.json();
@@ -119,12 +119,12 @@
                 resultElement.textContent = '获取数据失败: ' + error.message;
             }
         });
-        
+
         // 获取可用指标
         document.getElementById('getIndicators').addEventListener('click', async () => {
             const resultElement = document.getElementById('indicatorsResult');
             resultElement.textContent = '正在获取数据...';
-            
+
             try {
                 const response = await fetch(`${API_BASE_URL}/api/analysis/indicators`);
                 const data = await response.json();

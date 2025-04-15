@@ -31,6 +31,9 @@ from simpletrade.apps.st_datamanager import STDataManagerApp # 导入 App 类
 # 创建路由器
 router = APIRouter(prefix="/api/data", tags=["data"])
 
+# 设置日志
+logger = logging.getLogger("simpletrade.apps.st_datamanager.api")
+
 # 数据模型
 class ApiResponse(BaseModel):
     """API响应模型"""
@@ -118,6 +121,51 @@ def get_data_manager_engine():
     return engine_instance
 
 # API路由
+@router.get("/symbols", response_model=ApiResponse)
+async def get_symbols():
+    """获取可用的交易品种列表"""
+    logger.info("Entering get_symbols endpoint")
+    try:
+        # 从数据库获取交易品种
+        from simpletrade.config.database import get_db
+        from simpletrade.models.database import Symbol
+
+        with get_db() as db:
+            db_symbols = db.query(Symbol).filter(Symbol.is_active == True).all()
+
+            # 如果数据库中没有数据，返回测试数据
+            if not db_symbols:
+                logger.warning("No symbols found in database, returning test data")
+                symbols = [
+                    {"symbol": "AAPL", "exchange": "SMART", "name": "Apple Inc.", "category": "Stock"},
+                    {"symbol": "MSFT", "exchange": "SMART", "name": "Microsoft Corporation", "category": "Stock"},
+                    {"symbol": "GOOG", "exchange": "SMART", "name": "Alphabet Inc.", "category": "Stock"},
+                    {"symbol": "AMZN", "exchange": "SMART", "name": "Amazon.com, Inc.", "category": "Stock"},
+                    {"symbol": "FB", "exchange": "SMART", "name": "Meta Platforms, Inc.", "category": "Stock"}
+                ]
+            else:
+                # 将数据库对象转换为字典
+                symbols = [
+                    {
+                        "symbol": s.symbol,
+                        "exchange": s.exchange,
+                        "name": s.name,
+                        "category": s.category
+                    } for s in db_symbols
+                ]
+
+        return {
+            "success": True,
+            "message": f"获取交易品种成功，共 {len(symbols)} 个",
+            "data": symbols
+        }
+    except Exception as e:
+        logger.error(f"Error getting symbols: {e}")
+        return {
+            "success": False,
+            "message": f"获取交易品种失败: {str(e)}"
+        }
+
 @router.get("/overview", response_model=ApiResponse)
 async def get_data_overview(
     engine = Depends(get_data_manager_engine) # 启用依赖注入

@@ -23,7 +23,7 @@ export default new Vuex.Store({
   actions: {
     async fetchDataOverview({ commit }) {
       try {
-        const response = await fetch('http://localhost:8000/api/data/overview')
+        const response = await fetch('http://localhost:8003/api/data/overview')
         const data = await response.json()
         if (data.success) {
           commit('setDataOverview', data.data)
@@ -34,7 +34,7 @@ export default new Vuex.Store({
     },
     async fetchBarData({ commit }, { symbol, exchange, interval, startDate, endDate }) {
       try {
-        const url = `http://localhost:8000/api/data/bars?symbol=${symbol}&exchange=${exchange}&interval=${interval}&start_date=${startDate}${endDate ? `&end_date=${endDate}` : ''}`
+        const url = `http://localhost:8003/api/data/bars?symbol=${symbol}&exchange=${exchange}&interval=${interval}&start_date=${startDate}${endDate ? `&end_date=${endDate}` : ''}`
         const response = await fetch(url)
         const data = await response.json()
         if (data.success) {
@@ -48,7 +48,7 @@ export default new Vuex.Store({
     },
     async calculateIndicators({ commit }, payload) {
       try {
-        const response = await fetch('http://localhost:8000/api/analysis/indicators', {
+        const response = await fetch('http://localhost:8003/api/analysis/indicators', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -67,7 +67,7 @@ export default new Vuex.Store({
     },
     async runBacktest({ commit }, payload) {
       try {
-        const response = await fetch('http://localhost:8000/api/analysis/backtest', {
+        const response = await fetch('http://localhost:8003/api/analysis/backtest', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
