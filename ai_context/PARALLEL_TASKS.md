@@ -41,6 +41,7 @@
 - [2024-04-18 02:30] 合并 install_docker.md 和 docker_development_guide.md 文档，添加卷挂载工作原理的详细解释
 - [2024-04-18 01:45] 创建 Dockerfile 和 docker-compose.yml 文件
 - [2024-04-18 01:30] 开始 Docker 开发环境设置任务
+- [2024-04-19 10:00] 检查并验证 docker_development_guide.md 文档"使用过程"部分，确认与实际操作流程一致，无重大变更。TA-Lib 安装、依赖网络问题、端口调整等细节已在文档中同步，无需额外修订。
 
 ### 相关文档
 

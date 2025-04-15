@@ -133,25 +133,20 @@ RUN apt-get update && apt-get install -y \
     wget \
     && rm -rf /var/lib/apt/lists/*
 
-# 安装 TA-Lib
-RUN wget http://prdownloads.sourceforge.net/ta-lib/ta-lib-0.4.0-src.tar.gz && \
-    tar -xzf ta-lib-0.4.0-src.tar.gz && \
-    cd ta-lib/ && \
-    ./configure --prefix=/usr/local && \
-    make && \
-    make install && \
-    cd .. && \
-    rm -rf ta-lib-0.4.0-src.tar.gz ta-lib/
-
+# 直接用 conda 安装 TA-Lib，无需源码编译
 # 创建 conda 环境
 RUN conda create -n simpletrade python=3.12 -y
 
-# 安装依赖
-RUN conda install -n simpletrade -c conda-forge ta-lib -y && \
-    conda run -n simpletrade pip install vnpy vnpy_sqlite fastapi uvicorn[standard] pydantic[email] tigeropen
+# 移除 conda 官方源，仅用清华镜像
+RUN conda config --remove-key channels || true
+RUN conda config --add channels https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/ \
+    && conda config --add channels https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/main/ \
+    && conda config --add channels https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/free/ \
+    && conda config --set show_channel_urls yes
 
-# 设置工作目录
-WORKDIR /app
+# 安装依赖
+RUN conda install -n simpletrade ta-lib -y && \
+    conda run -n simpletrade pip install vnpy vnpy_sqlite fastapi uvicorn[standard] pydantic[email] tigeropen requests python-multipart python-jose
 
 # 暴露端口
 EXPOSE 8002
