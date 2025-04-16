@@ -6,6 +6,10 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y \
     build-essential \
     wget \
+    netcat-openbsd \
+    libegl1 \
+    libgl1-mesa-glx \
+    libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
 # 直接用 conda 安装 TA-Lib，无需源码编译
@@ -21,10 +25,15 @@ RUN conda config --add channels https://mirrors.tuna.tsinghua.edu.cn/anaconda/cl
 
 # 安装依赖
 RUN conda install -n simpletrade ta-lib -y && \
-    conda run -n simpletrade pip install vnpy vnpy_sqlite fastapi uvicorn[standard] pydantic[email] tigeropen requests python-multipart python-jose
+    conda run -n simpletrade pip install vnpy vnpy_sqlite fastapi uvicorn[standard] pydantic[email] tigeropen requests python-multipart python-jose sqlalchemy pymysql python-dotenv
+
+# 复制启动脚本
+COPY docker-entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 # 暴露端口
-EXPOSE 8002
+EXPOSE 8003
 
 # 启动命令
-CMD ["conda", "run", "--no-capture-output", "-n", "simpletrade", "python", "-m", "uvicorn", "simpletrade.api.server:app", "--host", "0.0.0.0", "--port", "8002", "--reload"]
+ENTRYPOINT ["docker-entrypoint.sh"]
+CMD ["conda", "run", "--no-capture-output", "-n", "simpletrade", "python", "-m", "uvicorn", "simpletrade.api.server:app", "--host", "0.0.0.0", "--port", "8003", "--reload"]

@@ -1,24 +1,61 @@
 version: '3'
 
 services:
+  mysql:
+    image: mysql:8.0
+    container_name: simpletrade-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${SIMPLETRADE_DB_PASSWORD:-Cz159csa}
+      MYSQL_DATABASE: ${SIMPLETRADE_DB_NAME:-simpletrade}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    networks:
+      - simpletrade-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "${SIMPLETRADE_DB_USER:-root}", "-p${SIMPLETRADE_DB_PASSWORD:-Cz159csa}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   api:
     build: .
+    container_name: simpletrade-api
+    depends_on:
+      mysql:
+        condition: service_healthy
     ports:
-      - "8002:8002"
+      - "8003:8003"
     volumes:
       - .:/app
     environment:
       - PYTHONPATH=/app
-    command: conda run --no-capture-output -n simpletrade python -m uvicorn simpletrade.api.server:app --host 0.0.0.0 --port 8002 --reload
+      - SIMPLETRADE_DB_HOST=mysql
+      - SIMPLETRADE_DB_PORT=3306
+      - SIMPLETRADE_DB_USER=${SIMPLETRADE_DB_USER:-root}
+      - SIMPLETRADE_DB_PASSWORD=${SIMPLETRADE_DB_PASSWORD:-Cz159csa}
+      - SIMPLETRADE_DB_NAME=${SIMPLETRADE_DB_NAME:-simpletrade}
+      - SIMPLETRADE_API_PORT=8003
+    networks:
+      - simpletrade-network
 
-  # 前端服务暂时注释掉，专注于后端开发
-  # frontend:
-  #   image: node:14
-  #   working_dir: /app
-  #   volumes:
-  #     - ./web-frontend:/app
-  #   ports:
-  #     - "8080:8080"
-  #   command: bash -c "npm install && npm run serve"
-  #   depends_on:
-  #     - api
+  frontend:
+    image: node:16
+    container_name: simpletrade-frontend
+    working_dir: /app
+    volumes:
+      - ./web-frontend:/app
+    ports:
+      - "8080:8080"
+    command: bash -c "npm install --legacy-peer-deps && npm run serve"
+    depends_on:
+      - api
+    networks:
+      - simpletrade-network
+
+networks:
+  simpletrade-network:
+
+volumes:
+  mysql-data:

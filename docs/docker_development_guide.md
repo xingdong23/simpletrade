@@ -131,6 +131,10 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y \
     build-essential \
     wget \
+    netcat-openbsd \
+    libegl1 \
+    libgl1-mesa-glx \
+    libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
 # 直接用 conda 安装 TA-Lib，无需源码编译
@@ -146,23 +150,28 @@ RUN conda config --add channels https://mirrors.tuna.tsinghua.edu.cn/anaconda/cl
 
 # 安装依赖
 RUN conda install -n simpletrade ta-lib -y && \
-    conda run -n simpletrade pip install vnpy vnpy_sqlite fastapi uvicorn[standard] pydantic[email] tigeropen requests python-multipart python-jose
+    conda run -n simpletrade pip install vnpy vnpy_sqlite fastapi uvicorn[standard] pydantic[email] tigeropen requests python-multipart python-jose sqlalchemy pymysql python-dotenv
+
+# 复制启动脚本
+COPY docker-entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 # 暴露端口
-EXPOSE 8002
+EXPOSE 8003
 
 # 启动命令
-CMD ["conda", "run", "--no-capture-output", "-n", "simpletrade", "python", "-m", "uvicorn", "simpletrade.api.server:app", "--host", "0.0.0.0", "--port", "8002", "--reload"]
+ENTRYPOINT ["docker-entrypoint.sh"]
+CMD ["conda", "run", "--no-capture-output", "-n", "simpletrade", "python", "-m", "uvicorn", "simpletrade.api.server:app", "--host", "0.0.0.0", "--port", "8003", "--reload"]
 ```
 
 ### docker-compose.yml
 
 `docker-compose.yml` 定义了项目的服务配置，包括：
 
-- 服务名称：api
-- 端口映射：8002:8002
+- 服务名称：api 和 mysql
+- 端口映射：8003:8003 和 3306:3306
 - 卷挂载：将本地目录挂载到容器中
-- 环境变量：PYTHONPATH
+- 环境变量：数据库连接参数等
 - 启动命令
 
 文件内容：
@@ -171,27 +180,115 @@ CMD ["conda", "run", "--no-capture-output", "-n", "simpletrade", "python", "-m",
 version: '3'
 
 services:
+  mysql:
+    image: mysql:8.0
+    container_name: simpletrade-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${SIMPLETRADE_DB_PASSWORD:-Cz159csa}
+      MYSQL_DATABASE: ${SIMPLETRADE_DB_NAME:-simpletrade}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    networks:
+      - simpletrade-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "${SIMPLETRADE_DB_USER:-root}", "-p${SIMPLETRADE_DB_PASSWORD:-Cz159csa}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   api:
     build: .
+    container_name: simpletrade-api
+    depends_on:
+      mysql:
+        condition: service_healthy
     ports:
-      - "8002:8002"
+      - "8003:8003"
     volumes:
       - .:/app
     environment:
       - PYTHONPATH=/app
-    command: conda run --no-capture-output -n simpletrade python -m uvicorn simpletrade.api.server:app --host 0.0.0.0 --port 8002 --reload
+      - SIMPLETRADE_DB_HOST=mysql
+      - SIMPLETRADE_DB_PORT=3306
+      - SIMPLETRADE_DB_USER=${SIMPLETRADE_DB_USER:-root}
+      - SIMPLETRADE_DB_PASSWORD=${SIMPLETRADE_DB_PASSWORD:-Cz159csa}
+      - SIMPLETRADE_DB_NAME=${SIMPLETRADE_DB_NAME:-simpletrade}
+      - SIMPLETRADE_API_PORT=8003
+    networks:
+      - simpletrade-network
 
-  # 前端服务暂时注释掉，专注于后端开发
-  # frontend:
-  #   image: node:14
-  #   working_dir: /app
-  #   volumes:
-  #     - ./web-frontend:/app
-  #   ports:
-  #     - "8080:8080"
-  #   command: bash -c "npm install && npm run serve"
-  #   depends_on:
-  #     - api
+  frontend:
+    image: node:16
+    container_name: simpletrade-frontend
+    working_dir: /app
+    volumes:
+      - ./web-frontend:/app
+    ports:
+      - "8080:8080"
+    command: bash -c "npm install --legacy-peer-deps && npm run serve"
+    depends_on:
+      - api
+    networks:
+      - simpletrade-network
+
+networks:
+  simpletrade-network:
+
+volumes:
+  mysql-data:
+```
+
+### docker-entrypoint.sh
+
+`docker-entrypoint.sh` 是容器的启动脚本，用于等待 MySQL 服务启动并初始化数据库：
+
+```bash
+#!/bin/bash
+
+# 等待 MySQL 服务启动
+echo "Waiting for MySQL to start..."
+while ! nc -z $SIMPLETRADE_DB_HOST $SIMPLETRADE_DB_PORT; do
+  sleep 1
+done
+echo "MySQL started"
+
+# 初始化数据库
+echo "Initializing database..."
+conda run -n simpletrade python scripts/init_database.py
+
+# 启动应用
+echo "Starting application..."
+exec "$@"
+```
+
+### .env.example
+
+`.env.example` 是环境变量配置示例文件，用于配置数据库连接参数等：
+
+```
+# SimpleTrade 环境变量配置示例
+# 复制此文件为 .env 并根据需要修改
+
+# 数据库配置
+SIMPLETRADE_DB_USER=root
+SIMPLETRADE_DB_PASSWORD=Cz159csa
+SIMPLETRADE_DB_HOST=mysql
+SIMPLETRADE_DB_PORT=3306
+SIMPLETRADE_DB_NAME=simpletrade
+SIMPLETRADE_DB_POOL_SIZE=5
+SIMPLETRADE_DB_MAX_OVERFLOW=10
+SIMPLETRADE_DB_POOL_RECYCLE=3600
+SIMPLETRADE_DB_ECHO=False
+
+# API 配置
+SIMPLETRADE_API_HOST=0.0.0.0
+SIMPLETRADE_API_PORT=8003
+SIMPLETRADE_API_DEBUG=True
+
+# 日志配置
+SIMPLETRADE_LOG_LEVEL=INFO
 ```
 
 ### start_docker.sh
@@ -203,6 +300,12 @@ services:
 
 # 确保脚本在项目根目录运行
 cd "$(dirname "$0")"
+
+# 如果 .env 文件不存在，复制 .env.example
+if [ ! -f .env ]; then
+  echo "Creating .env file from .env.example"
+  cp .env.example .env
+fi
 
 # 启动 Docker 容器
 docker-compose up --build
@@ -238,15 +341,29 @@ docker-compose up --build
 
    或者使用您的项目实际路径。
 
-4. **启动开发环境**
+4. **配置环境变量**
+
+   复制环境变量配置示例文件，并根据需要修改：
+
+   ```bash
+   cp .env.example .env
+   ```
+
+   编辑 `.env` 文件，根据您的需要修改数据库连接参数、API 配置等。如果您使用默认配置，可以跳过这一步。
+
+   > **注意：** 如果您使用 `start_docker.sh` 脚本启动，它会自动检查 `.env` 文件是否存在，如果不存在，会自动复制 `.env.example`。
+
+5. **启动开发环境**
 
    有两种方式启动开发环境：
 
-   **方式 1: 使用启动脚本**
+   **方式 1: 使用启动脚本（推荐）**
 
    ```bash
    ./start_docker.sh
    ```
+
+   这种方式会自动检查 `.env` 文件，并启动所有必要的服务，包括 MySQL 数据库、API 服务和前端服务。
 
    **方式 2: 直接使用 docker-compose 命令**
 
@@ -256,20 +373,92 @@ docker-compose up --build
 
    第一次构建可能需要 10-15 分钟，因为它需要下载基础镜像、安装依赖等。后续启动会更快。
 
+6. **等待服务启动**
+
+   启动过程中，您将看到以下步骤：
+
+   - MySQL 数据库服务启动
+   - API 服务等待 MySQL 启动完成
+   - 数据库初始化（创建表和添加示例数据）
+   - API 服务启动
+   - 前端服务启动
+
+   整个过程是自动的，您只需要等待所有服务启动完成。
+
 ### 验证开发环境
 
 构建完成并启动容器后，您应该能看到类似以下的输出：
 
 ```
-api_1  | INFO:     Will watch for changes in these directories: ['/app']
-api_1  | INFO:     Uvicorn running on http://0.0.0.0:8002 (Press CTRL+C to quit)
-api_1  | INFO:     Started reloader process [1] using WatchFiles
-api_1  | Test API routes added successfully.
-api_1  | Health check API route added.
+mysql_1     | [Note] [Entrypoint]: MySQL init process done. Ready for start up.
+mysql_1     | [Note] [Entrypoint]: Starting MySQL 8.0.x
 ...
+api_1       | Waiting for MySQL to start...
+api_1       | MySQL started
+api_1       | Initializing database...
+api_1       | 开始初始化数据库...
+api_1       | 数据库 simpletrade 创建成功或已存在
+api_1       | 数据库表创建成功
+api_1       | 示例数据添加成功
+api_1       | 数据库初始化完成
+api_1       | Starting application...
+api_1       | INFO:     Will watch for changes in these directories: ['/app']
+api_1       | INFO:     Uvicorn running on http://0.0.0.0:8003 (Press CTRL+C to quit)
+api_1       | INFO:     Started reloader process [1] using WatchFiles
+api_1       | Test API routes added successfully.
+api_1       | Health check API route added.
+api_1       | Analysis API routes added.
+api_1       | Strategies API routes added.
+...
+frontend_1  | App running at:
+frontend_1  | - Local:   http://localhost:8080/
 ```
 
-现在，您可以在浏览器中访问 `http://localhost:8002/docs` 查看 API 文档。
+现在，您可以进行以下验证：
+
+1. **验证 API 服务**
+
+   在浏览器中访问 `http://localhost:8003/docs` 查看 API 文档。
+
+2. **验证前端服务**
+
+   在浏览器中访问 `http://localhost:8080` 查看前端页面。
+
+3. **验证数据库连接**
+
+   您可以使用以下命令进入 MySQL 容器并验证数据库：
+
+   ```bash
+   # 进入 MySQL 容器
+   docker exec -it simpletrade-mysql bash
+
+   # 连接到 MySQL
+   mysql -uroot -pCz159csa simpletrade
+
+   # 查看数据库表
+   SHOW TABLES;
+
+   # 查询交易品种表
+   SELECT * FROM symbols;
+
+   # 查询策略表
+   SELECT * FROM strategies;
+   ```
+
+4. **验证 API 端点**
+
+   您可以使用 curl 命令测试 API 端点：
+
+   ```bash
+   # 测试健康检查端点
+   curl -s http://localhost:8003/api/health/
+
+   # 测试交易品种端点
+   curl -s http://localhost:8003/api/data/symbols
+
+   # 测试策略端点
+   curl -s http://localhost:8003/api/strategies/
+   ```
 
 ### 关于首次构建时间
 
@@ -522,3 +711,109 @@ docker network ls
 使用 Docker 进行开发可以确保在不同机器上有一致的开发体验，避免"在我的机器上能运行"的问题。通过本指南中的步骤，您可以在 M4 Mac 和 Intel Mac 上设置相同的开发环境，并使用相同的工作流进行开发。
 
 如果您遇到任何问题，请参考"常见问题解决"部分，或者查阅 [Docker 官方文档](https://docs.docker.com/)。
+## 4. 常见问题和解决方法
+
+### 问题 1: 前端依赖安装失败
+
+如果您遇到前端依赖安装失败的问题，可能是因为 npm 依赖冲突。错误信息可能如下：
+
+```
+npm ERR! code ERESOLVE
+npm ERR! ERESOLVE could not resolve
+...
+npm ERR! Fix the upstream dependency conflict, or retry
+npm ERR! this command with --force, or --legacy-peer-deps
+```
+
+解决方法：
+
+1. 修改 `docker-compose.yml` 文件中的前端服务配置，添加 `--legacy-peer-deps` 选项：
+
+```yaml
+command: bash -c "npm install --legacy-peer-deps && npm run serve"
+```
+
+2. 或者手动进入容器安装依赖：
+
+```bash
+# 进入前端容器
+docker exec -it simpletrade-frontend bash
+
+# 安装依赖
+npm install --legacy-peer-deps
+
+# 启动前端服务
+npm run serve
+```
+
+### 问题 2: API 服务缺少图形库依赖
+
+如果您遇到类似下面的错误：
+
+```
+Failed to load global main_engine: libEGL.so.1: cannot open shared object file: No such file or directory
+```
+
+解决方法：
+
+在 `Dockerfile` 中添加必要的图形库依赖：
+
+```dockerfile
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    wget \
+    netcat-openbsd \
+    libegl1 \
+    libgl1-mesa-glx \
+    libglib2.0-0 \
+    && rm -rf /var/lib/apt/lists/*
+```
+
+### 问题 3: 权限问题
+
+如果您遇到权限问题，可能是因为 Docker 容器内的用户与主机用户不同。尝试以下解决方法：
+
+```bash
+# 在主机上更改文件权限
+chmod -R 777 /path/to/simpletrade
+```
+
+### 问题 4: 端口冲突
+
+如果您遇到端口冲突问题，可能是因为端口已被其他应用程序占用。尝试以下解决方法：
+
+```bash
+# 查找占用端口的进程
+lsof -i :8003
+
+# 终止进程
+kill -9 <PID>
+```
+
+或者修改 `docker-compose.yml` 文件中的端口映射：
+
+```yaml
+ports:
+  - "8004:8003"  # 将主机端口从 8003 改为 8004
+```
+
+### 问题 5: 数据库初始化问题
+
+如果您需要重置数据库并重新初始化，可以尝试以下方法：
+
+```bash
+# 停止容器
+docker-compose down
+
+# 删除卷
+docker volume rm simpletrade_mysql-data
+
+# 重新启动容器
+docker-compose up
+```
+
+## 结论
+
+使用 Docker 进行开发可以确保在不同机器上有一致的开发体验，避免"在我的机器上能运行"的问题。通过本指南中的步骤，您可以在 M4 Mac 和 Intel Mac 上设置相同的开发环境，并使用相同的工作流进行开发。
+
+如果您遇到任何问题，请参考"常见问题和解决方法"部分，或者查阅 [Docker 官方文档](https://docs.docker.com/)。

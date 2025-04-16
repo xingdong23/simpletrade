@@ -1,11 +1,21 @@
 #!/bin/bash
 
-# 设置MySQL连接信息
-MYSQL_USER="root"
-MYSQL_PASSWORD="Cz159csa"
-MYSQL_HOST="localhost"
-MYSQL_PORT="3306"
-DB_NAME="simpletrade"
+# 获取脚本所在目录
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+PROJECT_ROOT="$( dirname "$SCRIPT_DIR" )"
+
+# 从环境变量或默认值获取数据库连接信息
+MYSQL_USER="${SIMPLETRADE_DB_USER:-root}"
+MYSQL_PASSWORD="${SIMPLETRADE_DB_PASSWORD:-Cz159csa}"
+MYSQL_HOST="${SIMPLETRADE_DB_HOST:-localhost}"
+MYSQL_PORT="${SIMPLETRADE_DB_PORT:-3306}"
+DB_NAME="${SIMPLETRADE_DB_NAME:-simpletrade}"
+
+# 显示数据库连接信息
+echo "Using database connection:"
+echo "  Host: $MYSQL_HOST:$MYSQL_PORT"
+echo "  Database: $DB_NAME"
+echo "  User: $MYSQL_USER"
 
 # 创建数据库
 echo "创建数据库 $DB_NAME..."

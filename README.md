@@ -121,13 +121,37 @@ mysql -uroot -pCz159csa -e "CREATE DATABASE IF NOT EXISTS simpletrade DEFAULT CH
 python scripts/init_database.py
 ```
 
-数据库配置参数可以在 `simpletrade/config/database.py` 文件中修改，或者通过环境变量设置：
+数据库配置参数可以在 `simpletrade/config/settings.py` 文件中修改，或者通过环境变量设置。
 
-- `DB_USER`: 数据库用户名（默认："root"）
-- `DB_PASSWORD`: 数据库密码（默认："Cz159csa"）
-- `DB_HOST`: 数据库主机（默认："localhost"）
-- `DB_PORT`: 数据库端口（默认："3306"）
-- `DB_NAME`: 数据库名称（默认："simpletrade"）
+#### 环境变量配置
+
+项目提供了一个环境变量配置示例文件 `.env.example`，可以复制为 `.env` 并根据需要修改：
+
+```bash
+# 复制环境变量配置示例文件
+cp .env.example .env
+
+# 编辑环境变量配置文件
+vim .env  # 或使用其他编辑器
+```
+
+#### 数据库配置参数
+
+- `SIMPLETRADE_DB_USER`: 数据库用户名（默认："root"）
+- `SIMPLETRADE_DB_PASSWORD`: 数据库密码（默认："Cz159csa"）
+- `SIMPLETRADE_DB_HOST`: 数据库主机（默认："localhost"）
+- `SIMPLETRADE_DB_PORT`: 数据库端口（默认："3306"）
+- `SIMPLETRADE_DB_NAME`: 数据库名称（默认："simpletrade"）
+- `SIMPLETRADE_DB_POOL_SIZE`: 连接池大小（默认：5）
+- `SIMPLETRADE_DB_MAX_OVERFLOW`: 最大溢出连接数（默认：10）
+- `SIMPLETRADE_DB_POOL_RECYCLE`: 连接回收时间（默认：3600秒）
+- `SIMPLETRADE_DB_ECHO`: 是否显示SQL语句（默认：False）
+
+#### API配置参数
+
+- `SIMPLETRADE_API_HOST`: API服务器主机（默认："0.0.0.0"）
+- `SIMPLETRADE_API_PORT`: API服务器端口（默认：8003）
+- `SIMPLETRADE_API_DEBUG`: 是否启用调试模式（默认：True）
 
 ### 5. 运行示例
 
@@ -139,7 +163,7 @@ python examples/data_management_example.py
 python examples/api_example.py
 ```
 
-### 5. 运行测试
+### 6. 运行测试
 
 ```bash
 # 安装pytest
@@ -152,11 +176,74 @@ pytest tests/unit
 pytest tests/integration
 ```
 
-## 运行项目 (开发模式)
+## 运行项目
 
-确保您已按照"安装与配置"部分设置好环境。
+确保您已按照"安装与配置"部分设置好环境。SimpleTrade 提供两种运行方式：使用 Docker 运行和本地开发模式运行。
 
-### 1. 启动后端 API 服务
+### 方式一：使用 Docker 运行（推荐）
+
+使用 Docker 运行是最简单的方式，可以一键启动所有服务，包括 MySQL 数据库、API 服务和前端服务。
+
+#### 1. 启动所有服务
+
+```bash
+# 确保已安装 Docker 和 Docker Compose
+
+# 运行启动脚本
+./start_docker.sh
+```
+
+这个脚本会：
+- 检查并创建 `.env` 文件（如果不存在）
+- 构建并启动所有 Docker 容器
+- 初始化 MySQL 数据库并添加示例数据
+
+启动后，可以访问：
+- API 文档：`http://localhost:8003/docs`
+- 前端页面：`http://localhost:8080`
+- MySQL 数据库：`localhost:3306`（用户名：root，密码：Cz159csa）
+
+#### 2. 查看服务日志
+
+```bash
+# 查看所有服务的日志
+docker-compose logs
+
+# 查看特定服务的日志
+docker-compose logs mysql  # MySQL 数据库日志
+docker-compose logs api    # API 服务日志
+docker-compose logs frontend  # 前端服务日志
+```
+
+#### 3. 停止服务
+
+```bash
+# 停止所有服务
+docker-compose down
+```
+
+#### 4. 重置数据库
+
+如果需要重置数据库，可以删除数据库卷：
+
+```bash
+# 停止所有服务
+docker-compose down
+
+# 删除数据库卷
+docker volume rm simpletrade_mysql-data
+
+# 重新启动服务
+./start_docker.sh
+```
+
+更多关于 Docker 的信息，请参考 [Docker 开发指南](docs/docker_development_guide.md) 和 [MySQL 与 Docker 集成指南](docs/mysql_docker_guide.md)。
+
+### 方式二：本地开发模式
+
+如果您希望在本地进行开发，可以分别启动后端和前端服务。
+
+#### 1. 启动后端 API 服务
 
 在项目根目录下的**系统终端**中执行以下命令：
 
@@ -164,14 +251,14 @@ pytest tests/integration
 # 激活 Conda 环境
 conda activate simpletrade
 
-# 启动 Uvicorn 服务器 (监听 0.0.0.0:8000，带自动重载)
+# 启动 Uvicorn 服务器 (监听 0.0.0.0:8003，带自动重载)
 # 注意：必须在激活的 simpletrade 环境中运行
-uvicorn simpletrade.api.server:app --host 0.0.0.0 --port 8000 --reload
+python -m uvicorn simpletrade.api.server:app --host 0.0.0.0 --port 8003 --reload
 ```
 
-后端服务启动后，可以通过 `http://localhost:8000/docs` 访问 API 文档。
+后端服务启动后，可以通过 `http://localhost:8003/docs` 访问 API 文档。
 
-### 2. 启动前端开发服务器
+#### 2. 启动前端开发服务器
 
 在项目根目录下的**另一个系统终端**中执行以下命令：
 
@@ -183,17 +270,18 @@ conda activate simpletrade
 cd web-frontend
 
 # 安装依赖 (如果尚未安装)
-npm install
+npm install --legacy-peer-deps
 
 # 启动开发服务器 (通常监听 localhost:8080 或类似端口)
 npm run serve
 ```
 
-前端服务启动后，留意终端输出的确切访问地址，然后在浏览器中打开该地址。
+前端服务启动后，可以通过 `http://localhost:8080` 访问前端页面。
 
 **重要提示**:
 - 两个服务都需要保持运行状态。
 - 所有后端相关的操作（包括启动 uvicorn）**必须**在激活的 `simpletrade` Conda 环境中进行。
+- 确保 MySQL 数据库已经启动并初始化。
 
 ## 开发指南
 
@@ -235,6 +323,8 @@ pip install pytest black isort
 - [架构设计](docs/architecture_diagram.md)
 - [老虎证券Gateway集成指南](docs/tiger_gateway_integration.md)
 - [老虎证券Gateway使用指南](docs/tiger_gateway_usage.md)
+- [Docker 开发指南](docs/docker_development_guide.md)
+- [MySQL 与 Docker 集成指南](docs/mysql_docker_guide.md)
 
 ## 许可证
 
