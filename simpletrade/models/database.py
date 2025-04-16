@@ -14,7 +14,7 @@ from simpletrade.config.database import Base
 
 class JSONType(TypeDecorator):
     """自定义JSON类型"""
-    impl = VARCHAR
+    impl = VARCHAR(4096)  # 指定最大长度为4096字符
 
     def process_bind_param(self, value, dialect):
         if value is not None:

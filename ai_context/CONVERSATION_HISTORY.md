@@ -1,5 +1,80 @@
 # 对话历史
 
+## [2024-04-18 13:30] - 设计并实现 MySQL 数据库结构
+
+### 讨论内容
+- 讨论了使用 MySQL 数据库替代硬编码测试数据的必要性
+- 设计了 MySQL 数据库结构，包括交易品种、策略、用户策略和回测记录表
+- 实现了数据库连接配置和 ORM 模型
+- 修改了 API 端点，从数据库获取数据
+- 添加了策略相关的 API 端点
+- 创建了数据库初始化脚本
+- 更新了 README 文件，添加数据库设置说明
+
+### 决策
+- 使用 MySQL 作为主数据库，SQLite 作为本地测试数据库
+- 使用 SQLAlchemy 作为 ORM 框架
+- 设计了四个主要数据表：symbols, strategies, user_strategies, backtest_records
+- 修改 API 端点，优先从数据库获取数据，如果数据库中没有数据，则返回测试数据
+
+### 行动项
+- 创建了数据库连接配置 (simpletrade/config/database.py)
+- 创建了 SQLAlchemy ORM 模型 (simpletrade/models/database.py)
+- 实现了数据库初始化脚本 (scripts/init_database.py)
+- 修改了 `/api/data/symbols` 端点，从数据库获取交易品种
+- 添加了策略相关的 API 端点 (simpletrade/api/strategies.py)
+- 更新了 API 服务器，添加策略路由
+- 创建了策略 API 调用模块 (web-frontend/src/api/strategies.js)
+- 创建了数据库初始化脚本 (scripts/setup_mysql.sh)
+- 更新了 README 文件，添加数据库设置说明
+
+### 下一步
+- 测试 MySQL 数据库集成
+- 完善前端与后端的集成
+- 实现数据中心(Data Hub)后端
+
+## [2024-04-18 12:45] - 调试和修复 API 端点错误
+
+### 讨论内容
+- 分析了 `/api/data/symbols` 端点返回 500 内部服务器错误的原因
+- 检查了依赖注入的实现
+- 讨论了健康检查端点的问题
+
+### 决策
+- 修改 `/api/data/symbols` 端点，移除对 `engine` 参数的依赖
+- 使用正确的 URL 格式访问健康检查端点 (`/api/health/`)
+
+### 行动项
+- 修改了 `/api/data/symbols` 端点，移除了对 `engine` 参数的依赖
+- 测试了修改后的端点，确认它能够正常工作
+- 测试了健康检查端点，确认使用正确的 URL 格式可以获取响应
+
+### 下一步
+- 测试前端页面与后端 API 的交互
+- 修复发现的其他问题
+
+## [2024-04-18 12:30] - 前后端集成测试
+
+### 讨论内容
+- 讨论了前后端集成测试的计划
+- 分析了前端和后端的目录结构
+- 检查了 API 端点的实现情况
+
+### 决策
+- 添加缺失的 `/api/data/symbols` 接口
+- 修改前端 API 基地址，从 8000 改为 8003（因为 8002 端口已被占用）
+
+### 行动项
+- 添加了缺失的 `/api/data/symbols` 接口，提供测试数据
+- 修改了前端 API 基地址，从 8000 改为 8003
+- 启动了后端服务器，运行在 8003 端口
+- 启动了前端服务器
+
+### 下一步
+- 调试 `/api/data/symbols` 端点的错误
+- 完善健康检查端点
+- 测试前端页面与后端 API 的交互
+
 ## [2024-04-18 01:30] - 修复 WeChat Mini Program API 路由错误和更新项目文档
 
 ### 讨论内容

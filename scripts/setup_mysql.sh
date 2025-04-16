@@ -22,8 +22,13 @@ fi
 echo "安装必要的Python包..."
 conda run -n simpletrade pip install sqlalchemy pymysql
 
+# 获取脚本所在目录
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+PROJECT_ROOT="$( dirname "$SCRIPT_DIR" )"
+
 # 初始化数据库表和示例数据
 echo "初始化数据库表和示例数据..."
-conda run -n simpletrade python scripts/init_database.py
+cd "$PROJECT_ROOT"
+conda run -n simpletrade python "$SCRIPT_DIR/init_database.py"
 
 echo "MySQL数据库设置完成"
