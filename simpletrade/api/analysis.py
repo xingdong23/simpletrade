@@ -17,6 +17,8 @@ from vnpy.trader.constant import Exchange, Interval
 
 # 导入分析功能和数据管理引擎 App
 from simpletrade.core.analysis import calculate_indicators, backtest_strategy
+from simpletrade.core.analysis.visualization import generate_backtest_report
+from simpletrade.services.backtest_service import BacktestService
 from simpletrade.apps.st_datamanager.api.routes import get_data_manager_engine # 导入用于依赖注入的函数
 
 # 创建路由器
