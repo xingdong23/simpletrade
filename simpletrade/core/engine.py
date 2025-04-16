@@ -7,6 +7,7 @@ SimpleTrade主引擎模块
 from vnpy.trader.engine import MainEngine
 from vnpy.event import EventEngine, Event
 from vnpy.trader.app import BaseApp
+from vnpy.app.cta_strategy import CtaStrategyApp
 
 class STMainEngine(MainEngine):
     """
@@ -28,6 +29,9 @@ class STMainEngine(MainEngine):
 
         # 添加SimpleTrade特有的功能
         self.st_engines = {}
+
+        # 添加CTA策略应用
+        self.add_app(CtaStrategyApp)
 
         # 注册事件处理函数
         self.register_event()
@@ -95,3 +99,12 @@ class STMainEngine(MainEngine):
             print(f"Failed to connect to {gateway_name}.")
 
         return result
+
+    def get_cta_engine(self):
+        """
+        获取CTA策略引擎
+
+        返回:
+            CtaEngine: CTA策略引擎实例
+        """
+        return self.get_engine("CtaStrategy")

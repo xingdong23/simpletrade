@@ -1,0 +1,399 @@
+"""
+策略管理服务
+
+提供策略的加载、初始化、启动、停止等功能。
+"""
+
+import logging
+from typing import Dict, List, Optional, Any, Union
+
+from simpletrade.core.engine import STMainEngine
+from simpletrade.config.database import get_db
+from simpletrade.models.database import Strategy, UserStrategy
+from simpletrade.strategies import get_strategy_class, get_strategy_class_names, get_strategy_class_details
+
+logger = logging.getLogger("simpletrade.services.strategy_service")
+
+class StrategyService:
+    """策略管理服务"""
+    
+    def __init__(self, main_engine: STMainEngine):
+        """
+        初始化
+        
+        参数:
+            main_engine (STMainEngine): 主引擎实例
+        """
+        self.main_engine = main_engine
+        self.cta_engine = main_engine.get_cta_engine()
+        
+    def get_strategy_types(self) -> List[str]:
+        """
+        获取所有可用的策略类型
+        
+        返回:
+            List[str]: 策略类型列表
+        """
+        return get_strategy_class_names()
+    
+    def get_strategy_details(self) -> List[Dict[str, Any]]:
+        """
+        获取所有策略类的详细信息
+        
+        返回:
+            List[Dict[str, Any]]: 策略类详细信息列表
+        """
+        return get_strategy_class_details()
+    
+    def get_strategies(self, type: Optional[str] = None, category: Optional[str] = None) -> List[Strategy]:
+        """
+        获取所有策略记录
+        
+        参数:
+            type (str, optional): 策略类型
+            category (str, optional): 策略分类
+            
+        返回:
+            List[Strategy]: 策略记录列表
+        """
+        with get_db() as db:
+            query = db.query(Strategy).filter(Strategy.is_active == True)
+            
+            # 应用过滤条件
+            if type:
+                query = query.filter(Strategy.type == type)
+            if category:
+                query = query.filter(Strategy.category == category)
+                
+            return query.all()
+    
+    def get_strategy(self, strategy_id: int) -> Optional[Strategy]:
+        """
+        获取策略记录
+        
+        参数:
+            strategy_id (int): 策略ID
+            
+        返回:
+            Strategy: 策略记录，如果不存在则返回None
+        """
+        with get_db() as db:
+            return db.query(Strategy).filter(Strategy.id == strategy_id, Strategy.is_active == True).first()
+    
+    def get_user_strategies(self, user_id: int) -> List[UserStrategy]:
+        """
+        获取用户策略记录
+        
+        参数:
+            user_id (int): 用户ID
+            
+        返回:
+            List[UserStrategy]: 用户策略记录列表
+        """
+        with get_db() as db:
+            return db.query(UserStrategy).filter(
+                UserStrategy.user_id == user_id,
+                UserStrategy.is_active == True
+            ).all()
+    
+    def get_user_strategy(self, user_strategy_id: int) -> Optional[UserStrategy]:
+        """
+        获取用户策略记录
+        
+        参数:
+            user_strategy_id (int): 用户策略ID
+            
+        返回:
+            UserStrategy: 用户策略记录，如果不存在则返回None
+        """
+        with get_db() as db:
+            return db.query(UserStrategy).filter(
+                UserStrategy.id == user_strategy_id,
+                UserStrategy.is_active == True
+            ).first()
+    
+    def create_strategy(self, name: str, description: str, type: str, 
+                       category: str, parameters: Dict[str, Any]) -> Optional[Strategy]:
+        """
+        创建策略
+        
+        参数:
+            name (str): 策略名称
+            description (str): 策略描述
+            type (str): 策略类型
+            category (str): 策略分类
+            parameters (Dict[str, Any]): 策略参数
+            
+        返回:
+            Strategy: 创建的策略记录，如果失败则返回None
+        """
+        # 验证策略类型是否存在
+        if type not in get_strategy_class_names():
+            logger.error(f"Strategy type {type} not found")
+            return None
+        
+        try:
+            with get_db() as db:
+                strategy = Strategy(
+                    name=name,
+                    description=description,
+                    type=type,
+                    category=category,
+                    parameters=parameters,
+                    is_active=True
+                )
+                db.add(strategy)
+                db.commit()
+                db.refresh(strategy)
+                logger.info(f"Strategy {name} created successfully")
+                return strategy
+        except Exception as e:
+            logger.error(f"Failed to create strategy: {e}")
+            return None
+    
+    def create_user_strategy(self, user_id: int, strategy_id: int, name: str, 
+                           parameters: Dict[str, Any]) -> Optional[UserStrategy]:
+        """
+        创建用户策略
+        
+        参数:
+            user_id (int): 用户ID
+            strategy_id (int): 策略ID
+            name (str): 策略名称
+            parameters (Dict[str, Any]): 策略参数
+            
+        返回:
+            UserStrategy: 创建的用户策略记录，如果失败则返回None
+        """
+        try:
+            with get_db() as db:
+                # 检查策略是否存在
+                strategy = db.query(Strategy).filter(
+                    Strategy.id == strategy_id,
+                    Strategy.is_active == True
+                ).first()
+                
+                if not strategy:
+                    logger.error(f"Strategy {strategy_id} not found")
+                    return None
+                
+                # 创建用户策略
+                user_strategy = UserStrategy(
+                    user_id=user_id,
+                    strategy_id=strategy_id,
+                    name=name,
+                    parameters=parameters,
+                    is_active=True
+                )
+                db.add(user_strategy)
+                db.commit()
+                db.refresh(user_strategy)
+                logger.info(f"User strategy {name} created successfully")
+                return user_strategy
+        except Exception as e:
+            logger.error(f"Failed to create user strategy: {e}")
+            return None
+    
+    def update_user_strategy(self, user_strategy_id: int, name: str, 
+                           parameters: Dict[str, Any]) -> Optional[UserStrategy]:
+        """
+        更新用户策略
+        
+        参数:
+            user_strategy_id (int): 用户策略ID
+            name (str): 策略名称
+            parameters (Dict[str, Any]): 策略参数
+            
+        返回:
+            UserStrategy: 更新后的用户策略记录，如果失败则返回None
+        """
+        try:
+            with get_db() as db:
+                user_strategy = db.query(UserStrategy).filter(
+                    UserStrategy.id == user_strategy_id,
+                    UserStrategy.is_active == True
+                ).first()
+                
+                if not user_strategy:
+                    logger.error(f"User strategy {user_strategy_id} not found")
+                    return None
+                
+                user_strategy.name = name
+                user_strategy.parameters = parameters
+                db.commit()
+                db.refresh(user_strategy)
+                logger.info(f"User strategy {name} updated successfully")
+                return user_strategy
+        except Exception as e:
+            logger.error(f"Failed to update user strategy: {e}")
+            return None
+    
+    def delete_user_strategy(self, user_strategy_id: int) -> bool:
+        """
+        删除用户策略
+        
+        参数:
+            user_strategy_id (int): 用户策略ID
+            
+        返回:
+            bool: 是否删除成功
+        """
+        try:
+            with get_db() as db:
+                user_strategy = db.query(UserStrategy).filter(
+                    UserStrategy.id == user_strategy_id,
+                    UserStrategy.is_active == True
+                ).first()
+                
+                if not user_strategy:
+                    logger.error(f"User strategy {user_strategy_id} not found")
+                    return False
+                
+                user_strategy.is_active = False
+                db.commit()
+                logger.info(f"User strategy {user_strategy_id} deleted successfully")
+                return True
+        except Exception as e:
+            logger.error(f"Failed to delete user strategy: {e}")
+            return False
+    
+    def load_strategy(self, strategy_id: int) -> Dict[str, Any]:
+        """
+        加载策略配置
+        
+        参数:
+            strategy_id (int): 策略ID
+            
+        返回:
+            Dict[str, Any]: 策略配置，包含策略名称、类型和参数
+        """
+        strategy = self.get_strategy(strategy_id)
+        if not strategy:
+            logger.error(f"Strategy {strategy_id} not found")
+            return {}
+        
+        # 获取策略类
+        strategy_class = get_strategy_class(strategy.type)
+        if not strategy_class:
+            logger.error(f"Strategy class {strategy.type} not found")
+            return {}
+        
+        # 构建策略配置
+        strategy_config = {
+            "strategy_name": strategy.name,
+            "strategy_class": strategy.type,
+            "setting": strategy.parameters
+        }
+        
+        return strategy_config
+    
+    def load_user_strategy(self, user_strategy_id: int) -> Dict[str, Any]:
+        """
+        加载用户策略配置
+        
+        参数:
+            user_strategy_id (int): 用户策略ID
+            
+        返回:
+            Dict[str, Any]: 策略配置，包含策略名称、类型和参数
+        """
+        user_strategy = self.get_user_strategy(user_strategy_id)
+        if not user_strategy:
+            logger.error(f"User strategy {user_strategy_id} not found")
+            return {}
+        
+        strategy = self.get_strategy(user_strategy.strategy_id)
+        if not strategy:
+            logger.error(f"Strategy {user_strategy.strategy_id} not found")
+            return {}
+        
+        # 获取策略类
+        strategy_class = get_strategy_class(strategy.type)
+        if not strategy_class:
+            logger.error(f"Strategy class {strategy.type} not found")
+            return {}
+        
+        # 构建策略配置
+        strategy_config = {
+            "strategy_name": user_strategy.name,
+            "strategy_class": strategy.type,
+            "setting": user_strategy.parameters
+        }
+        
+        return strategy_config
+    
+    def init_strategy(self, user_strategy_id: int) -> bool:
+        """
+        初始化策略
+        
+        参数:
+            user_strategy_id (int): 用户策略ID
+            
+        返回:
+            bool: 是否初始化成功
+        """
+        strategy_config = self.load_user_strategy(user_strategy_id)
+        if not strategy_config:
+            return False
+        
+        try:
+            # 添加策略
+            self.cta_engine.add_strategy(
+                strategy_config["strategy_class"],
+                strategy_config["strategy_name"],
+                strategy_config["setting"]
+            )
+            
+            # 初始化策略
+            self.cta_engine.init_strategy(strategy_config["strategy_name"])
+            logger.info(f"Strategy {strategy_config['strategy_name']} initialized successfully")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to initialize strategy: {e}")
+            return False
+    
+    def start_strategy(self, user_strategy_id: int) -> bool:
+        """
+        启动策略
+        
+        参数:
+            user_strategy_id (int): 用户策略ID
+            
+        返回:
+            bool: 是否启动成功
+        """
+        strategy_config = self.load_user_strategy(user_strategy_id)
+        if not strategy_config:
+            return False
+        
+        try:
+            # 启动策略
+            self.cta_engine.start_strategy(strategy_config["strategy_name"])
+            logger.info(f"Strategy {strategy_config['strategy_name']} started successfully")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to start strategy: {e}")
+            return False
+    
+    def stop_strategy(self, user_strategy_id: int) -> bool:
+        """
+        停止策略
+        
+        参数:
+            user_strategy_id (int): 用户策略ID
+            
+        返回:
+            bool: 是否停止成功
+        """
+        strategy_config = self.load_user_strategy(user_strategy_id)
+        if not strategy_config:
+            return False
+        
+        try:
+            # 停止策略
+            self.cta_engine.stop_strategy(strategy_config["strategy_name"])
+            logger.info(f"Strategy {strategy_config['strategy_name']} stopped successfully")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to stop strategy: {e}")
+            return False
