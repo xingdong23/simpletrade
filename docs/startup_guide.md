@@ -19,6 +19,9 @@ SimpleTrade 提供两种启动方式：
 ```bash
 # 确保已安装 Docker 和 Docker Compose
 
+# 给脚本添加执行权限
+chmod +x start_docker.sh
+
 # 运行启动脚本
 ./start_docker.sh
 ```
