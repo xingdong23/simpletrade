@@ -1,8 +1,79 @@
 # SimpleTrade 启动指南
 
-本文档提供了启动 SimpleTrade 应用的正确方法，包括后端 API 服务和前端 Web 界面。
+本文档提供了启动 SimpleTrade 应用的正确方法，包括使用 Docker 启动和本地开发模式启动。
 
-## 环境准备
+## 启动方式
+
+SimpleTrade 提供两种启动方式：
+
+1. **使用 Docker 启动**：一键启动所有服务，包括 MySQL 数据库、API 服务和前端服务。这是推荐的方式，特别是对于新用户。
+
+2. **本地开发模式**：分别启动后端和前端服务，适合开发调试。
+
+## 方式一：使用 Docker 启动（推荐）
+
+使用 Docker 启动是最简单的方式，可以一键启动所有服务，包括 MySQL 数据库、API 服务和前端服务。
+
+### 1. 启动所有服务
+
+```bash
+# 确保已安装 Docker 和 Docker Compose
+
+# 运行启动脚本
+./start_docker.sh
+```
+
+这个脚本会：
+- 检查并创建 `.env` 文件（如果不存在）
+- 构建并启动所有 Docker 容器
+- 初始化 MySQL 数据库并添加示例数据
+
+启动后，可以访问：
+- API 文档：`http://localhost:8003/docs`
+- 前端页面：`http://localhost:8080`
+- MySQL 数据库：`localhost:3306`（用户名：root，密码：Cz159csa）
+
+### 2. 查看服务日志
+
+```bash
+# 查看所有服务的日志
+docker-compose logs
+
+# 查看特定服务的日志
+docker-compose logs mysql  # MySQL 数据库日志
+docker-compose logs api    # API 服务日志
+docker-compose logs frontend  # 前端服务日志
+```
+
+### 3. 停止服务
+
+```bash
+# 停止所有服务
+docker-compose down
+```
+
+### 4. 重置数据库
+
+如果需要重置数据库，可以删除数据库卷：
+
+```bash
+# 停止所有服务
+docker-compose down
+
+# 删除数据库卷
+docker volume rm simpletrade_mysql-data
+
+# 重新启动服务
+./start_docker.sh
+```
+
+更多关于 Docker 的信息，请参考 [Docker 开发指南](docker_development_guide.md) 和 [MySQL 与 Docker 集成指南](mysql_docker_guide.md)。
+
+## 方式二：本地开发模式
+
+如果您希望在本地进行开发，可以分别启动后端和前端服务。
+
+### 环境准备
 
 确保您已经激活了 SimpleTrade 的 conda 环境：
 
@@ -10,27 +81,27 @@
 conda activate simpletrade
 ```
 
-## 启动后端 API 服务
+### 启动后端 API 服务
 
 在项目根目录下执行以下命令启动后端 API 服务：
 
 ```bash
 # 方式1：如果已经激活了 simpletrade 环境（更简单，始终显示输出）
-python -m uvicorn simpletrade.api.server:app --host 0.0.0.0 --port 8002 --reload
+python -m uvicorn simpletrade.api.server:app --host 0.0.0.0 --port 8003 --reload
 
 # 方式2：使用 conda run 命令（不需要先激活环境，更一致的环境设置）
-conda run -n simpletrade python -m uvicorn simpletrade.api.server:app --host 0.0.0.0 --port 8002 --reload
+conda run -n simpletrade python -m uvicorn simpletrade.api.server:app --host 0.0.0.0 --port 8003 --reload
 
 # 如果使用方式2看不到输出，可以添加 --no-capture-output 参数
-conda run --no-capture-output -n simpletrade python -m uvicorn simpletrade.api.server:app --host 0.0.0.0 --port 8002 --reload
+conda run --no-capture-output -n simpletrade python -m uvicorn simpletrade.api.server:app --host 0.0.0.0 --port 8003 --reload
 ```
 
 参数说明：
 - `--host 0.0.0.0`：允许从任何 IP 地址访问 API 服务
-- `--port 8002`：API 服务监听的端口（避免与其他服务的端口冲突）
+- `--port 8003`：API 服务监听的端口（避免与其他服务的端口冲突）
 - `--reload`：当代码变更时自动重新加载服务（开发模式）
 
-启动成功后，可以通过访问 http://localhost:8002/docs 查看 API 文档。
+启动成功后，可以通过访问 http://localhost:8003/docs 查看 API 文档。
 
 ### 注意事项
 
@@ -43,19 +114,20 @@ conda run --no-capture-output -n simpletrade python -m uvicorn simpletrade.api.s
 
 3. **开发模式安装**：强烈建议使用开发模式安装 SimpleTrade（`pip install -e .`），以避免模块导入错误。
 
-4. **端口冲突**：如果端口 8002 已被占用，可以尝试其他端口，如 8003、8004 等。
+4. **端口冲突**：如果端口 8003 已被占用，可以尝试其他端口，如 8004、8005 等。
 
 5. **常见错误及解决方法**：
    - `name 'ApiResponseModel' is not defined` 错误：这是一个命名错误，已修复。如果仍然出现，请将 `simpletrade/api/wechat/data.py` 文件中的 `ApiResponseModel` 改为 `ApiResponse`
    - `STBaseApp.__init__() missing required arguments` 错误：这是一个初始化错误，但不影响服务的基本功能。确保使用开发模式安装了 SimpleTrade
    - `symbol not found in flat namespace '_TA_ACCBANDS'` 错误：重新安装 TA-Lib（参见安装指南）
    - `vnpy_datamanager not found` 等警告：这些是警告，表明某些 vnpy 组件没有安装。如果您不需要这些功能，可以暂时忽略
+   - `Failed to load global main_engine: libEGL.so.1: cannot open shared object file` 错误：安装必要的图形库依赖，如 `libegl1`、`libgl1-mesa-glx` 和 `libglib2.0-0`
 
 6. **conda run 命令输出问题**：
    - `conda run` 命令默认会捕获所有输出，导致用户看不到日志
    - 添加 `--no-capture-output` 参数可以显示完整输出：`conda run --no-capture-output -n simpletrade ...`
-   - 如果不确定服务是否启动，可以尝试访问 API：`curl http://localhost:8002/api/test/hello`
-   - 或者在浏览器中访问：http://localhost:8002/docs
+   - 如果不确定服务是否启动，可以尝试访问 API：`curl http://localhost:8003/api/test/hello`
+   - 或者在浏览器中访问：http://localhost:8003/docs
 
 ### Python -m 命令的原理
 
