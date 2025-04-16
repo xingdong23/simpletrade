@@ -307,8 +307,11 @@ if [ ! -f .env ]; then
   cp .env.example .env
 fi
 
+# 给脚本添加执行权限
+chmod +x start_docker.sh
+
 # 启动 Docker 容器
-docker-compose up --build
+./start_docker.sh
 ```
 
 ## 3. 构建和启动开发环境
@@ -360,6 +363,10 @@ docker-compose up --build
    **方式 1: 使用启动脚本（推荐）**
 
    ```bash
+   # 给脚本添加执行权限
+   chmod +x start_docker.sh
+
+   # 运行启动脚本
    ./start_docker.sh
    ```
 
