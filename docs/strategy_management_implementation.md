@@ -44,38 +44,38 @@ SimpleTrade已经集成了vnpy的CTA策略引擎和回测引擎，并实现了�
 def discover_strategies():
     """
     自动发现并注册策略类
-    
+
     扫描当前目录下的所有Python文件，查找继承自CtaTemplate的类，并注册为策略
-    
+
     Returns:
         Dict[str, Type]: 发现的策略类字典
     """
     discovered = {}
-    
+
     # 获取当前目录
     current_dir = os.path.dirname(os.path.abspath(__file__))
-    
+
     # 遍历当前目录下的所有Python文件
     for filename in os.listdir(current_dir):
         if filename.endswith(".py") and filename != "__init__.py":
             module_name = filename[:-3]  # 去掉.py后缀
-            
+
             try:
                 # 导入模块
                 module = importlib.import_module(f"simpletrade.strategies.{module_name}")
-                
+
                 # 查找模块中的所有类
                 for name, obj in inspect.getmembers(module, inspect.isclass):
                     # 检查是否是策略类（继承自CtaTemplate且不是CtaTemplate本身）
-                    if (issubclass(obj, CtaTemplate) and 
-                        obj != CtaTemplate and 
+                    if (issubclass(obj, CtaTemplate) and
+                        obj != CtaTemplate and
                         obj.__module__ == module.__name__):
-                        
+
                         discovered[name] = obj
                         logger.info(f"发现策略类: {name}")
             except Exception as e:
                 logger.error(f"加载策略模块 {module_name} 失败: {e}")
-    
+
     return discovered
 ```
 
@@ -89,11 +89,11 @@ def discover_strategies():
 ```python
 class MonitorService:
     """策略监控服务"""
-    
+
     def __init__(self, main_engine: STMainEngine):
         """
         初始化
-        
+
         参数:
             main_engine (STMainEngine): 主引擎实例
         """
@@ -102,26 +102,26 @@ class MonitorService:
         self.monitors: Dict[int, StrategyMonitor] = {}  # user_strategy_id -> StrategyMonitor
         self.running = False
         self.monitor_thread = None
-    
+
     def start_monitor(self, user_strategy_id: int, strategy_name: str) -> bool:
         """
         开始监控策略
-        
+
         参数:
             user_strategy_id (int): 用户策略ID
             strategy_name (str): 策略名称
-            
+
         返回:
             bool: 是否成功
         """
         if user_strategy_id in self.monitors:
             logger.warning(f"策略 {strategy_name} 已经在监控中")
             return False
-        
+
         # 创建策略监控
         monitor = StrategyMonitor(strategy_name, user_strategy_id)
         self.monitors[user_strategy_id] = monitor
-        
+
         logger.info(f"开始监控策略 {strategy_name}")
         return True
 ```
@@ -137,7 +137,7 @@ class MonitorService:
 ```python
 @router.post("/user/{user_strategy_id}/start", response_model=ApiResponse)
 async def start_strategy(
-    user_strategy_id: int, 
+    user_strategy_id: int,
     strategy_service: StrategyService = Depends(get_strategy_service),
     monitor_service: MonitorService = Depends(get_monitor_service)
 ):
@@ -150,20 +150,20 @@ async def start_strategy(
                 "success": False,
                 "message": f"未找到ID为 {user_strategy_id} 的用户策略"
             }
-        
+
         # 启动策略
         result = strategy_service.start_strategy(user_strategy_id)
-        
+
         if not result:
             return {
                 "success": False,
                 "message": "启动策略失败"
             }
-        
+
         # 开始监控策略
         strategy_config = strategy_service.load_user_strategy(user_strategy_id)
         monitor_service.start_monitor(user_strategy_id, strategy_config["strategy_name"])
-        
+
         return {
             "success": True,
             "message": "启动策略成功"
@@ -186,11 +186,11 @@ async def start_strategy(
 def plot_equity_curve(equity_data: List[Dict[str, Any]], title: str = "资金曲线") -> str:
     """
     绘制资金曲线
-    
+
     参数:
         equity_data (List[Dict[str, Any]]): 资金曲线数据
         title (str, optional): 图表标题
-        
+
     返回:
         str: Base64编码的图表图像
     """
@@ -199,32 +199,32 @@ def plot_equity_curve(equity_data: List[Dict[str, Any]], title: str = "资金曲
         df = pd.DataFrame(equity_data)
         df["datetime"] = pd.to_datetime(df["datetime"])
         df.set_index("datetime", inplace=True)
-        
+
         # 创建图表
         plt.figure(figsize=(12, 6))
-        
+
         # 绘制资金曲线
         plt.plot(df.index, df["capital"], label="资金曲线", color="blue")
-        
+
         # 绘制回撤
         if "drawdown" in df.columns:
-            plt.fill_between(df.index, df["capital"], df["capital"] - df["drawdown"], 
+            plt.fill_between(df.index, df["capital"], df["capital"] - df["drawdown"],
                             color="red", alpha=0.3, label="回撤")
-        
+
         # 设置图表属性
         plt.title(title)
         plt.xlabel("日期")
         plt.ylabel("资金")
         plt.grid(True)
         plt.legend()
-        
+
         # 保存图表为Base64编码的图像
         buffer = io.BytesIO()
         plt.savefig(buffer, format="png")
         buffer.seek(0)
         image_base64 = base64.b64encode(buffer.getvalue()).decode("utf-8")
         plt.close()
-        
+
         return image_base64
     except Exception as e:
         logger.error(f"绘制资金曲线失败: {e}")
@@ -297,8 +297,71 @@ def plot_equity_curve(equity_data: List[Dict[str, Any]], title: str = "资金曲
 - 实现策略自动恢复机制，在系统重启后恢复策略状态
 - 添加系统监控和告警功能，及时发现和处理问题
 
+## 当前进展状态
+
+截至目前，我们已经完成了策略管理系统的核心功能实现和文档编写。以下是详细的进展状态：
+
+### 已完成的工作
+
+1. **分析了现有代码库**：
+   - 分析了SimpleTrade项目的现有功能和架构
+   - 确认了已经实现的功能，包括策略服务、回测服务和API接口
+   - 避免了重复开发，专注于扩展和优化现有功能
+
+2. **完善了策略注册机制**：
+   - 增强了`simpletrade/strategies/__init__.py`，添加了动态发现和注册策略的功能
+   - 添加了策略分类和描述信息，使策略管理更加结构化
+   - 实现了自动扫描策略目录，发现并注册新的策略类
+   - 创建了示例策略`MovingAverageStrategy`，用于测试动态发现和注册功能
+
+3. **增强了实时监控功能**：
+   - 创建了`simpletrade/services/monitor_service.py`，提供对运行中策略的实时监控
+   - 实现了`StrategyMonitor`类，用于跟踪单个策略的运行状态、性能和交易记录
+   - 实现了`MonitorService`类，管理多个策略的监控，提供统一的监控接口
+
+4. **增强了API接口**：
+   - 扩展了`simpletrade/api/strategies.py`，添加了更多功能丰富的API端点
+   - 添加了策略创建、初始化、启动和停止的API端点
+   - 添加了策略监控的API端点，提供实时监控数据
+   - 添加了回测管理的API端点，支持运行回测和查询回测记录
+
+5. **添加了数据可视化功能**：
+   - 创建了`simpletrade/core/analysis/visualization.py`，提供回测结果的可视化功能
+   - 实现了资金曲线、回撤曲线、交易分布和月度收益率的可视化
+   - 支持生成Base64编码的图表图像，方便在Web界面展示
+
+6. **编写了详细的文档**：
+   - 创建了`docs/strategy_management_implementation.md`，详细描述了实施方案和技术决策
+   - 创建了`docs/strategy_management_README.md`，提供了系统的使用指南
+   - 创建了`docs/strategy_management_api_spec.md`，详细说明了API接口规范
+
+### 下一阶段工作计划
+
+1. **前端集成**：
+   - 开发策略管理页面，提供策略列表和详情展示
+   - 开发策略参数配置界面，支持可视化配置策略参数
+   - 开发回测页面，支持设置回测参数和展示回测结果
+   - 开发监控页面，实时展示策略运行状态和性能指标
+
+2. **性能优化**：
+   - 优化监控服务的性能，减少对策略执行的影响
+   - 优化数据处理和可视化的性能，支持大量数据的处理
+   - 实现数据缓存机制，减少重复计算
+
+3. **功能扩展**：
+   - 添加更多策略类型，如机器学习策略、因子策略等
+   - 支持更多数据源，如实时行情数据、基本面数据等
+   - 添加风险管理功能，如仓位控制、止损策略等
+
+4. **系统测试**：
+   - 编写单元测试和集成测试，确保系统的稳定性和可靠性
+   - 进行性能测试，确保系统能够处理大量数据和并发请求
+   - 进行用户测试，收集反馈并进行优化
+
 ## 总结
 
 本方案充分利用了现有代码库的功能，避免了重复开发，同时通过添加新功能和优化现有功能，提高了系统的可用性和用户体验。关键的技术决策包括利用vnpy的策略框架、实现动态策略发现和注册、创建独立的监控服务以及提供丰富的数据可视化功能。
 
 这个方案不仅满足了当前的需求，还为未来的扩展和优化提供了良好的基础。通过继续完善前端集成、性能优化、功能扩展和系统稳定性，可以进一步提升系统的价值和用户体验。
+
+我们已经完成了策略管理系统的核心功能实现和文档编写，下一步将重点关注前端集成、性能优化和功能扩展，以提供更好的用户体验。
