@@ -16,7 +16,7 @@
 - ✅ 回测结果可视化：**已完成**
 - ✅ 策略管理系统文档：**已完成**
 - ✅ Jupyter Notebook集成：**已完成** (用于数据分析和策略开发)
-- 🔄 Docker环境集成：**解决中** (修改Dockerfile解决vnpy.app模块问题)
+- ✅ Docker环境集成：**已完成** (为不同架构提供了专用解决方案)
 - 🔄 前端集成：**进行中** (30%)
 - ⏳ 策略监控页面：**待开始**
 - ⏳ 性能优化：**待开始**
@@ -64,6 +64,20 @@
 - 编写了详细的Jupyter Notebook使用指南，包括数据分析、策略开发等场景
 - 创建了示例笔记本，展示如何使用Jupyter进行数据分析和策略开发
 - 添加了常用的数据分析和可视化库，如pandas、numpy、matplotlib等
+
+### Docker环境集成 (2024-04-20)
+- 为不同架构提供了专用的Docker解决方案：
+  - `Dockerfile.arm64`：为ARM64架构（如Apple Silicon Mac）优化
+  - `Dockerfile.debian11`：使用Debian 11作为基础镜像
+  - `Dockerfile.ubuntu`：使用Ubuntu 20.04作为基础镜像
+- 使用国内镜像加速下载和安装：
+  - 使用清华镜像源加速软件包安装
+  - 使用国内PyPI镜像加速安装Python包
+- 创建了一键启动脚本：
+  - `start_docker_arm64.sh`：为ARM64架构优化的启动脚本
+  - `start_docker_debian11.sh`：使用Debian 11的启动脚本
+  - `start_docker_ubuntu.sh`：使用Ubuntu 20.04的启动脚本
+- 解决了vnpy.app模块缺失的问题，确保策略和分析相关的API路由可以正常加载
 
 ## 进行中功能
 

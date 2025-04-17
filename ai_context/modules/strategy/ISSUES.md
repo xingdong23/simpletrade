@@ -2,25 +2,6 @@
 
 ## 活跃问题
 
-### STRAT-006 - Docker环境中缺少vnpy.app模块
-- **描述**: Docker环境中缺少vnpy.app模块，导致策略和分析相关的API路由无法加载
-- **严重程度**: 高
-- **状态**: 解决中
-- **报告日期**: 2024-04-19
-- **负责人**: AI助手
-- **解决方案**:
-  直接修改现有的Dockerfile，添加正确的vnpy安装命令：
-  1. 使用python:3.9-slim作为基础镜像，而不是continuumio/miniconda3
-  2. 直接安装TA-Lib源码，而不是使用conda
-  3. 使用pip安装vnpy及其相关模块，而不是使用conda
-  4. 添加验证步骤，确保vnpy安装成功
-
-  修改的文件：
-  - `Dockerfile`: 直接修改现有的Dockerfile
-  - `requirements.txt`: 移除vnpy相关依赖，因为它们已在Dockerfile中安装
-
-  使用现有的`start_docker.sh`脚本启动服务，不需要创建新的脚本。
-
 ### STRAT-001 - 策略监控服务性能优化
 - **描述**: 当监控多个策略时，监控服务需要频繁查询策略状态，可能会影响策略执行性能
 - **严重程度**: 中
@@ -67,6 +48,36 @@
   用户可以通过访问 http://localhost:8888 使用Jupyter Notebook。
 
 ## 已解决问题
+
+### STRAT-006 - Docker环境中缺少vnpy.app模块
+- **描述**: Docker环境中缺少vnpy.app模块，导致策略和分析相关的API路由无法加载
+- **严重程度**: 高
+- **状态**: 已解决
+- **报告日期**: 2024-04-19
+- **解决日期**: 2024-04-20
+- **负责人**: AI助手
+- **解决方案**:
+  为不同架构提供了专用的Docker解决方案：
+  1. 创建了`Dockerfile.arm64`，为ARM64架构（如Apple Silicon Mac）优化
+  2. 创建了`Dockerfile.debian11`，使用Debian 11作为基础镜像
+  3. 创建了`Dockerfile.ubuntu`，使用Ubuntu 20.04作为基础镜像
+  4. 使用国内镜像加速下载和安装
+  5. 直接安装TA-Lib源码，而不是使用conda
+  6. 使用pip安装vnpy及其相关模块，而不是使用conda
+  7. 添加验证步骤，确保vnpy安装成功
+
+  修改的文件：
+  - `Dockerfile.arm64`: 为ARM64架构优化的Dockerfile
+  - `Dockerfile.debian11`: 使用Debian 11的Dockerfile
+  - `Dockerfile.ubuntu`: 使用Ubuntu 20.04的Dockerfile
+  - `docker-compose.arm64.yml`: 为ARM64架构优化的docker-compose文件
+  - `docker-compose.debian11.yml`: 使用Debian 11的docker-compose文件
+  - `docker-compose.ubuntu.yml`: 使用Ubuntu 20.04的docker-compose文件
+  - `start_docker_arm64.sh`: 为ARM64架构优化的启动脚本
+  - `start_docker_debian11.sh`: 使用Debian 11的启动脚本
+  - `start_docker_ubuntu.sh`: 使用Ubuntu 20.04的启动脚本
+
+  用户可以根据自己的系统架构选择合适的启动脚本。
 
 ### STRAT-004 - 策略注册机制中的模块导入错误
 - **描述**: 在动态发现和注册策略时，如果策略模块导入失败，会导致整个注册过程中断

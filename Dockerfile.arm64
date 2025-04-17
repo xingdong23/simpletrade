@@ -46,21 +46,27 @@ RUN apt-get update && \
     && ln -sf /usr/bin/pip3 /usr/bin/pip \
     && rm -rf /var/lib/apt/lists/*
 
-# 安装TA-Lib
-RUN cd /tmp && \
-    echo "Downloading TA-Lib..." && \
-    wget -q -O ta-lib-0.4.0-src.tar.gz http://prdownloads.sourceforge.net/ta-lib/ta-lib-0.4.0-src.tar.gz && \
-    echo "Extracting TA-Lib..." && \
-    tar -xzf ta-lib-0.4.0-src.tar.gz && \
+# 安装TA-Lib Python包（使用预编译的wheel，而不是从源码编译）
+RUN pip install --no-cache-dir numpy && \
+    echo "Installing TA-Lib Python package..." && \
+    pip install --no-cache-dir --only-binary=:all: ta-lib || \
+    pip install --no-cache-dir --index-url=https://www.piwheels.org/simple ta-lib || \
+    echo "Failed to install TA-Lib from wheels, trying to install from source..." && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends autoconf automake libtool && \
+    cd /tmp && \
+    git clone https://github.com/TA-Lib/ta-lib.git && \
     cd ta-lib/ && \
-    echo "Configuring TA-Lib..." && \
+    ./autogen.sh && \
     ./configure --prefix=/usr && \
-    echo "Building TA-Lib..." && \
     make && \
-    echo "Installing TA-Lib..." && \
     make install && \
     cd /tmp && \
-    rm -rf ta-lib-0.4.0-src.tar.gz ta-lib/
+    pip install --no-cache-dir ta-lib && \
+    rm -rf /tmp/ta-lib && \
+    apt-get remove -y autoconf automake libtool && \
+    apt-get autoremove -y && \
+    rm -rf /var/lib/apt/lists/*
 
 # 配置pip使用清华镜像源（使用HTTP而不是HTTPS）
 RUN mkdir -p ~/.pip && \
