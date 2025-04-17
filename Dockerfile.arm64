@@ -5,7 +5,10 @@ FROM ubuntu:20.04
 ENV DEBIAN_FRONTEND=noninteractive \
     TZ=Asia/Shanghai \
     PYTHONUNBUFFERED=1 \
-    PYTHONDONTWRITEBYTECODE=1
+    PYTHONDONTWRITEBYTECODE=1 \
+    CONDA_AUTO_UPDATE_CONDA=false \
+    CONDA_DEFAULT_ENV=base \
+    PATH="/opt/conda/bin:$PATH"
 
 # 设置工作目录
 WORKDIR /app
@@ -37,96 +40,57 @@ RUN apt-get update && \
     dnsutils \
     lsof \
     unzip \
-    python3 \
-    python3-pip \
-    python3-dev \
-    python3-setuptools \
-    python3-wheel \
-    && ln -sf /usr/bin/python3 /usr/bin/python \
-    && ln -sf /usr/bin/pip3 /usr/bin/pip \
     && rm -rf /var/lib/apt/lists/*
 
-# 安装TA-Lib Python包（使用预编译的wheel，而不是从源码编译）
-RUN pip install --no-cache-dir numpy && \
-    echo "Installing TA-Lib Python package..." && \
-    pip install --no-cache-dir --only-binary=:all: ta-lib || \
-    pip install --no-cache-dir --index-url=https://www.piwheels.org/simple ta-lib || \
-    echo "Failed to install TA-Lib from wheels, trying to install from source..." && \
-    apt-get update && \
-    apt-get install -y --no-install-recommends autoconf automake libtool && \
-    cd /tmp && \
-    git clone https://github.com/TA-Lib/ta-lib.git && \
-    cd ta-lib/ && \
-    ./autogen.sh && \
-    ./configure --prefix=/usr && \
-    make && \
-    make install && \
-    cd /tmp && \
-    pip install --no-cache-dir ta-lib && \
-    rm -rf /tmp/ta-lib && \
-    apt-get remove -y autoconf automake libtool && \
-    apt-get autoremove -y && \
-    rm -rf /var/lib/apt/lists/*
+# 安装 Miniconda
+RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-aarch64.sh -O ~/miniconda.sh && \
+    /bin/bash ~/miniconda.sh -b -p /opt/conda && \
+    rm ~/miniconda.sh && \
+    conda clean -a -y && \
+    ln -s /opt/conda/etc/profile.d/conda.sh /etc/profile.d/conda.sh && \
+    echo ". /opt/conda/etc/profile.d/conda.sh" >> ~/.bashrc && \
+    echo "conda activate base" >> ~/.bashrc
 
-# 配置pip使用清华镜像源（使用HTTP而不是HTTPS）
+# 使用 Conda 安装 numpy 和 ta-lib
+RUN conda install -y -c conda-forge numpy ta-lib && \
+    conda clean -tipsy
+
+# 配置pip使用国内镜像源（使用多个镜像源作为备选）
 RUN mkdir -p ~/.pip && \
     echo "[global]" > ~/.pip/pip.conf && \
-    echo "index-url = http://pypi.tuna.tsinghua.edu.cn/simple" >> ~/.pip/pip.conf && \
-    echo "trusted-host = pypi.tuna.tsinghua.edu.cn" >> ~/.pip/pip.conf
+    echo "index-url = https://mirrors.aliyun.com/pypi/simple/" >> ~/.pip/pip.conf && \
+    echo "extra-index-url = https://pypi.tuna.tsinghua.edu.cn/simple https://mirrors.cloud.tencent.com/pypi/simple https://mirrors.bfsu.edu.cn/pypi/web/simple" >> ~/.pip/pip.conf && \
+    echo "trusted-host = mirrors.aliyun.com pypi.tuna.tsinghua.edu.cn mirrors.cloud.tencent.com mirrors.bfsu.edu.cn" >> ~/.pip/pip.conf && \
+    echo "timeout = 120" >> ~/.pip/pip.conf
 
-# 升级pip
-RUN pip install --no-cache-dir --upgrade pip setuptools wheel
+# 升级pip并安装常用工具（在Conda环境中执行）
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
+    pip config set global.progress_bar off && \
+    pip config set global.no-cache-dir true && \
+    pip config set global.disable-pip-version-check true
 
-# 安装常用Python工具
-RUN pip install --no-cache-dir \
-    ipython \
-    jupyter \
-    notebook \
-    pandas \
-    numpy \
-    matplotlib \
-    seaborn \
-    scikit-learn \
-    statsmodels \
-    pytest \
-    black \
-    flake8 \
-    isort \
-    mypy \
-    pylint
+# 安装常用Python工具（分批安装以加快进程，直接指定国内镜像源）
+RUN pip install --no-cache-dir -i https://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com pandas && \
+    pip install --no-cache-dir -i https://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com ipython jupyter notebook && \
+    pip install --no-cache-dir -i https://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com matplotlib seaborn && \
+    pip install --no-cache-dir -i https://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com pytest black flake8 isort mypy pylint
 
-# 安装TA-Lib Python包
-RUN pip install --no-cache-dir ta-lib
-
-# 安装vnpy核心
-RUN echo "Installing vnpy..." && \
-    pip install --no-cache-dir vnpy && \
-    echo "Installing vnpy_cta_strategy..." && \
-    pip install --no-cache-dir vnpy_cta_strategy && \
-    echo "Installing vnpy_ctastrategy..." && \
-    pip install --no-cache-dir vnpy_ctastrategy && \
-    echo "Installing vnpy_datamanager..." && \
-    pip install --no-cache-dir vnpy_datamanager && \
-    echo "Installing vnpy_sqlite..." && \
-    pip install --no-cache-dir vnpy_sqlite && \
-    echo "Installing vnpy_rest..." && \
-    pip install --no-cache-dir vnpy_rest && \
-    echo "Installing vnpy_websocket..." && \
-    pip install --no-cache-dir vnpy_websocket && \
-    echo "Installing vnpy_csv..." && \
-    pip install --no-cache-dir vnpy_csv && \
-    echo "Installing vnpy_mysql..." && \
-    pip install --no-cache-dir vnpy_mysql && \
-    echo "Installing vnpy_ctp..." && \
-    pip install --no-cache-dir vnpy_ctp || echo "Failed to install vnpy_ctp, continuing..." && \
-    echo "Installing vnpy_ib..." && \
-    pip install --no-cache-dir vnpy_ib || echo "Failed to install vnpy_ib, continuing..." && \
-    echo "Installing vnpy_tushare..." && \
-    pip install --no-cache-dir vnpy_tushare || echo "Failed to install vnpy_tushare, continuing..." && \
-    echo "Installing vnpy_rqdata..." && \
-    pip install --no-cache-dir vnpy_rqdata || echo "Failed to install vnpy_rqdata, continuing..." && \
-    echo "Installing vnpy_jotdx..." && \
-    pip install --no-cache-dir vnpy_jotdx || echo "Failed to install vnpy_jotdx, continuing..."
+# 安装vnpy核心（直接指定国内镜像源加速下载）
+RUN echo "Installing vnpy core..." && \
+    pip install --no-cache-dir -i https://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com vnpy && \
+    echo "Installing vnpy essential modules..." && \
+    pip install --no-cache-dir -i https://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com vnpy_cta_strategy vnpy_ctastrategy vnpy_datamanager vnpy_sqlite && \
+    echo "Installing vnpy network modules..." && \
+    pip install --no-cache-dir -i https://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com vnpy_rest vnpy_websocket && \
+    echo "Installing vnpy data modules..." && \
+    pip install --no-cache-dir -i https://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com vnpy_csv vnpy_mysql && \
+    echo "Installing vnpy optional modules (errors will be ignored)..." && \
+    pip install --no-cache-dir -i https://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com vnpy_ctp || echo "Failed to install vnpy_ctp, continuing..." && \
+    pip install --no-cache-dir -i https://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com vnpy_ib || echo "Failed to install vnpy_ib, continuing..." && \
+    pip install --no-cache-dir -i https://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com vnpy_tushare || echo "Failed to install vnpy_tushare, continuing..." && \
+    pip install --no-cache-dir -i https://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com vnpy_rqdata || echo "Failed to install vnpy_rqdata, continuing..." && \
+    pip install --no-cache-dir -i https://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com vnpy_jotdx || echo "Failed to install vnpy_jotdx, continuing..." && \
+    echo "VeighNa installation completed."
 
 # 创建常用目录
 RUN mkdir -p /app/data /app/logs /app/configs /app/notebooks
@@ -137,7 +101,7 @@ RUN chmod +x /app/docker_scripts/*.sh
 
 # 安装应用依赖
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -i https://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com -r requirements.txt
 
 # 验证vnpy安装
 RUN echo "Verifying VeighNa installation..." && \

@@ -81,9 +81,18 @@ sleep 10
 print_message "启动前端服务..."
 docker-compose -f docker-compose.arm64.yml up -d frontend
 
+# 检查是否需要强制重新构建
+if [ "$1" = "--rebuild" ]; then
+  REBUILD="--no-cache"
+  print_message "强制重新构建所有镜像..."
+else
+  REBUILD=""
+  print_message "使用缓存构建镜像（如需强制重新构建，请使用 --rebuild 选项）..."
+fi
+
 # 构建并启动API服务
 print_message "构建并启动API服务..."
-docker-compose -f docker-compose.arm64.yml build api
+docker-compose -f docker-compose.arm64.yml build $REBUILD api
 if [ $? -eq 0 ]; then
   docker-compose -f docker-compose.arm64.yml up -d api
   print_success "API服务启动成功。"
@@ -94,7 +103,7 @@ fi
 
 # 构建并启动Jupyter服务
 print_message "构建并启动Jupyter服务..."
-docker-compose -f docker-compose.arm64.yml build jupyter
+docker-compose -f docker-compose.arm64.yml build $REBUILD jupyter
 if [ $? -eq 0 ]; then
   docker-compose -f docker-compose.arm64.yml up -d jupyter
   print_success "Jupyter服务启动成功。"
@@ -159,4 +168,7 @@ echo "  docker-compose -f docker-compose.arm64.yml logs jupyter"
 echo
 echo "您可以使用以下命令停止服务："
 echo "  docker-compose -f docker-compose.arm64.yml down"
+echo
+echo "您可以使用以下命令重新构建所有镜像（不使用缓存）："
+echo "  ./start_docker_arm64.sh --rebuild"
 echo "--------------------------------------"

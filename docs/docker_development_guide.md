@@ -594,9 +594,13 @@ python -m simpletrade.backtest.run_backtest \
 echo "回测完成!"
 ```
 
-### start_docker.sh
+### 启动脚本
 
-`start_docker.sh` 是一个简单的启动脚本，用于启动 Docker 容器：
+项目提供了多个启动脚本，适用于不同的架构和基础镜像：
+
+#### start_docker.sh
+
+`start_docker.sh` 是原始的启动脚本，使用默认的 Dockerfile 和 docker-compose.yml：
 
 ```bash
 #!/bin/bash
@@ -610,12 +614,60 @@ if [ ! -f .env ]; then
   cp .env.example .env
 fi
 
-# 给脚本添加执行权限
-chmod +x start_docker.sh
-
 # 启动 Docker 容器
-./start_docker.sh
+docker-compose up --build
 ```
+
+#### start_docker_arm64.sh
+
+`start_docker_arm64.sh` 是为 ARM64 架构（如 Apple Silicon Mac）优化的启动脚本，使用 Dockerfile.arm64 和 docker-compose.arm64.yml：
+
+```bash
+#!/bin/bash
+
+# 设置颜色
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+# 打印带颜色的消息
+print_message() {
+  echo -e "${BLUE}[SimpleTrade]${NC} $1"
+}
+
+# 检查是否需要强制重新构建
+if [ "$1" = "--rebuild" ]; then
+  REBUILD="--no-cache"
+  print_message "强制重新构建所有镜像..."
+else
+  REBUILD=""
+  print_message "使用缓存构建镜像（如需强制重新构建，请使用 --rebuild 选项）..."
+fi
+
+# 构建并启动API服务
+print_message "构建并启动API服务..."
+docker-compose -f docker-compose.arm64.yml build $REBUILD api
+```
+
+这个脚本有以下特点：
+
+1. **支持缓存控制**：通过 `--rebuild` 选项可以选择是否使用缓存
+2. **错误处理**：如果构建失败，会尝试使用现有镜像启动
+3. **状态检查**：启动后会检查各个服务的运行状态
+
+#### start_docker_debian11.sh 和 start_docker_ubuntu.sh
+
+这两个脚本分别使用 Debian 11 和 Ubuntu 20.04 作为基础镜像，结构与 `start_docker_arm64.sh` 类似。
+
+### 如何选择正确的启动脚本
+
+根据您的系统架构和偏好选择适合的启动脚本：
+
+1. **Apple Silicon Mac (M1/M2/M3/M4)**：使用 `./start_docker_arm64.sh`
+2. **Intel Mac 或其他 x86_64 系统**：可以使用 `./start_docker_debian11.sh` 或 `./start_docker_ubuntu.sh`
+3. **如果遇到问题**：尝试不同的脚本，或使用 `--rebuild` 选项强制重新构建
 
 ## 3. 构建和启动开发环境
 
@@ -778,6 +830,50 @@ frontend_1  | - Local:   http://localhost:8080/
 
    在 `notebooks` 目录中提供了一些示例笔记本，包括数据分析示例、策略开发示例等。
 
+### 关于 Docker 缓存和构建选项
+
+Docker 使用分层缓存机制来加速构建过程。了解这一机制对于提高开发效率非常重要。
+
+#### 缓存机制工作原理
+
+1. **默认构建方式**：
+   - 当您运行 `docker-compose build` 或 `docker-compose up --build` 时，Docker 会使用缓存的层
+   - 只有当 Dockerfile 中的指令或其上下文（如复制的文件）发生变化时，才会重新构建该层及其后续层
+   - 这意味着如果您只修改了应用代码，基础镜像和系统依赖安装等步骤不会重新执行
+
+2. **强制重新构建（`--no-cache`）**：
+   - 当您使用 `docker-compose build --no-cache` 或 `./start_docker_arm64.sh --rebuild` 时，Docker 会忽略所有缓存
+   - 所有层都会重新构建，包括下载基础镜像、安装系统依赖等
+   - 这通常用于解决缓存导致的问题，或确保使用最新的依赖版本
+
+#### 添加新依赖的最佳实践
+
+当需要添加新的 Python 依赖时，您有几种选择：
+
+1. **修改 requirements.txt 并重新构建（不使用 `--no-cache`）**：
+   ```bash
+   # 编辑 requirements.txt 添加新依赖
+   ./start_docker_arm64.sh
+   ```
+   - 这会重用大部分缓存，只重新执行安装依赖的步骤
+   - 基础镜像和系统包不会重新下载
+   - 这是最常用的方法
+
+2. **直接在运行中的容器内安装**：
+   ```bash
+   docker exec -it simpletrade-api pip install 新依赖
+   ```
+   - 这会立即在运行中的容器内安装新依赖
+   - 但容器重启后会丢失这些更改
+   - 适合临时测试
+
+3. **完全重新构建（仅在必要时）**：
+   ```bash
+   ./start_docker_arm64.sh --rebuild
+   ```
+   - 这会忽略所有缓存，从头开始构建整个镜像
+   - 适用于需要彻底清理的情况，如依赖冲突或系统包更新
+
 ### 关于首次构建时间
 
 首次构建 Docker 镜像可能需要相当长的时间，特别是编译 TA-Lib 库的步骤。这是正常的，您可能需要等待 25-30 分钟才能完成首次构建。
@@ -825,9 +921,29 @@ frontend_1  | - Local:   http://localhost:8080/
 
 使用 Docker 进行开发的工作流程如下：
 
-### 编辑代码
+### 编辑代码和自动重载
 
 您可以使用您喜欢的编辑器（如 VS Code、PyCharm 等）在主机上编辑代码。由于我们使用了卷挂载，您在主机上对代码的修改会立即反映到容器中。
+
+#### 代码自动重载机制
+
+开发环境配置了代码自动重载机制，这意味着您只需要启动一次服务，系统会自动监控代码变化并重新加载：
+
+1. **后端 API 服务（FastAPI）**：
+   - API 服务使用 Uvicorn 的开发模式运行，带有 `--reload` 选项
+   - 当您修改后端 Python 代码时，服务会自动重启
+   - 这是在 `docker_scripts/start_api.sh` 脚本中配置的
+
+2. **前端服务（Vue.js）**：
+   - 前端使用 Vue CLI 的开发服务器，它会自动监控文件变化
+   - 当您修改前端代码时，它会自动重新编译并刷新浏览器
+   - 这是通过 `npm run serve` 命令实现的
+
+3. **Jupyter 服务**：
+   - Jupyter Notebook 本身就是交互式的，您可以直接在浏览器中编辑和运行代码
+   - 修改保存在 notebooks 目录中的笔记本会立即生效
+
+#### 代码修改示例
 
 例如，您可以修改 `simpletrade/api/server.py` 文件中的 `/api/test/hello` 路由：
 
@@ -838,6 +954,14 @@ async def hello():
 ```
 
 保存文件后，由于我们使用了 `--reload` 参数，服务器会自动重新加载，您可以立即在浏览器中看到更改的效果。
+
+#### 注意事项
+
+1. **仅适用于代码文件变化**：自动重载仅对代码文件的变化生效。如果您修改了 Dockerfile、docker-compose 文件或添加了新的系统依赖，您需要重新构建镜像。
+
+2. **新依赖处理**：如果您添加了新的 Python 依赖，您可以直接在容器内安装（`docker exec -it simpletrade-api pip install 新依赖`），或者更新 requirements.txt 并重新构建。
+
+3. **数据库模式变化**：如果您修改了数据库模式，可能需要手动运行迁移脚本或重新初始化数据库。
 
 #### 卷挂载工作原理
 
