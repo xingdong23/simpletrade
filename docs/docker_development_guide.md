@@ -114,43 +114,135 @@ SimpleTrade 项目包含以下 Docker 相关文件：
 
 `Dockerfile` 定义了项目的开发环境，包括：
 
-- 基础镜像：`continuumio/miniconda3`
-- 系统依赖：build-essential, wget 等
-- TA-Lib 库的安装
-- Conda 环境的创建和配置
+- 基础镜像：`python:3.9-slim`
+- 国内镜像配置：使用清华、中科大和阿里云的镜像加速下载
+- 系统依赖：build-essential, gcc, git 等
+- TA-Lib 库的源码安装
+- Python 工具和库的安装
+- vnpy 及其相关模块的安装
 - 项目依赖的安装
+
+注意：我们使用了国内镜像来加速下载和安装，包括：
+
+1. **apt镜像**：使用阿里云镜像加速系统包安装，完全替换所有源配置
+2. **TA-Lib下载**：使用Gitee和多个SourceForge镜像加速下载
+3. **pip镜像**：使用清华镜像加速 Python 包安装
 
 文件内容：
 
 ```dockerfile
-FROM continuumio/miniconda3
+FROM python:3.9-slim
 
+# 设置工作目录
 WORKDIR /app
 
+# 使用国内apt镜像
+# 完全替换所有源为国内镜像
+RUN echo "Configuring apt mirrors..." && \
+    # 备份原始源配置
+    if [ -f /etc/apt/sources.list ]; then \
+        cp /etc/apt/sources.list /etc/apt/sources.list.bak; \
+    fi && \
+    # 清空所有源配置
+    echo "" > /etc/apt/sources.list && \
+    # 移除所有其他源配置
+    rm -f /etc/apt/sources.list.d/*.list && \
+    # 创建阿里云镜像源配置（速度更快）
+    echo "deb https://mirrors.aliyun.com/debian/ bullseye main contrib non-free" > /etc/apt/sources.list && \
+    echo "deb https://mirrors.aliyun.com/debian/ bullseye-updates main contrib non-free" >> /etc/apt/sources.list && \
+    echo "deb https://mirrors.aliyun.com/debian/ bullseye-backports main contrib non-free" >> /etc/apt/sources.list && \
+    echo "deb https://mirrors.aliyun.com/debian-security bullseye-security main contrib non-free" >> /etc/apt/sources.list && \
+    # 更新软件包列表
+    apt-get clean && \
+    apt-get update -y
+
 # 安装系统依赖
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && \
+    echo "Installing system dependencies..." && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
     build-essential \
+    gcc \
+    g++ \
+    git \
+    libssl-dev \
+    pkg-config \
     wget \
+    curl \
     netcat-openbsd \
-    libegl1 \
-    libgl1-mesa-glx \
-    libglib2.0-0 \
+    vim \
+    nano \
+    htop \
+    procps \
+    iputils-ping \
+    net-tools \
+    telnet \
+    dnsutils \
+    lsof \
+    unzip \
+    && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# 直接用 conda 安装 TA-Lib，无需源码编译
-# 创建 conda 环境
-RUN conda create -n simpletrade python=3.12 -y
+# 安装TA-Lib
+# 使用国内镜像下载TA-Lib
+RUN cd /tmp && \
+    echo "Downloading TA-Lib..." && \
+    wget -q -O ta-lib-0.4.0-src.tar.gz https://gitee.com/mirrors/ta-lib/raw/master/ta-lib-0.4.0-src.tar.gz || \
+    wget -q -O ta-lib-0.4.0-src.tar.gz https://jztkft.dl.sourceforge.net/project/ta-lib/ta-lib/0.4.0/ta-lib-0.4.0-src.tar.gz || \
+    wget -q -O ta-lib-0.4.0-src.tar.gz https://versaweb.dl.sourceforge.net/project/ta-lib/ta-lib/0.4.0/ta-lib-0.4.0-src.tar.gz || \
+    wget -q -O ta-lib-0.4.0-src.tar.gz http://prdownloads.sourceforge.net/ta-lib/ta-lib-0.4.0-src.tar.gz && \
+    echo "Extracting TA-Lib..." && \
+    tar -xzf ta-lib-0.4.0-src.tar.gz && \
+    cd ta-lib/ && \
+    echo "Configuring TA-Lib..." && \
+    ./configure --prefix=/usr && \
+    echo "Building TA-Lib..." && \
+    make && \
+    echo "Installing TA-Lib..." && \
+    make install && \
+    cd /tmp && \
+    rm -rf ta-lib-0.4.0-src.tar.gz ta-lib/
 
-# 移除 conda 官方源，仅用清华镜像
-RUN conda config --remove-key channels || true
-RUN conda config --add channels https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/ \
-    && conda config --add channels https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/main/ \
-    && conda config --add channels https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/free/ \
-    && conda config --set show_channel_urls yes
+# 配置PIP国内镜像
+RUN pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple \
+    && pip config set global.trusted-host pypi.tuna.tsinghua.edu.cn
 
-# 安装依赖
-RUN conda install -n simpletrade ta-lib -y && \
-    conda run -n simpletrade pip install vnpy vnpy_sqlite fastapi uvicorn[standard] pydantic[email] tigeropen requests python-multipart python-jose sqlalchemy pymysql python-dotenv
+# 安装Python依赖
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel
+
+# 安装常用Python工具
+RUN pip install --no-cache-dir \
+    ipython \
+    jupyter \
+    notebook \
+    pandas \
+    numpy \
+    matplotlib \
+    seaborn \
+    scikit-learn \
+    statsmodels \
+    pytest \
+    black \
+    flake8 \
+    isort \
+    mypy \
+    pylint
+
+# 安装vnpy核心
+RUN pip install --no-cache-dir \
+    vnpy \
+    vnpy_cta_strategy \
+    vnpy_ctastrategy \
+    vnpy_datamanager \
+    vnpy_sqlite \
+    vnpy_rest \
+    vnpy_websocket \
+    vnpy_csv \
+    vnpy_mysql \
+    vnpy_ctp \
+    vnpy_ib \
+    vnpy_tushare \
+    vnpy_rqdata \
+    vnpy_jotdx
 
 # 复制启动脚本
 COPY docker-entrypoint.sh /usr/local/bin/
@@ -168,11 +260,12 @@ CMD ["conda", "run", "--no-capture-output", "-n", "simpletrade", "python", "-m",
 
 `docker-compose.yml` 定义了项目的服务配置，包括：
 
-- 服务名称：api 和 mysql
-- 端口映射：8003:8003 和 3306:3306
-- 卷挂载：将本地目录挂载到容器中
+- 服务名称：api、mysql、frontend 和 jupyter
+- 端口映射：8003:8003、3306:3306、8080:8080 和 8888:8888
+- 卷挂载：将本地目录挂载到容器中，并使用数据卷持久化存储
 - 环境变量：数据库连接参数等
 - 启动命令
+- 自动重启配置
 
 文件内容：
 
@@ -190,6 +283,7 @@ services:
       - "3306:3306"
     volumes:
       - mysql-data:/var/lib/mysql
+      - ./mysql-init:/docker-entrypoint-initdb.d
     networks:
       - simpletrade-network
     healthcheck:
@@ -197,6 +291,7 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
 
   api:
     build: .
@@ -208,6 +303,9 @@ services:
       - "8003:8003"
     volumes:
       - .:/app
+      - data-volume:/app/data
+      - logs-volume:/app/logs
+      - configs-volume:/app/configs
     environment:
       - PYTHONPATH=/app
       - SIMPLETRADE_DB_HOST=mysql
@@ -218,6 +316,7 @@ services:
       - SIMPLETRADE_API_PORT=8003
     networks:
       - simpletrade-network
+    restart: unless-stopped
 
   frontend:
     image: node:16
@@ -232,12 +331,40 @@ services:
       - api
     networks:
       - simpletrade-network
+    restart: unless-stopped
+
+  jupyter:
+    build: .
+    container_name: simpletrade-jupyter
+    command: /app/docker_scripts/start_jupyter.sh
+    ports:
+      - "8888:8888"
+    volumes:
+      - .:/app
+      - data-volume:/app/data
+      - notebooks-volume:/app/notebooks
+    environment:
+      - PYTHONPATH=/app
+      - SIMPLETRADE_DB_HOST=mysql
+      - SIMPLETRADE_DB_PORT=3306
+      - SIMPLETRADE_DB_USER=${SIMPLETRADE_DB_USER:-root}
+      - SIMPLETRADE_DB_PASSWORD=${SIMPLETRADE_DB_PASSWORD:-Cz159csa}
+      - SIMPLETRADE_DB_NAME=${SIMPLETRADE_DB_NAME:-simpletrade}
+    networks:
+      - simpletrade-network
+    depends_on:
+      - mysql
+    restart: unless-stopped
 
 networks:
   simpletrade-network:
 
 volumes:
   mysql-data:
+  data-volume:
+  logs-volume:
+  configs-volume:
+  notebooks-volume:
 ```
 
 ### docker-entrypoint.sh
@@ -289,6 +416,182 @@ SIMPLETRADE_API_DEBUG=True
 
 # 日志配置
 SIMPLETRADE_LOG_LEVEL=INFO
+```
+
+## 项目结构
+
+SimpleTrade 项目的目录结构如下：
+
+```
+.
+├── Dockerfile              # Docker 构建文件
+├── README.md               # 项目说明
+├── docker-compose.yml      # Docker 组合配置
+├── docker-entrypoint.sh    # Docker 容器启动脚本
+├── docker_scripts/         # Docker 容器内部脚本
+│   ├── start_jupyter.sh    # 启动 Jupyter Notebook 服务
+│   ├── check_system.sh     # 检查系统状态
+│   ├── backup_data.sh      # 备份数据
+│   └── run_backtest.sh     # 运行回测
+├── docs/                   # 文档目录
+├── mysql-init/             # MySQL 初始化脚本
+├── notebooks/              # Jupyter 笔记本目录
+│   ├── README.md           # Jupyter 使用指南
+│   └── 数据分析示例.ipynb  # 示例笔记本
+├── requirements.txt        # Python 依赖列表
+├── simpletrade/            # 项目主代码
+│   ├── __init__.py
+│   ├── api/               # API 模块
+│   ├── config/            # 配置模块
+│   ├── core/              # 核心模块
+│   │   └── analysis/       # 分析模块
+│   │       └── visualization.py  # 数据可视化
+│   ├── models/            # 数据模型
+│   ├── services/          # 服务模块
+│   │   ├── strategy_service.py  # 策略服务
+│   │   ├── backtest_service.py  # 回测服务
+│   │   └── monitor_service.py   # 监控服务
+│   ├── strategies/        # 策略模块
+│   │   └── moving_average_strategy.py  # 移动平均线策略
+│   └── utils/             # 工具模块
+├── start_docker.sh         # Docker 启动脚本
+├── tests/                  # 测试目录
+└── web-frontend/           # 前端代码
+```
+
+### docker_scripts 目录
+
+`docker_scripts` 目录包含了一系列用于 Docker 容器内部的脚本，包括：
+
+#### start_jupyter.sh
+
+`start_jupyter.sh` 用于启动 Jupyter Notebook 服务：
+
+```bash
+#!/bin/bash
+
+# 启动Jupyter Notebook服务
+jupyter notebook --ip=0.0.0.0 --port=8888 --no-browser --allow-root --NotebookApp.token='' --NotebookApp.password=''
+```
+
+#### check_system.sh
+
+`check_system.sh` 用于检查系统状态：
+
+```bash
+#!/bin/bash
+
+# 检查系统状态
+echo "=== 系统信息 ==="
+uname -a
+echo
+
+echo "=== CPU信息 ==="
+cat /proc/cpuinfo | grep "model name" | head -1
+echo "CPU核心数: $(nproc)"
+echo
+
+echo "=== 内存信息 ==="
+free -h
+echo
+
+echo "=== 磁盘信息 ==="
+df -h
+echo
+
+echo "=== Python信息 ==="
+python --version
+pip --version
+echo
+
+echo "=== vnpy信息 ==="
+python -c "import vnpy; print(f'vnpy版本: {vnpy.__version__}')"
+echo
+
+echo "=== 网络信息 ==="
+ip addr | grep inet
+echo
+
+echo "=== 进程信息 ==="
+ps aux | grep -E 'python|vnpy' | grep -v grep
+echo
+
+echo "=== 系统检查完成 ==="
+```
+
+#### backup_data.sh
+
+`backup_data.sh` 用于备份数据：
+
+```bash
+#!/bin/bash
+
+# 备份数据
+BACKUP_DIR="/app/backups"
+TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
+BACKUP_FILE="${BACKUP_DIR}/backup_${TIMESTAMP}.tar.gz"
+
+# 创建备份目录
+mkdir -p ${BACKUP_DIR}
+
+# 备份数据
+echo "开始备份数据..."
+tar -czf ${BACKUP_FILE} /app/data /app/configs /app/logs
+
+# 检查备份是否成功
+if [ $? -eq 0 ]; then
+    echo "备份成功: ${BACKUP_FILE}"
+    echo "备份大小: $(du -h ${BACKUP_FILE} | cut -f1)"
+else
+    echo "备份失败!"
+    exit 1
+fi
+
+# 清理旧备份（保留最近10个）
+echo "清理旧备份..."
+ls -t ${BACKUP_DIR}/backup_*.tar.gz | tail -n +11 | xargs -r rm
+
+echo "备份完成!"
+```
+
+#### run_backtest.sh
+
+`run_backtest.sh` 用于运行回测：
+
+```bash
+#!/bin/bash
+
+# 运行回测脚本
+# 用法: ./run_backtest.sh <策略名称> <开始日期> <结束日期> <交易品种> <交易所>
+
+# 检查参数
+if [ $# -lt 5 ]; then
+    echo "用法: $0 <策略名称> <开始日期> <结束日期> <交易品种> <交易所>"
+    echo "示例: $0 MovingAverageStrategy 20200101 20201231 BTCUSDT BINANCE"
+    exit 1
+fi
+
+STRATEGY=$1
+START_DATE=$2
+END_DATE=$3
+SYMBOL=$4
+EXCHANGE=$5
+
+echo "开始回测..."
+echo "策略: $STRATEGY"
+echo "时间范围: $START_DATE - $END_DATE"
+echo "交易品种: $SYMBOL"
+echo "交易所: $EXCHANGE"
+
+# 运行回测
+python -m simpletrade.backtest.run_backtest \
+    --strategy $STRATEGY \
+    --start_date $START_DATE \
+    --end_date $END_DATE \
+    --symbol $SYMBOL \
+    --exchange $EXCHANGE
+
+echo "回测完成!"
 ```
 
 ### start_docker.sh
@@ -466,6 +769,14 @@ frontend_1  | - Local:   http://localhost:8080/
    # 测试策略端点
    curl -s http://localhost:8003/api/strategies/
    ```
+
+5. **验证 Jupyter Notebook**
+
+   在浏览器中访问 `http://localhost:8888` 查看 Jupyter Notebook 界面。您可以创建新的笔记本或打开现有的笔记本。
+
+   Jupyter Notebook 是一个交互式的开发环境，可用于数据分析、策略开发和回测结果分析。它允许您编写和执行代码，可视化数据，并以文档形式保存分析过程。
+
+   在 `notebooks` 目录中提供了一些示例笔记本，包括数据分析示例、策略开发示例等。
 
 ### 关于首次构建时间
 
@@ -654,7 +965,57 @@ Docker 会自动处理架构差异，因为我们使用的是支持多架构的�
 
 当您在不同机器之间切换时，需要注意数据持久化问题。如果您的应用程序在容器内存储数据，这些数据在不同机器之间不会自动同步。您可能需要使用外部存储或手动同步数据。
 
-## 7. Docker 常用命令参考
+## 7. Jupyter Notebook 使用指南
+
+Jupyter Notebook 是一个交互式的开发环境，可用于数据分析、策略开发和回测结果分析。在 SimpleTrade 项目中，我们已经集成了 Jupyter Notebook 服务，可以通过浏览器访问。
+
+### 访问 Jupyter Notebook
+
+1. 启动 SimpleTrade 容器后，在浏览器中访问：`http://localhost:8888`
+2. 无需密码即可登录（在生产环境中应设置密码）
+
+### Jupyter Notebook 的主要用途
+
+1. **数据分析**：
+   - 加载和探索历史行情数据
+   - 计算和可视化技术指标
+   - 分析交易品种的统计特性
+   - 研究市场模式和相关性
+
+2. **策略开发**：
+   - 编写和测试交易策略
+   - 可视化策略信号和交易结果
+   - 优化策略参数
+   - 分析策略性能指标
+
+3. **回测结果分析**：
+   - 加载和可视化回测结果
+   - 分析策略的盈亏分布
+   - 计算风险指标
+   - 比较不同策略的性能
+
+4. **实时监控**：
+   - 连接到实时交易系统
+   - 监控策略运行状态
+   - 分析实时交易数据
+   - 调整策略参数
+
+### 示例笔记本
+
+在 `notebooks` 目录中提供了一些示例笔记本，包括：
+
+1. **数据分析示例.ipynb**：展示如何加载和分析历史数据
+
+这些示例笔记本可以帮助您快速上手使用 Jupyter Notebook 进行数据分析和策略开发。
+
+### 注意事项
+
+1. Jupyter Notebook 服务运行在 Docker 容器中，数据保存在 notebooks 数据卷中
+2. 重启容器不会丢失 Notebook 文件，但请定期备份重要的 Notebook
+3. 在生产环境中，应设置 Jupyter Notebook 的访问密码
+4. 避免在 Notebook 中运行耗时的计算，这可能会影响其他服务的性能
+
+## 8. Docker 常用命令参考
 
 以下是一些常用的 Docker 命令，可以帮助您管理开发环境：
 
