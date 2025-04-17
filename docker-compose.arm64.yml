@@ -44,6 +44,7 @@ services:
       - SIMPLETRADE_API_PORT=8003
     networks:
       - simpletrade-network
+    command: ["python", "-m", "uvicorn", "simpletrade.api.server:app", "--host", "0.0.0.0", "--port", "8003", "--reload"]
     restart: unless-stopped
 
   frontend:
