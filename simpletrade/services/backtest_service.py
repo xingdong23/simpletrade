@@ -8,7 +8,7 @@ import logging
 from typing import Dict, List, Optional, Any, Union
 from datetime import datetime
 
-from vnpy.app.cta_strategy.backtesting import BacktestingEngine
+from vnpy_ctastrategy.backtesting import BacktestingEngine
 from vnpy.trader.constant import Interval
 
 from simpletrade.config.database import get_db

@@ -51,12 +51,13 @@ RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-aar
     echo ". /opt/conda/etc/profile.d/conda.sh" >> ~/.bashrc && \
     echo "conda activate base" >> ~/.bashrc
 
-# 配置 Conda 使用清华镜像源
-RUN conda config --add channels https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/free/ && \
-    conda config --add channels https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/main/ && \
-    conda config --add channels https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/ && \
-    conda config --add channels https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/bioconda/ && \
-    conda config --set show_channel_urls yes
+# 创建 .condarc 文件，强制使用清华镜像源并排除 defaults
+RUN echo "channels:" > /root/.condarc && \
+    echo "  - https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/" >> /root/.condarc && \
+    echo "  - https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/main/" >> /root/.condarc && \
+    echo "  - https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/free/" >> /root/.condarc && \
+    echo "show_channel_urls: true" >> /root/.condarc && \
+    echo "nodefaults: true" >> /root/.condarc # Ensure defaults channel is not used
 
 # 使用 Conda 安装 numpy 和 ta-lib
 RUN conda install -y -c conda-forge numpy ta-lib && \
@@ -82,22 +83,9 @@ RUN pip install --no-cache-dir -i https://mirrors.aliyun.com/pypi/simple/ --trus
     pip install --no-cache-dir -i https://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com matplotlib seaborn && \
     pip install --no-cache-dir -i https://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com pytest black flake8 isort mypy pylint
 
-# 安装vnpy核心（直接指定国内镜像源加速下载）
-RUN echo "Installing vnpy core..." && \
-    pip install --no-cache-dir -i https://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com vnpy && \
-    echo "Installing vnpy essential modules..." && \
-    pip install --no-cache-dir -i https://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com vnpy_cta_strategy vnpy_ctastrategy vnpy_datamanager vnpy_sqlite && \
-    echo "Installing vnpy network modules..." && \
-    pip install --no-cache-dir -i https://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com vnpy_rest vnpy_websocket && \
-    echo "Installing vnpy data modules..." && \
-    pip install --no-cache-dir -i https://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com vnpy_csv vnpy_mysql && \
-    echo "Installing vnpy optional modules (errors will be ignored)..." && \
-    pip install --no-cache-dir -i https://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com vnpy_ctp || echo "Failed to install vnpy_ctp, continuing..." && \
-    pip install --no-cache-dir -i https://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com vnpy_ib || echo "Failed to install vnpy_ib, continuing..." && \
-    pip install --no-cache-dir -i https://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com vnpy_tushare || echo "Failed to install vnpy_tushare, continuing..." && \
-    pip install --no-cache-dir -i https://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com vnpy_rqdata || echo "Failed to install vnpy_rqdata, continuing..." && \
-    pip install --no-cache-dir -i https://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com vnpy_jotdx || echo "Failed to install vnpy_jotdx, continuing..." && \
-    echo "VeighNa installation completed."
+# 使用 Conda 安装 vnpy 及核心模块 (从已配置的镜像源)
+RUN conda install -y vnpy vnpy-ctastrategy vnpy-sqlite vnpy-datamanager vnpy-rest vnpy-websocket vnpy-csv vnpy-mysql && \
+    conda clean -a -y
 
 # 创建常用目录
 RUN mkdir -p /app/data /app/logs /app/configs /app/notebooks

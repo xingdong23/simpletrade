@@ -7,7 +7,7 @@ SimpleTrade主引擎模块
 from vnpy.trader.engine import MainEngine
 from vnpy.event import EventEngine, Event
 from vnpy.trader.app import BaseApp
-from vnpy.app.cta_strategy import CtaStrategyApp
+from vnpy_ctastrategy import CtaStrategyApp
 
 class STMainEngine(MainEngine):
     """
