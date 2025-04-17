@@ -51,9 +51,16 @@ RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-aar
     echo ". /opt/conda/etc/profile.d/conda.sh" >> ~/.bashrc && \
     echo "conda activate base" >> ~/.bashrc
 
+# 配置 Conda 使用清华镜像源
+RUN conda config --add channels https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/free/ && \
+    conda config --add channels https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/main/ && \
+    conda config --add channels https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/ && \
+    conda config --add channels https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/bioconda/ && \
+    conda config --set show_channel_urls yes
+
 # 使用 Conda 安装 numpy 和 ta-lib
 RUN conda install -y -c conda-forge numpy ta-lib && \
-    conda clean -tipsy
+    conda clean -a -y
 
 # 配置pip使用国内镜像源（使用多个镜像源作为备选）
 RUN mkdir -p ~/.pip && \
