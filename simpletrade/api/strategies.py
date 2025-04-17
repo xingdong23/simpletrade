@@ -7,6 +7,7 @@ SimpleTrade策略API
 from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel, Field
+from datetime import date
 
 from simpletrade.config.database import get_db
 from simpletrade.models.database import Strategy, UserStrategy, BacktestRecord
@@ -44,6 +45,32 @@ class StrategyModel(BaseModel):
     complexity: int
     resource_requirement: int
     parameters: Dict[str, StrategyParameter]
+
+class CreateStrategyRequest(BaseModel):
+    """创建策略请求模型"""
+    name: str
+    description: Optional[str] = None
+    type: str
+    category: Optional[str] = None
+    parameters: Dict[str, Any]
+
+class CreateUserStrategyRequest(BaseModel):
+    """创建用户策略请求模型"""
+    user_id: int
+    strategy_id: int
+    name: str
+    parameters: Dict[str, Any]
+
+class BacktestRequest(BaseModel):
+    """运行回测请求模型"""
+    user_id: int
+    strategy_id: int
+    symbol: str
+    exchange: str
+    interval: str
+    start_date: date
+    end_date: date
+    initial_capital: float
 
 # API路由
 @router.get("/", response_model=ApiResponse)
