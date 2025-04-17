@@ -1,0 +1,149 @@
+# 使用Debian 11 (Bullseye)作为基础镜像
+FROM debian:bullseye-slim
+
+# 设置环境变量，避免交互式提示
+ENV DEBIAN_FRONTEND=noninteractive \
+    TZ=Asia/Shanghai \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1
+
+# 设置工作目录
+WORKDIR /app
+
+# 使用清华镜像源
+RUN echo "deb https://mirrors.tuna.tsinghua.edu.cn/debian/ bullseye main contrib non-free" > /etc/apt/sources.list && \
+    echo "deb https://mirrors.tuna.tsinghua.edu.cn/debian/ bullseye-updates main contrib non-free" >> /etc/apt/sources.list && \
+    echo "deb https://mirrors.tuna.tsinghua.edu.cn/debian/ bullseye-backports main contrib non-free" >> /etc/apt/sources.list && \
+    echo "deb https://mirrors.tuna.tsinghua.edu.cn/debian-security bullseye-security main contrib non-free" >> /etc/apt/sources.list
+
+# 安装系统依赖
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    build-essential \
+    gcc \
+    g++ \
+    git \
+    libssl-dev \
+    pkg-config \
+    wget \
+    curl \
+    netcat-openbsd \
+    vim \
+    nano \
+    htop \
+    procps \
+    iputils-ping \
+    net-tools \
+    telnet \
+    dnsutils \
+    lsof \
+    unzip \
+    python3 \
+    python3-pip \
+    python3-dev \
+    python3-setuptools \
+    python3-wheel \
+    && ln -sf /usr/bin/python3 /usr/bin/python \
+    && ln -sf /usr/bin/pip3 /usr/bin/pip \
+    && rm -rf /var/lib/apt/lists/*
+
+# 安装TA-Lib
+RUN cd /tmp && \
+    echo "Downloading TA-Lib..." && \
+    wget -q -O ta-lib-0.4.0-src.tar.gz https://gitee.com/mirrors/ta-lib/raw/master/ta-lib-0.4.0-src.tar.gz || \
+    wget -q -O ta-lib-0.4.0-src.tar.gz https://mirrors.tuna.tsinghua.edu.cn/gentoo/distfiles/ta-lib-0.4.0-src.tar.gz || \
+    wget -q -O ta-lib-0.4.0-src.tar.gz https://jztkft.dl.sourceforge.net/project/ta-lib/ta-lib/0.4.0/ta-lib-0.4.0-src.tar.gz && \
+    echo "Extracting TA-Lib..." && \
+    tar -xzf ta-lib-0.4.0-src.tar.gz && \
+    cd ta-lib/ && \
+    echo "Configuring TA-Lib..." && \
+    ./configure --prefix=/usr && \
+    echo "Building TA-Lib..." && \
+    make && \
+    echo "Installing TA-Lib..." && \
+    make install && \
+    cd /tmp && \
+    rm -rf ta-lib-0.4.0-src.tar.gz ta-lib/
+
+# 配置pip使用清华镜像源
+RUN mkdir -p ~/.pip && \
+    echo "[global]" > ~/.pip/pip.conf && \
+    echo "index-url = https://pypi.tuna.tsinghua.edu.cn/simple" >> ~/.pip/pip.conf && \
+    echo "trusted-host = pypi.tuna.tsinghua.edu.cn" >> ~/.pip/pip.conf
+
+# 升级pip
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel
+
+# 安装常用Python工具
+RUN pip install --no-cache-dir \
+    ipython \
+    jupyter \
+    notebook \
+    pandas \
+    numpy \
+    matplotlib \
+    seaborn \
+    scikit-learn \
+    statsmodels \
+    pytest \
+    black \
+    flake8 \
+    isort \
+    mypy \
+    pylint
+
+# 安装TA-Lib Python包
+RUN pip install --no-cache-dir ta-lib
+
+# 安装vnpy核心
+RUN echo "Installing vnpy..." && \
+    pip install --no-cache-dir vnpy && \
+    echo "Installing vnpy_cta_strategy..." && \
+    pip install --no-cache-dir vnpy_cta_strategy && \
+    echo "Installing vnpy_ctastrategy..." && \
+    pip install --no-cache-dir vnpy_ctastrategy && \
+    echo "Installing vnpy_datamanager..." && \
+    pip install --no-cache-dir vnpy_datamanager && \
+    echo "Installing vnpy_sqlite..." && \
+    pip install --no-cache-dir vnpy_sqlite && \
+    echo "Installing vnpy_rest..." && \
+    pip install --no-cache-dir vnpy_rest && \
+    echo "Installing vnpy_websocket..." && \
+    pip install --no-cache-dir vnpy_websocket && \
+    echo "Installing vnpy_csv..." && \
+    pip install --no-cache-dir vnpy_csv && \
+    echo "Installing vnpy_mysql..." && \
+    pip install --no-cache-dir vnpy_mysql && \
+    echo "Installing vnpy_ctp..." && \
+    pip install --no-cache-dir vnpy_ctp || echo "Failed to install vnpy_ctp, continuing..." && \
+    echo "Installing vnpy_ib..." && \
+    pip install --no-cache-dir vnpy_ib || echo "Failed to install vnpy_ib, continuing..." && \
+    echo "Installing vnpy_tushare..." && \
+    pip install --no-cache-dir vnpy_tushare || echo "Failed to install vnpy_tushare, continuing..." && \
+    echo "Installing vnpy_rqdata..." && \
+    pip install --no-cache-dir vnpy_rqdata || echo "Failed to install vnpy_rqdata, continuing..." && \
+    echo "Installing vnpy_jotdx..." && \
+    pip install --no-cache-dir vnpy_jotdx || echo "Failed to install vnpy_jotdx, continuing..."
+
+# 创建常用目录
+RUN mkdir -p /app/data /app/logs /app/configs /app/notebooks
+
+# 复制启动脚本
+COPY docker_scripts/ /app/docker_scripts/
+RUN chmod +x /app/docker_scripts/*.sh
+
+# 安装应用依赖
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# 验证vnpy安装
+RUN echo "Verifying VeighNa installation..." && \
+    python -c "import vnpy; print(f'VeighNa version: {vnpy.__version__}')" && \
+    python -c "from vnpy.trader.engine import MainEngine; print('VeighNa MainEngine imported successfully!')" || \
+    echo "VeighNa installation verification failed but continuing anyway"
+
+# 复制应用代码
+COPY . .
+
+# 设置环境变量
+ENV PYTHONPATH=/app

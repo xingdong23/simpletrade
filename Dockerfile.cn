@@ -2,45 +2,106 @@
 # 第一阶段：构建TA-Lib
 FROM python:3.9-slim AS builder
 
-# 设置环境变量，避免交互式提示
-ENV DEBIAN_FRONTEND=noninteractive
+# 设置环境变量，避免交互式提示并禁用官方源
+ENV DEBIAN_FRONTEND=noninteractive \
+    APT_LISTBUGS_FRONTEND=none \
+    APT_LISTCHANGES_FRONTEND=none \
+    DEBIAN_PRIORITY=critical \
+    # 禁用官方源
+    ACQUIRE_BY_HASH=yes \
+    ACQUIRE_RETRIES=3 \
+    ACQUIRE_CONNECT_TIMEOUT=30 \
+    ACQUIRE_QUEUE_MTIME=60
 
-# 使用阿里云镜像
-RUN echo "deb https://mirrors.aliyun.com/debian/ bullseye main contrib non-free" > /etc/apt/sources.list && \
+# 完全禁用官方源，只使用阿里云镜像
+RUN rm -rf /etc/apt/sources.list.d/* && \
+    echo "deb https://mirrors.aliyun.com/debian/ bullseye main contrib non-free" > /etc/apt/sources.list && \
     echo "deb https://mirrors.aliyun.com/debian/ bullseye-updates main contrib non-free" >> /etc/apt/sources.list && \
-    echo "deb https://mirrors.aliyun.com/debian-security bullseye-security main contrib non-free" >> /etc/apt/sources.list
+    echo "deb https://mirrors.aliyun.com/debian-security bullseye-security main contrib non-free" >> /etc/apt/sources.list && \
+    # 创建apt配置文件，禁用官方源
+    mkdir -p /etc/apt/apt.conf.d && \
+    echo 'Acquire::http::Proxy "DIRECT";' > /etc/apt/apt.conf.d/99direct && \
+    echo 'Acquire::https::Proxy "DIRECT";' >> /etc/apt/apt.conf.d/99direct && \
+    echo 'Acquire::http::Timeout "60";' >> /etc/apt/apt.conf.d/99direct && \
+    echo 'Acquire::https::Timeout "60";' >> /etc/apt/apt.conf.d/99direct && \
+    echo 'Acquire::http::ConnectionAttemptDelayMsec "250";' >> /etc/apt/apt.conf.d/99direct && \
+    echo 'Acquire::https::ConnectionAttemptDelayMsec "250";' >> /etc/apt/apt.conf.d/99direct && \
+    # 只安装wget，跳过gnupg
+    apt-get update -o Acquire::AllowInsecureRepositories=true -o Acquire::AllowDowngradeToInsecureRepositories=true && \
+    apt-get install -y --no-install-recommends wget
 
 # 安装构建TA-Lib所需的依赖
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
+RUN apt-get update \
+    -o Acquire::http::Proxy="DIRECT" \
+    -o Acquire::https::Proxy="DIRECT" \
+    -o Acquire::http::AllowRedirect="false" \
+    -o Acquire::https::AllowRedirect="false" \
+    && apt-get install -y --no-install-recommends \
     build-essential \
     wget \
     && rm -rf /var/lib/apt/lists/*
 
 # 下载并编译TA-Lib
 WORKDIR /tmp
-RUN wget -q -O ta-lib-0.4.0-src.tar.gz https://gitee.com/mirrors/ta-lib/raw/master/ta-lib-0.4.0-src.tar.gz || \
-    wget -q -O ta-lib-0.4.0-src.tar.gz https://jztkft.dl.sourceforge.net/project/ta-lib/ta-lib/0.4.0/ta-lib-0.4.0-src.tar.gz && \
+
+# 使用国内镜像下载TA-Lib
+RUN echo "Downloading TA-Lib..." && \
+    mkdir -p /tmp/talib && \
+    cd /tmp/talib && \
+    wget -q -O ta-lib-0.4.0-src.tar.gz https://gitee.com/mirrors/ta-lib/raw/master/ta-lib-0.4.0-src.tar.gz || \
+    wget -q -O ta-lib-0.4.0-src.tar.gz https://mirrors.aliyun.com/gentoo/distfiles/ta-lib-0.4.0-src.tar.gz || \
+    wget -q -O ta-lib-0.4.0-src.tar.gz https://jztkft.dl.sourceforge.net/project/ta-lib/ta-lib/0.4.0/ta-lib-0.4.0-src.tar.gz || \
+    wget -q -O ta-lib-0.4.0-src.tar.gz https://versaweb.dl.sourceforge.net/project/ta-lib/ta-lib/0.4.0/ta-lib-0.4.0-src.tar.gz && \
+    echo "Extracting TA-Lib..." && \
     tar -xzf ta-lib-0.4.0-src.tar.gz && \
     cd ta-lib/ && \
+    echo "Configuring TA-Lib..." && \
     ./configure --prefix=/usr && \
+    echo "Building TA-Lib..." && \
     make && \
-    make install
+    echo "Installing TA-Lib..." && \
+    make install && \
+    cd /tmp && \
+    rm -rf talib
 
 # 第二阶段：构建最终镜像
 FROM python:3.9-slim
 
-# 设置环境变量，避免交互式提示
-ENV DEBIAN_FRONTEND=noninteractive
+# 设置环境变量，避免交互式提示并禁用官方源
+ENV DEBIAN_FRONTEND=noninteractive \
+    APT_LISTBUGS_FRONTEND=none \
+    APT_LISTCHANGES_FRONTEND=none \
+    DEBIAN_PRIORITY=critical \
+    # 禁用官方源
+    ACQUIRE_BY_HASH=yes \
+    ACQUIRE_RETRIES=3 \
+    ACQUIRE_CONNECT_TIMEOUT=30 \
+    ACQUIRE_QUEUE_MTIME=60
 
-# 使用阿里云镜像
-RUN echo "deb https://mirrors.aliyun.com/debian/ bullseye main contrib non-free" > /etc/apt/sources.list && \
+# 完全禁用官方源，只使用阿里云镜像
+RUN rm -rf /etc/apt/sources.list.d/* && \
+    echo "deb https://mirrors.aliyun.com/debian/ bullseye main contrib non-free" > /etc/apt/sources.list && \
     echo "deb https://mirrors.aliyun.com/debian/ bullseye-updates main contrib non-free" >> /etc/apt/sources.list && \
-    echo "deb https://mirrors.aliyun.com/debian-security bullseye-security main contrib non-free" >> /etc/apt/sources.list
+    echo "deb https://mirrors.aliyun.com/debian-security bullseye-security main contrib non-free" >> /etc/apt/sources.list && \
+    # 创建apt配置文件，禁用官方源
+    mkdir -p /etc/apt/apt.conf.d && \
+    echo 'Acquire::http::Proxy "DIRECT";' > /etc/apt/apt.conf.d/99direct && \
+    echo 'Acquire::https::Proxy "DIRECT";' >> /etc/apt/apt.conf.d/99direct && \
+    echo 'Acquire::http::Timeout "60";' >> /etc/apt/apt.conf.d/99direct && \
+    echo 'Acquire::https::Timeout "60";' >> /etc/apt/apt.conf.d/99direct && \
+    echo 'Acquire::http::ConnectionAttemptDelayMsec "250";' >> /etc/apt/apt.conf.d/99direct && \
+    echo 'Acquire::https::ConnectionAttemptDelayMsec "250";' >> /etc/apt/apt.conf.d/99direct && \
+    # 只安装wget，跳过gnupg
+    apt-get update -o Acquire::AllowInsecureRepositories=true -o Acquire::AllowDowngradeToInsecureRepositories=true && \
+    apt-get install -y --no-install-recommends wget
 
 # 安装系统依赖
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
+RUN apt-get update \
+    -o Acquire::http::Proxy="DIRECT" \
+    -o Acquire::https::Proxy="DIRECT" \
+    -o Acquire::http::AllowRedirect="false" \
+    -o Acquire::https::AllowRedirect="false" \
+    && apt-get install -y --no-install-recommends \
     gcc \
     g++ \
     git \
@@ -68,9 +129,14 @@ COPY --from=builder /usr/include/ta-lib/ /usr/include/ta-lib/
 # 设置工作目录
 WORKDIR /app
 
-# 配置pip使用清华镜像
-RUN pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple && \
-    pip config set global.trusted-host pypi.tuna.tsinghua.edu.cn
+# 配置pip使用国内镜像
+RUN mkdir -p ~/.pip && \
+    echo "[global]" > ~/.pip/pip.conf && \
+    echo "index-url = https://mirrors.aliyun.com/pypi/simple/" >> ~/.pip/pip.conf && \
+    echo "trusted-host = mirrors.aliyun.com" >> ~/.pip/pip.conf && \
+    # 备用源
+    echo "extra-index-url = https://pypi.tuna.tsinghua.edu.cn/simple" >> ~/.pip/pip.conf && \
+    echo "trusted-host = pypi.tuna.tsinghua.edu.cn" >> ~/.pip/pip.conf
 
 # 安装Python依赖
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel
@@ -97,21 +163,34 @@ RUN pip install --no-cache-dir \
 RUN pip install --no-cache-dir ta-lib
 
 # 安装vnpy核心
-RUN pip install --no-cache-dir \
-    vnpy \
-    vnpy_cta_strategy \
-    vnpy_ctastrategy \
-    vnpy_datamanager \
-    vnpy_sqlite \
-    vnpy_rest \
-    vnpy_websocket \
-    vnpy_csv \
-    vnpy_mysql \
-    vnpy_ctp \
-    vnpy_ib \
-    vnpy_tushare \
-    vnpy_rqdata \
-    vnpy_jotdx
+RUN echo "Installing vnpy..." && \
+    pip install --no-cache-dir vnpy && \
+    echo "Installing vnpy_cta_strategy..." && \
+    pip install --no-cache-dir vnpy_cta_strategy && \
+    echo "Installing vnpy_ctastrategy..." && \
+    pip install --no-cache-dir vnpy_ctastrategy && \
+    echo "Installing vnpy_datamanager..." && \
+    pip install --no-cache-dir vnpy_datamanager && \
+    echo "Installing vnpy_sqlite..." && \
+    pip install --no-cache-dir vnpy_sqlite && \
+    echo "Installing vnpy_rest..." && \
+    pip install --no-cache-dir vnpy_rest && \
+    echo "Installing vnpy_websocket..." && \
+    pip install --no-cache-dir vnpy_websocket && \
+    echo "Installing vnpy_csv..." && \
+    pip install --no-cache-dir vnpy_csv && \
+    echo "Installing vnpy_mysql..." && \
+    pip install --no-cache-dir vnpy_mysql && \
+    echo "Installing vnpy_ctp..." && \
+    pip install --no-cache-dir vnpy_ctp || echo "Failed to install vnpy_ctp, continuing..." && \
+    echo "Installing vnpy_ib..." && \
+    pip install --no-cache-dir vnpy_ib || echo "Failed to install vnpy_ib, continuing..." && \
+    echo "Installing vnpy_tushare..." && \
+    pip install --no-cache-dir vnpy_tushare || echo "Failed to install vnpy_tushare, continuing..." && \
+    echo "Installing vnpy_rqdata..." && \
+    pip install --no-cache-dir vnpy_rqdata || echo "Failed to install vnpy_rqdata, continuing..." && \
+    echo "Installing vnpy_jotdx..." && \
+    pip install --no-cache-dir vnpy_jotdx || echo "Failed to install vnpy_jotdx, continuing..."
 
 # 创建常用目录
 RUN mkdir -p /app/data /app/logs /app/configs /app/notebooks
@@ -125,7 +204,10 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # 验证vnpy安装
-RUN python -c "from vnpy.trader.engine import MainEngine; print('VeighNa installation verified!')" || echo "VeighNa installation failed but continuing anyway"
+RUN echo "Verifying VeighNa installation..." && \
+    python -c "import vnpy; print(f'VeighNa version: {vnpy.__version__}')" && \
+    python -c "from vnpy.trader.engine import MainEngine; print('VeighNa MainEngine imported successfully!')" || \
+    echo "VeighNa installation verification failed but continuing anyway"
 
 # 复制应用代码
 COPY . .

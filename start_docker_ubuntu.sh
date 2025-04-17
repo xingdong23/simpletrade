@@ -55,7 +55,7 @@ if docker ps | grep -q "simpletrade"; then
   echo
   if [[ $REPLY =~ ^[Yy]$ ]]; then
     print_message "停止现有容器..."
-    docker-compose -f docker-compose.cn.yml down
+    docker-compose -f docker-compose.ubuntu.yml down
   else
     print_message "操作已取消。"
     exit 0
@@ -66,36 +66,35 @@ fi
 print_message "清理Docker缓存..."
 docker system prune -f > /dev/null 2>&1
 
-# 强制重新构建镜像
-print_message "使用国内镜像构建并启动服务..."
+# 启动服务
+print_message "使用Ubuntu基础镜像构建并启动服务..."
 
 # 先启动MySQL服务
 print_message "启动MySQL服务..."
-docker-compose -f docker-compose.cn.yml up -d mysql
+docker-compose -f docker-compose.ubuntu.yml up -d mysql
 
 # 等待MySQL服务启动
 print_message "等待MySQL服务启动..."
 sleep 10
 
 # 构建并启动前端服务
-print_message "构建并启动前端服务..."
-docker-compose -f docker-compose.cn.yml up -d frontend
+print_message "启动前端服务..."
+docker-compose -f docker-compose.ubuntu.yml up -d frontend
 
-# 使用现有的镜像启动API服务
-print_message "启动API服务..."
-docker-compose -f docker-compose.cn.yml up -d api
+# 构建并启动API服务
+print_message "构建并启动API服务..."
+docker-compose -f docker-compose.ubuntu.yml build --no-cache api
+docker-compose -f docker-compose.ubuntu.yml up -d api
 
-# 使用现有的镜像启动Jupyter服务
-print_message "启动Jupyter服务..."
-docker-compose -f docker-compose.cn.yml up -d jupyter
-
-print_warning "注意：由于依赖冲突问题，我们暂时使用现有的镜像启动服务。"
-print_warning "如果需要完整的功能，请使用原始的start_docker.sh脚本。"
+# 构建并启动Jupyter服务
+print_message "构建并启动Jupyter服务..."
+docker-compose -f docker-compose.ubuntu.yml build --no-cache jupyter
+docker-compose -f docker-compose.ubuntu.yml up -d jupyter
 
 # 检查服务是否成功启动
 if [ $? -eq 0 ]; then
   print_success "SimpleTrade服务已成功启动！"
-
+  
   # 显示服务信息
   print_message "服务信息："
   echo "--------------------------------------"
@@ -110,16 +109,16 @@ if [ $? -eq 0 ]; then
   echo "--------------------------------------"
   echo
   echo "您可以使用以下命令查看容器状态："
-  echo "  docker-compose -f docker-compose.cn.yml ps"
+  echo "  docker-compose -f docker-compose.ubuntu.yml ps"
   echo
   echo "您可以使用以下命令查看容器日志："
-  echo "  docker-compose -f docker-compose.cn.yml logs api"
-  echo "  docker-compose -f docker-compose.cn.yml logs frontend"
-  echo "  docker-compose -f docker-compose.cn.yml logs mysql"
-  echo "  docker-compose -f docker-compose.cn.yml logs jupyter"
+  echo "  docker-compose -f docker-compose.ubuntu.yml logs api"
+  echo "  docker-compose -f docker-compose.ubuntu.yml logs frontend"
+  echo "  docker-compose -f docker-compose.ubuntu.yml logs mysql"
+  echo "  docker-compose -f docker-compose.ubuntu.yml logs jupyter"
   echo
   echo "您可以使用以下命令停止服务："
-  echo "  docker-compose -f docker-compose.cn.yml down"
+  echo "  docker-compose -f docker-compose.ubuntu.yml down"
   echo "--------------------------------------"
 else
   print_error "启动服务时出错。请检查日志获取详细信息。"

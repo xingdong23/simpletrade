@@ -1,0 +1,97 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: simpletrade-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${SIMPLETRADE_DB_PASSWORD:-Cz159csa}
+      MYSQL_DATABASE: ${SIMPLETRADE_DB_NAME:-simpletrade}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./mysql-init:/docker-entrypoint-initdb.d
+    networks:
+      - simpletrade-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "${SIMPLETRADE_DB_USER:-root}", "-p${SIMPLETRADE_DB_PASSWORD:-Cz159csa}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.debian11
+    container_name: simpletrade-api
+    depends_on:
+      mysql:
+        condition: service_healthy
+    ports:
+      - "8003:8003"
+    volumes:
+      - .:/app
+      - data-volume:/app/data
+      - logs-volume:/app/logs
+      - configs-volume:/app/configs
+    environment:
+      - PYTHONPATH=/app
+      - SIMPLETRADE_DB_HOST=mysql
+      - SIMPLETRADE_DB_PORT=3306
+      - SIMPLETRADE_DB_USER=${SIMPLETRADE_DB_USER:-root}
+      - SIMPLETRADE_DB_PASSWORD=${SIMPLETRADE_DB_PASSWORD:-Cz159csa}
+      - SIMPLETRADE_DB_NAME=${SIMPLETRADE_DB_NAME:-simpletrade}
+      - SIMPLETRADE_API_PORT=8003
+    networks:
+      - simpletrade-network
+    restart: unless-stopped
+
+  frontend:
+    image: node:16
+    container_name: simpletrade-frontend
+    working_dir: /app
+    volumes:
+      - ./web-frontend:/app
+    ports:
+      - "8080:8080"
+    command: bash -c "npm install --legacy-peer-deps && npm run serve"
+    depends_on:
+      - api
+    networks:
+      - simpletrade-network
+    restart: unless-stopped
+
+  jupyter:
+    build:
+      context: .
+      dockerfile: Dockerfile.debian11
+    container_name: simpletrade-jupyter
+    command: /app/docker_scripts/start_jupyter.sh
+    ports:
+      - "8888:8888"
+    volumes:
+      - .:/app
+      - data-volume:/app/data
+      - notebooks-volume:/app/notebooks
+    environment:
+      - PYTHONPATH=/app
+      - SIMPLETRADE_DB_HOST=mysql
+      - SIMPLETRADE_DB_PORT=3306
+      - SIMPLETRADE_DB_USER=${SIMPLETRADE_DB_USER:-root}
+      - SIMPLETRADE_DB_PASSWORD=${SIMPLETRADE_DB_PASSWORD:-Cz159csa}
+      - SIMPLETRADE_DB_NAME=${SIMPLETRADE_DB_NAME:-simpletrade}
+    networks:
+      - simpletrade-network
+    depends_on:
+      - mysql
+    restart: unless-stopped
+
+networks:
+  simpletrade-network:
+
+volumes:
+  mysql-data:
+  data-volume:
+  logs-volume:
+  configs-volume:
+  notebooks-volume:
