@@ -12,11 +12,11 @@ import logging
 from typing import Dict, List, Type, Any, Optional
 
 # 导入 vnpy 内置策略
-from vnpy.app.cta_strategy.strategies.atr_rsi_strategy import AtrRsiStrategy
-from vnpy.app.cta_strategy.strategies.boll_channel_strategy import BollChannelStrategy
-from vnpy.app.cta_strategy.strategies.double_ma_strategy import DoubleMaStrategy
-from vnpy.app.cta_strategy.strategies.turtle_signal_strategy import TurtleSignalStrategy
-from vnpy.app.cta_strategy.template import CtaTemplate
+from vnpy_ctastrategy.strategies.atr_rsi_strategy import AtrRsiStrategy
+from vnpy_ctastrategy.strategies.boll_channel_strategy import BollChannelStrategy
+from vnpy_ctastrategy.strategies.double_ma_strategy import DoubleMaStrategy
+from vnpy_ctastrategy.strategies.turtle_signal_strategy import TurtleSignalStrategy
+from vnpy_ctastrategy.template import CtaTemplate
 
 # 导入自定义策略
 # 如果有自定义策略，可以在这里导入

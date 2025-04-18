@@ -4,7 +4,8 @@
 基于双均线的交易策略，当快速均线上穿慢速均线时做多，下穿时做空。
 """
 
-from vnpy.app.cta_strategy.template import CtaTemplate
+# from vnpy.app.cta_strategy.template import CtaTemplate
+from vnpy_ctastrategy.template import CtaTemplate
 from vnpy.trader.object import BarData
 from vnpy.trader.constant import Interval, Direction
 from vnpy.trader.utility import ArrayManager

@@ -8,6 +8,7 @@ from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel, Field
 from datetime import date
+from sqlalchemy.orm import Session
 
 from simpletrade.config.database import get_db
 from simpletrade.models.database import Strategy, UserStrategy, BacktestRecord
@@ -15,6 +16,23 @@ from simpletrade.services.strategy_service import StrategyService
 from simpletrade.services.backtest_service import BacktestService
 from simpletrade.services.monitor_service import MonitorService
 from simpletrade.core.engine import STMainEngine
+
+# 定义依赖注入函数
+def get_strategy_service(db: Session = Depends(get_db)) -> StrategyService:
+    return StrategyService(db=db)
+
+# 假设 MonitorService 和 BacktestService 也需要 db
+def get_monitor_service(db: Session = Depends(get_db)) -> MonitorService:
+    # 这里需要 MonitorService 的实际实现
+    # return MonitorService(db=db)
+    # 暂时返回一个模拟对象或引发未实现错误
+    raise NotImplementedError("MonitorService dependency not fully implemented")
+
+def get_backtest_service(db: Session = Depends(get_db)) -> BacktestService:
+    # 这里需要 BacktestService 的实际实现
+    # return BacktestService(db=db)
+    # 暂时返回一个模拟对象或引发未实现错误
+    raise NotImplementedError("BacktestService dependency not fully implemented")
 
 # 创建路由器
 router = APIRouter(prefix="/api/strategies", tags=["strategies"])

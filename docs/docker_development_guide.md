@@ -665,9 +665,9 @@ docker-compose -f docker-compose.arm64.yml build $REBUILD api
 
 根据您的系统架构和偏好选择适合的启动脚本：
 
-1. **Apple Silicon Mac (M1/M2/M3/M4)**：使用 `./start_docker_arm64.sh`
-2. **Intel Mac 或其他 x86_64 系统**：可以使用 `./start_docker_debian11.sh` 或 `./start_docker_ubuntu.sh`
-3. **如果遇到问题**：尝试不同的脚本，或使用 `--rebuild` 选项强制重新构建
+1. **Apple Silicon Mac (M1/M2/M3/M4)**：**必须**使用 `./start_docker_arm64.sh`。这个脚本是为了确保使用 ARM64 兼容的配置 (`docker-compose.arm64.yml` 和 `Dockerfile.arm64`)。**切勿**直接运行 `docker-compose up` 或使用非 arm64 的脚本，否则可能导致运行时错误、性能问题或构建失败。
+2. **Intel Mac 或其他 x86_64 系统**：可以使用 `./start_docker_debian11.sh` 或 `./start_docker_ubuntu.sh`。
+3. **如果遇到问题**：尝试使用 `--rebuild` 选项强制重新构建（例如 `./start_docker_arm64.sh --rebuild`）。
 
 ## 3. 构建和启动开发环境
 
@@ -719,29 +719,47 @@ docker-compose -f docker-compose.arm64.yml build $REBUILD api
    chmod +x docker_scripts/*.sh
    ```
 
-6. **启动开发环境**
+6. **启动开发环境 (关键步骤)**
 
-   有两种方式启动开发环境：
+   **对于 Apple Silicon (ARM64) Mac 用户:**
 
-   **方式 1: 使用启动脚本（推荐）**
+   **必须**使用为 ARM64 优化的启动方式，以确保兼容性和性能。
+
+   *   **推荐方式: 使用启动脚本**
+       ```bash
+       # 给脚本添加执行权限 (首次执行前)
+       chmod +x ./start_docker_arm64.sh
+
+       # 运行启动脚本
+       ./start_docker_arm64.sh
+       ```
+       这个脚本会自动处理使用 `docker-compose.arm64.yml` 文件和相关的 Dockerfile (`Dockerfile.arm64`) 来构建和启动服务。
+
+   *   **手动方式 (等效于脚本):**
+       ```bash
+       # 首次启动或修改了 Dockerfile/依赖后需要 --build
+       docker-compose -f docker-compose.arm64.yml up --build api
+
+       # 后续如果只是代码变动，可以省略 --build
+       # docker-compose -f docker-compose.arm64.yml up api
+       ```
+       **务必**使用 `-f docker-compose.arm64.yml` 参数指定正确的配置文件。
+
+   *   **错误的方式 (请避免):**
+       **切勿**在 ARM64 Mac 上直接运行 `docker-compose up` 或 `docker-compose up --build`。这会默认使用 `docker-compose.yml` 和 `Dockerfile`，它们可能不兼容 ARM64，导致之前遇到的各种错误。
+
+   **对于 Intel Mac 或其他 x86_64 系统用户:**
+
+   可以使用默认的启动脚本或命令：
 
    ```bash
-   # 给脚本添加执行权限
-   chmod +x start_docker.sh
-
-   # 运行启动脚本
+   # 使用默认启动脚本
+   chmod +x ./start_docker.sh
    ./start_docker.sh
+
+   # 或者直接使用 docker-compose
+   # docker-compose up --build
    ```
-
-   这种方式会自动检查 `.env` 文件，并启动所有必要的服务，包括 MySQL 数据库、API 服务和前端服务。
-
-   **方式 2: 直接使用 docker-compose 命令**
-
-   ```bash
-   docker-compose up --build
-   ```
-
-   第一次构建可能需要 10-15 分钟，因为它需要下载基础镜像、安装依赖等。后续启动会更快。
 
 7. **等待服务启动**
 
@@ -927,20 +945,20 @@ Docker 使用分层缓存机制来加速构建过程。了解这一机制对于�
 
 ## 4. 开发工作流
 
-使用 Docker 进行开发的工作流程如下：
+使用 Docker 进行开发的工作流程如下（以 ARM64 Mac 为例，其他架构类似但需使用对应配置）：
 
 ### 编辑代码和自动重载
 
-您可以使用您喜欢的编辑器（如 VS Code、PyCharm 等）在主机上编辑代码。由于我们使用了卷挂载，您在主机上对代码的修改会立即反映到容器中。
+您可以使用您喜欢的编辑器（如 VS Code、PyCharm 等）在主机上编辑代码。由于我们在 `docker-compose.arm64.yml` 中配置了卷挂载 (`.:/app`)，您在主机上对代码的修改会**实时反映**到正在运行的容器中。
 
 #### 代码自动重载机制
 
-开发环境配置了代码自动重载机制，这意味着您只需要启动一次服务，系统会自动监控代码变化并重新加载：
+当使用**正确**的配置（如 `docker-compose.arm64.yml`）启动时，开发环境配置了代码自动重载机制：
 
 1. **后端 API 服务（FastAPI）**：
-   - API 服务使用 Uvicorn 的开发模式运行，带有 `--reload` 选项
-   - 当您修改后端 Python 代码时，服务会自动重启
-   - 这是在 `docker_scripts/start_api.sh` 脚本中配置的
+   - API 服务使用 Uvicorn 的 `--reload` 选项运行。
+   - 当您修改并保存后端 Python (`.py`) 文件时，Uvicorn 会检测到变化并**自动重新加载**服务进程。您应该能在日志中看到重载信息。
+   - 这通常意味着修改 Python 代码后**不需要手动重启**。
 
 2. **前端服务（Vue.js）**：
    - 前端使用 Vue CLI 的开发服务器，它会自动监控文件变化
@@ -963,13 +981,30 @@ async def hello():
 
 保存文件后，由于我们使用了 `--reload` 参数，服务器会自动重新加载，您可以立即在浏览器中看到更改的效果。
 
-#### 注意事项
+#### 修改文件后的处理逻辑 (重要)
 
-1. **仅适用于代码文件变化**：自动重载仅对代码文件的变化生效。如果您修改了 Dockerfile、docker-compose 文件或添加了新的系统依赖，您需要重新构建镜像。
+根据您修改的文件类型，决定是否需要手动操作：
 
-2. **新依赖处理**：如果您添加了新的 Python 依赖，您可以直接在容器内安装（`docker exec -it simpletrade-api pip install 新依赖`），或者更新 requirements.txt 并重新构建。
+1.  **修改 Python 代码 (`.py` 文件):**
+    *   **通常无需操作:** 服务会自动重载。观察日志确认重载发生。
+    *   **手动重启 (特殊情况):** 如果自动重载未生效或遇到问题，可以手动重启 `api` 服务（这比停止再启动更快）：
+        ```bash
+        docker-compose -f docker-compose.arm64.yml restart api
+        ```
 
-3. **数据库模式变化**：如果您修改了数据库模式，可能需要手动运行迁移脚本或重新初始化数据库。
+2.  **修改 Docker 配置 (如 `Dockerfile.arm64`, `docker-compose.arm64.yml`):**
+    *   **需要重新构建和重启:** 这些文件定义了镜像或容器运行方式。
+        ```bash
+        # 停止当前容器
+        docker-compose -f docker-compose.arm64.yml down
+        # 使用构建方式重新启动
+        docker-compose -f docker-compose.arm64.yml up --build api
+        # 或者直接运行启动脚本
+        # ./start_docker_arm64.sh
+        ```
+
+3.  **修改依赖 (如 `requirements.txt` 或 conda 环境文件):**
+    *   **需要重新构建和重启:** 同上，需要更新镜像内容。使用 `--build` 选项。
 
 #### 卷挂载工作原理
 
@@ -1000,18 +1035,20 @@ async def hello():
 
 ### 查看日志
 
-Docker 容器的日志会实时显示在终端中。如果您在另一个终端中启动了容器，可以使用以下命令查看日志：
-
-```bash
-docker-compose logs -f
-```
+*   **启动时前台运行:** 如果您使用 `./start_docker_arm64.sh` 或 `docker-compose -f docker-compose.arm64.yml up ...` 启动且未加 `-d`，日志会直接输出到当前终端。
+*   **后台运行或另开终端:** 使用以下命令实时查看 `api` 服务的日志：
+    ```bash
+    # 务必带上 -f docker-compose.arm64.yml 指定正确的配置文件
+    docker-compose -f docker-compose.arm64.yml logs -f api
+    ```
 
 ### 停止开发环境
 
-当您完成开发时，可以按 `Ctrl+C` 停止容器，或者在另一个终端中运行：
+当您完成开发时，可以按 `Ctrl+C` (如果前台运行) 停止容器，或者在另一个终端中运行：
 
 ```bash
-docker-compose down
+# 务必带上 -f docker-compose.arm64.yml 指定正确的配置文件
+docker-compose -f docker-compose.arm64.yml down
 ```
 
 ## 5. 常见问题解决
@@ -1056,9 +1093,11 @@ docker-compose build --no-cache
 
 如果代码更改没有反映到容器中，可能是卷挂载问题。解决方案：
 
-1. 确保 `docker-compose.yml` 文件中的卷挂载配置正确
-2. 重新启动容器
-3. 检查 Colima 的文件共享设置
+1. 确保 `docker-compose.arm64.yml` (或您架构对应的文件) 中的卷挂载配置正确 (`.:/app`)。
+2. **检查是否使用了正确的配置文件启动？** (尤其在 ARM64 Mac 上，确认使用了 `-f docker-compose.arm64.yml` 或 `./start_docker_arm64.sh`)。
+3. 尝试手动重启服务：`docker-compose -f docker-compose.arm64.yml restart api`。
+4. 尝试完全重启容器：`docker-compose -f docker-compose.arm64.yml down` 然后 `up`。
+5. 检查 Colima 的文件共享设置（较少见）。
 
 ## 6. 跨平台开发注意事项
 
@@ -1082,12 +1121,11 @@ Docker 的一个主要优势是能够在不同架构的机器上提供一致的�
      ```
      注意在 Intel Mac 上不需要指定 `--arch` 参数。
 
-3. **构建和启动容器**：在两台机器上使用相同的命令：
-   ```bash
-   docker-compose up --build
-   ```
+3. **构建和启动容器**：
+   - 在 M4 Mac 上：**必须**使用 `./start_docker_arm64.sh` 或 `docker-compose -f docker-compose.arm64.yml up --build ...`
+   - 在 Intel Mac 上：可以使用 `./start_docker.sh` 或 `docker-compose up --build ...`
 
-Docker 会自动处理架构差异，因为我们使用的是支持多架构的基础镜像。
+Docker 会根据使用的 Dockerfile (如 `Dockerfile.arm64` vs `Dockerfile`) 处理架构差异。
 
 ### 性能考虑
 
@@ -1149,25 +1187,30 @@ Jupyter Notebook 是一个交互式的开发环境，可用于数据分析、策
 
 ## 8. Docker 常用命令参考
 
-以下是一些常用的 Docker 命令，可以帮助您管理开发环境：
+以下是一些常用的 Docker 命令，可以帮助您管理开发环境。
+
+**注意:** 如果您在 **ARM64 Mac** 上操作，并且项目使用了特定的 `arm64` 配置文件，记得在 `docker-compose` 命令后添加 `-f docker-compose.arm64.yml` 参数，例如：`docker-compose -f docker-compose.arm64.yml ps`。
 
 ### 构建和启动容器
 
 ```bash
-# 构建并启动容器
+# 构建并启动容器 (使用默认 compose 文件)
 docker-compose up --build
 
-# 在后台启动容器
+# 构建并启动容器 (使用特定 compose 文件, e.g., for ARM64)
+docker-compose -f docker-compose.arm64.yml up --build
+
+# 在后台启动容器 (根据需要添加 -f)
 docker-compose up -d
 
-# 只构建镜像，不启动容器
+# 只构建镜像，不启动容器 (根据需要添加 -f)
 docker-compose build
 ```
 
 ### 管理容器
 
 ```bash
-# 停止容器
+# 停止容器 (根据需要添加 -f)
 docker-compose down
 
 # 查看运行中的容器
@@ -1176,38 +1219,15 @@ docker ps
 # 查看所有容器（包括已停止的）
 docker ps -a
 
-# 查看容器日志
-docker-compose logs -f
+# 查看容器日志 (根据需要添加 -f)
+docker-compose logs -f <service_name>
+# 例如: docker-compose -f docker-compose.arm64.yml logs -f api
 
-# 进入容器
-docker-compose exec api bash
+# 进入容器 (根据需要添加 -f)
+docker-compose exec <service_name> bash
+# 例如: docker-compose -f docker-compose.arm64.yml exec api bash
 ```
 
 ### 管理镜像
 
-```bash
-# 查看所有镜像
-docker images
-
-# 删除未使用的镜像
-docker image prune
-
-# 删除所有未使用的资源
-docker system prune
 ```
-
-### 卷和网络
-
-```bash
-# 查看卷
-docker volume ls
-
-# 查看网络
-docker network ls
-```
-
-## 结论
-
-使用 Docker 进行开发可以确保在不同机器上有一致的开发体验，避免"在我的机器上能运行"的问题。通过本指南中的步骤，您可以在 M4 Mac 和 Intel Mac 上设置相同的开发环境，并使用相同的工作流进行开发。
-
-如果您遇到任何问题，请参考"常见问题解决"部分，或者查阅 [Docker 官方文档](https://docs.docker.com/)。

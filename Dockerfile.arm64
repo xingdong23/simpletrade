@@ -51,13 +51,13 @@ RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-aar
     echo ". /opt/conda/etc/profile.d/conda.sh" >> ~/.bashrc && \
     echo "conda activate base" >> ~/.bashrc
 
-# 创建 .condarc 文件，强制使用清华镜像源并排除 defaults
-RUN echo "channels:" > /root/.condarc && \
-    echo "  - https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/" >> /root/.condarc && \
-    echo "  - https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/main/" >> /root/.condarc && \
-    echo "  - https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/free/" >> /root/.condarc && \
-    echo "show_channel_urls: true" >> /root/.condarc && \
-    echo "nodefaults: true" >> /root/.condarc # Ensure defaults channel is not used
+# 创建 .condarc 文件到 Conda 安装目录，强制使用清华镜像源并排除 defaults
+RUN echo "channels:" > /opt/conda/.condarc && \
+    echo "  - https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge/" >> /opt/conda/.condarc && \
+    echo "  - https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/main/" >> /opt/conda/.condarc && \
+    echo "  - https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/free/" >> /opt/conda/.condarc && \
+    echo "show_channel_urls: true" >> /opt/conda/.condarc && \
+    echo "nodefaults: true" >> /opt/conda/.condarc # Ensure defaults channel is not used
 
 # 使用 Conda 安装 numpy 和 ta-lib (从已配置的镜像源)
 RUN conda install -y numpy ta-lib && \
@@ -91,7 +91,6 @@ RUN pip install --no-cache-dir -i https://mirrors.aliyun.com/pypi/simple/ --trus
     vnpy-datamanager \
     vnpy-rest \
     vnpy-websocket \
-    vnpy-csv \
     vnpy-mysql
 
 # 创建常用目录
