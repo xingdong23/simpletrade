@@ -1331,3 +1331,114 @@ export default {
   border-radius: 4px;
 }
 </style>
+
+<style scoped>
+/* 在这里添加组件的局部样式 */
+.strategy-card {
+  /* 设置最小高度以统一卡片布局 */
+  min-height: 300px; /* 您可能需要根据实际内容调整此值 */
+  height: 100%; /* 尝试让卡片填满其列的高度 */
+  display: flex;
+  flex-direction: column;
+}
+
+.strategy-card .el-card__body {
+  /* 让卡片主体内容区域能够伸缩 */
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 15px; /* 可以根据需要调整内边距 */
+}
+
+.strategy-card-content {
+  /* 假设这是包裹卡片主要内容的 div */
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between; /* 将内容推开，使按钮组保持在底部 */
+}
+
+.strategy-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.strategy-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0;
+  flex-grow: 1; /* 让标题占据多余空间 */
+  margin-right: 10px; /* 与标签保持间距 */
+}
+
+.strategy-description {
+  font-size: 13px;
+  color: #606266;
+  line-height: 1.5;
+  margin-bottom: 15px;
+  /* 如果描述过长，可以考虑限制行数并显示省略号 */
+  /*
+  display: -webkit-box;
+  -webkit-line-clamp: 3; 
+  -webkit-box-orient: vertical;  
+  overflow: hidden;
+  text-overflow: ellipsis;
+  */
+}
+
+.strategy-metrics,
+.strategy-complexity,
+.strategy-resources {
+  font-size: 12px;
+  color: #909399;
+  margin-bottom: 8px;
+}
+
+.metric {
+  margin-right: 15px;
+}
+
+.metric-value {
+  font-weight: bold;
+}
+
+.metric-value.positive {
+  color: #67c23a; /* 绿色表示正向指标 */
+}
+
+.metric-value.negative {
+  color: #f56c6c; /* 红色表示负向指标 */
+}
+
+.strategy-actions {
+  margin-top: auto; /* 将按钮组推到底部 */
+  padding-top: 10px; /* 与上方内容保持间距 */
+  border-top: 1px solid #ebeef5; /* 可选：添加分隔线 */
+  text-align: right; /* 让按钮靠右 */
+}
+
+.component-tabs > .el-tabs__content {
+  padding: 20px;
+}
+
+.backtest-section .el-card {
+  margin-bottom: 20px;
+}
+
+.chart-container {
+  height: 400px; /* 为图表设置固定高度 */
+}
+
+/* 优化标签页样式 */
+.el-tabs--border-card > .el-tabs__header .el-tabs__item.is-active {
+    color: #409EFF; /* Element Plus 主题蓝 */
+    font-weight: bold;
+}
+
+.el-tabs--border-card > .el-tabs__header .el-tabs__item {
+    color: #606266;
+}
+
+</style>
