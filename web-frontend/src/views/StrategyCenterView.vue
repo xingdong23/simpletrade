@@ -498,7 +498,7 @@ class MyStrategy(CtaTemplate):
         </el-card>
       </el-tab-pane>
 
-      <el-tab-pane label="我的策略" name="my-strategies">
+      <el-tab-pane label="我的策略" name="my-strategies" v-loading="myStrategiesLoading">
         <div style="margin-bottom: 20px;">
           <el-row type="flex" justify="space-between" align="middle">
             <el-col :span="12">
@@ -510,32 +510,18 @@ class MyStrategy(CtaTemplate):
           </el-row>
         </div>
 
-        <el-table :data="myStrategies" style="width: 100%" border>
+        <el-table :data="myStrategiesList" style="width: 100%" border>
           <el-table-column prop="name" label="策略名称" width="180"></el-table-column>
           <el-table-column prop="type" label="类型" width="120">
             <template slot-scope="scope">
-              <el-tag :type="scope.row.type === 'CTA策略' ? 'primary' : 'success'" size="small">{{ scope.row.type }}</el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column prop="createTime" label="创建时间" width="180"></el-table-column>
-          <el-table-column prop="status" label="状态" width="120">
-            <template slot-scope="scope">
-              <el-tag :type="scope.row.status === '运行中' ? 'success' : scope.row.status === '待运行' ? 'warning' : 'info'" size="small">{{ scope.row.status }}</el-tag>
+              <el-tag size="small">{{ scope.row.type }}</el-tag>
             </template>
           </el-table-column>
           <el-table-column label="操作">
             <template slot-scope="scope">
-              <el-button size="mini" type="text" @click="navigateToDetail(scope.row.id || 'strategy' + $index)">查看</el-button>
+              <el-button size="mini" type="text" @click="navigateToDetail(scope.row.id)">查看</el-button>
               <el-button size="mini" type="text" @click="handleBacktest(scope.row)">回测</el-button>
               <el-button size="mini" type="text" @click="handleOptimize(scope.row)">优化</el-button>
-              <el-button
-                size="mini"
-                type="text"
-                :type="scope.row.status === '运行中' ? 'danger' : 'success'"
-                @click="handleAction(scope.row)"
-              >
-                {{ scope.row.status === '运行中' ? '停止' : '启动' }}
-              </el-button>
             </template>
           </el-table-column>
         </el-table>
@@ -864,7 +850,7 @@ class MyStrategy(CtaTemplate):
 
 <script>
 // 导入 API 函数
-import { getStrategies } from '@/api/strategies'
+import { getStrategies, getUserStrategies } from '@/api/strategies'
 
 export default {
   name: 'StrategyCenterView',
@@ -874,6 +860,11 @@ export default {
       strategiesLoading: false,
       // Array to store fetched strategies
       allStrategies: [],
+      // --- Add data for My Strategies ---
+      myStrategiesLoading: false,
+      myStrategiesList: [], // 用于存储从API获取的用户策略
+      // Hardcoded user ID for now
+      currentUserId: 1, 
       // --- Existing data properties below ---
       activeTab: 'basic-strategies',
       // 所有标签页
@@ -966,6 +957,7 @@ export default {
   // Add created hook to fetch data when component is created
   created() {
     this.fetchStrategies();
+    this.fetchMyStrategies();
   },
   methods: {
     // --- Add method to fetch strategies ---
@@ -988,6 +980,30 @@ export default {
         })
         .finally(() => {
           this.strategiesLoading = false;
+        });
+    },
+    // --- Add method to fetch user strategies ---
+    fetchMyStrategies() {
+      this.myStrategiesLoading = true;
+      // 使用硬编码的用户ID调用API
+      getUserStrategies(this.currentUserId)
+        .then(response => {
+          if (response.data && response.data.success) {
+            this.myStrategiesList = response.data.data || [];
+            // 可以选择性地添加消息提示
+            // this.$message.success('我的策略列表已加载');
+          } else {
+            this.$message.error(response.data.message || '加载我的策略列表失败');
+            this.myStrategiesList = [];
+          }
+        })
+        .catch(error => {
+          console.error('加载我的策略列表错误:', error);
+          this.$message.error('网络错误，无法加载我的策略列表');
+          this.myStrategiesList = [];
+        })
+        .finally(() => {
+          this.myStrategiesLoading = false;
         });
     },
     // --- Existing methods below ---
