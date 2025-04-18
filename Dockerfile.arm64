@@ -59,8 +59,8 @@ RUN echo "channels:" > /root/.condarc && \
     echo "show_channel_urls: true" >> /root/.condarc && \
     echo "nodefaults: true" >> /root/.condarc # Ensure defaults channel is not used
 
-# 使用 Conda 安装 numpy 和 ta-lib
-RUN conda install -y -c conda-forge numpy ta-lib && \
+# 使用 Conda 安装 numpy 和 ta-lib (从已配置的镜像源)
+RUN conda install -y numpy ta-lib && \
     conda clean -a -y
 
 # 配置pip使用国内镜像源（使用多个镜像源作为备选）
@@ -83,9 +83,16 @@ RUN pip install --no-cache-dir -i https://mirrors.aliyun.com/pypi/simple/ --trus
     pip install --no-cache-dir -i https://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com matplotlib seaborn && \
     pip install --no-cache-dir -i https://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com pytest black flake8 isort mypy pylint
 
-# 使用 Conda 安装 vnpy 及核心模块 (从已配置的镜像源)
-RUN conda install -y vnpy vnpy-ctastrategy vnpy-sqlite vnpy-datamanager vnpy-rest vnpy-websocket vnpy-csv vnpy-mysql && \
-    conda clean -a -y
+# 使用 pip 安装所有 vnpy 相关包
+RUN pip install --no-cache-dir -i https://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com \
+    vnpy \
+    vnpy-ctastrategy \
+    vnpy-sqlite \
+    vnpy-datamanager \
+    vnpy-rest \
+    vnpy-websocket \
+    vnpy-csv \
+    vnpy-mysql
 
 # 创建常用目录
 RUN mkdir -p /app/data /app/logs /app/configs /app/notebooks
