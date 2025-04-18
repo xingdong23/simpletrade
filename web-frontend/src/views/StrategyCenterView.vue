@@ -3,7 +3,7 @@
     <!-- 顶部标签导航 -->
     <el-tabs v-model="activeTab" type="border-card">
       <!-- 基础策略标签页 -->
-      <el-tab-pane label="基础策略" name="basic-strategies">
+      <el-tab-pane label="基础策略" name="basic-strategies" v-loading="strategiesLoading">
         <div style="margin-bottom: 20px;">
           <el-row type="flex" justify="space-between" align="middle">
             <el-col :span="12">
@@ -17,208 +17,50 @@
               ></el-input>
               <el-select placeholder="所有类型" style="width: 150px;">
                 <el-option label="所有类型" value="all"></el-option>
-                <el-option label="技术指标策略" value="technical"></el-option>
-                <el-option label="基本面策略" value="fundamental"></el-option>
-                <el-option label="事件驱动策略" value="event"></el-option>
+                <!-- TODO: Populate types dynamically if needed -->
               </el-select>
             </el-col>
           </el-row>
         </div>
 
-        <!-- 策略卡片列表 -->
+        <!-- 策略卡片列表 - Modified to use v-for -->
         <el-row :gutter="20">
-          <el-col :xs="24" :sm="12" :md="8" :lg="8" :xl="8" style="margin-bottom: 20px;">
-            <el-card shadow="hover" class="strategy-card">
-              <div class="strategy-card-content">
-                <div class="strategy-card-header">
-                  <h3 class="strategy-title">双均线突破策略</h3>
-                  <el-tag size="small" type="primary">技术指标策略</el-tag>
-                </div>
-                <p class="strategy-description">基于双均线的突破交易策略，适用于趋势型市场。</p>
-                <div class="strategy-metrics">
-                  <span class="metric">胜率: <span class="metric-value positive">58%</span></span>
-                  <span class="metric">年化收益: <span class="metric-value positive">15.2%</span></span>
-                </div>
-                <div class="strategy-complexity">
-                  <span>复杂度: <el-rate :value="2" disabled text-color="#ff9900" score-template="{value}"></el-rate></span>
-                </div>
-                <div class="strategy-resources">
-                  <span>资源需求: <el-tag size="mini" type="success">低</el-tag></span>
-                  <span style="margin-left: 10px;">运行速度: <el-tag size="mini" type="success">快</el-tag></span>
-                </div>
-                <div class="strategy-actions">
-                  <el-button type="primary" size="small" @click="navigateToDetail('strategy1')">查看详情</el-button>
-                  <el-button size="small">使用策略</el-button>
-                </div>
-              </div>
-            </el-card>
+          <!-- Loop through fetched strategies -->
+          <el-col v-if="allStrategies.length === 0 && !strategiesLoading" :span="24" style="text-align: center; color: #909399; padding: 40px 0;">
+             暂无策略数据
+          </el-col>
+          <el-col v-for="strategy in allStrategies" :key="strategy.id" :xs="24" :sm="12" :md="8" :lg="8" :xl="8" style="margin-bottom: 20px;">
+             <el-card shadow="hover" class="strategy-card">
+               <div class="strategy-card-content">
+                 <div class="strategy-card-header">
+                   <h3 class="strategy-title">{{ strategy.name }}</h3>
+                   <!-- Display category or type from API data -->
+                   <el-tag size="small" type="primary" v-if="strategy.category">{{ strategy.category }}</el-tag>
+                   <el-tag size="small" type="info" v-else-if="strategy.type">{{ strategy.type }}</el-tag>
+                 </div>
+                 <p class="strategy-description">{{ strategy.description || '暂无描述' }}</p>
+                 <!-- Simplified display - metrics/complexity/resources from mock data are removed -->
+                 <!-- Add back if API provides these -->
+                <!-- <div class="strategy-metrics"> ... </div> -->
+                <!-- <div class="strategy-complexity"> ... </div> -->
+                <!-- <div class="strategy-resources"> ... </div> -->
+                 <div class="strategy-actions">
+                   <el-button type="primary" size="small" @click="navigateToDetail(strategy.id)">查看详情</el-button>
+                   <el-button size="small">使用策略</el-button> <!-- TODO: Implement 'Use Strategy' logic -->
+                 </div>
+               </div>
+             </el-card>
           </el-col>
 
-          <el-col :xs="24" :sm="12" :md="8" :lg="8" :xl="8" style="margin-bottom: 20px;">
-            <el-card shadow="hover" class="strategy-card">
-              <div class="strategy-card-content">
-                <div class="strategy-card-header">
-                  <h3 class="strategy-title">LSTM预测模型</h3>
-                  <el-tag size="small" type="success">AI策略</el-tag>
-                </div>
-                <p class="strategy-description">基于深度学习LSTM网络的价格预测模型，适用于高频交易。</p>
-                <div class="strategy-metrics">
-                  <span class="metric">准确率: <span class="metric-value positive">62%</span></span>
-                  <span class="metric">年化收益: <span class="metric-value positive">18.7%</span></span>
-                </div>
-                <div class="strategy-complexity">
-                  <span>复杂度: <el-rate :value="4" disabled text-color="#ff9900" score-template="{value}"></el-rate></span>
-                </div>
-                <div class="strategy-resources">
-                  <span>资源需求: <el-tag size="mini" type="danger">高</el-tag></span>
-                  <span style="margin-left: 10px;">运行速度: <el-tag size="mini" type="warning">中</el-tag></span>
-                </div>
-                <div class="strategy-actions">
-                  <el-button type="primary" size="small" @click="navigateToDetail('strategy2')">查看详情</el-button>
-                  <el-button size="small">使用策略</el-button>
-                </div>
-              </div>
-            </el-card>
-          </el-col>
+          <!-- Original hardcoded cards removed -->
+          <!-- <el-col :xs="24" :sm="12" :md="8" :lg="8" :xl="8" style="margin-bottom: 20px;"> ... </el-col> -->
+          <!-- ... more hardcoded cards ... -->
 
-          <el-col :xs="24" :sm="12" :md="8" :lg="8" :xl="8" style="margin-bottom: 20px;">
-            <el-card shadow="hover" class="strategy-card">
-              <div class="strategy-card-content">
-                <div class="strategy-card-header">
-                  <h3 class="strategy-title">海龟交易策略</h3>
-                  <el-tag size="small" type="primary">CTA策略</el-tag>
-                </div>
-                <p class="strategy-description">经典的海龟交易策略，基于突破信号进行趋势跟踪。</p>
-                <div class="strategy-metrics">
-                  <span class="metric">胜率: <span class="metric-value positive">42%</span></span>
-                  <span class="metric">年化收益: <span class="metric-value positive">22.1%</span></span>
-                </div>
-                <div class="strategy-complexity">
-                  <span>复杂度: <el-rate :value="3" disabled text-color="#ff9900" score-template="{value}"></el-rate></span>
-                </div>
-                <div class="strategy-resources">
-                  <span>资源需求: <el-tag size="mini" type="warning">中</el-tag></span>
-                  <span style="margin-left: 10px;">运行速度: <el-tag size="mini" type="warning">中</el-tag></span>
-                </div>
-                <div class="strategy-actions">
-                  <el-button type="primary" size="small" @click="navigateToDetail('strategy3')">查看详情</el-button>
-                  <el-button size="small">使用策略</el-button>
-                </div>
-              </div>
-            </el-card>
-          </el-col>
-
-          <el-col :xs="24" :sm="12" :md="8" :lg="8" :xl="8" style="margin-bottom: 20px;">
-            <el-card shadow="hover" class="strategy-card">
-              <div class="strategy-card-content">
-                <div class="strategy-card-header">
-                  <h3 class="strategy-title">缠论三买策略</h3>
-                  <el-tag size="small" type="warning">缠论策略</el-tag>
-                </div>
-                <p class="strategy-description">基于缠论理论的三买点交易策略，精准把握底部买入时机。</p>
-                <div class="strategy-metrics">
-                  <span class="metric">胜率: <span class="metric-value positive">65%</span></span>
-                  <span class="metric">年化收益: <span class="metric-value positive">28.5%</span></span>
-                </div>
-                <div class="strategy-complexity">
-                  <span>复杂度: <el-rate :value="3" disabled text-color="#ff9900" score-template="{value}"></el-rate></span>
-                </div>
-                <div class="strategy-resources">
-                  <span>资源需求: <el-tag size="mini" type="warning">中</el-tag></span>
-                  <span style="margin-left: 10px;">运行速度: <el-tag size="mini" type="success">快</el-tag></span>
-                </div>
-                <div class="strategy-actions">
-                  <el-button type="primary" size="small">查看详情</el-button>
-                  <el-button size="small">使用策略</el-button>
-                </div>
-              </div>
-            </el-card>
-          </el-col>
-
-          <el-col :xs="24" :sm="12" :md="8" :lg="8" :xl="8" style="margin-bottom: 20px;">
-            <el-card shadow="hover" class="strategy-card">
-              <div class="strategy-card-content">
-                <div class="strategy-card-header">
-                  <h3 class="strategy-title">道氏理论突破策略</h3>
-                  <el-tag size="small" type="danger">道氏理论</el-tag>
-                </div>
-                <p class="strategy-description">基于道氏理论的价格突破交易策略，结合成交量确认信号。</p>
-                <div class="strategy-metrics">
-                  <span class="metric">胜率: <span class="metric-value positive">55%</span></span>
-                  <span class="metric">年化收益: <span class="metric-value positive">24.3%</span></span>
-                </div>
-                <div class="strategy-complexity">
-                  <span>复杂度: <el-rate :value="2" disabled text-color="#ff9900" score-template="{value}"></el-rate></span>
-                </div>
-                <div class="strategy-resources">
-                  <span>资源需求: <el-tag size="mini" type="success">低</el-tag></span>
-                  <span style="margin-left: 10px;">运行速度: <el-tag size="mini" type="success">快</el-tag></span>
-                </div>
-                <div class="strategy-actions">
-                  <el-button type="primary" size="small">查看详情</el-button>
-                  <el-button size="small">使用策略</el-button>
-                </div>
-              </div>
-            </el-card>
-          </el-col>
-
-          <el-col :xs="24" :sm="12" :md="8" :lg="8" :xl="8" style="margin-bottom: 20px;">
-            <el-card shadow="hover" class="strategy-card">
-              <div class="strategy-card-content">
-                <div class="strategy-card-header">
-                  <h3 class="strategy-title">缠论三买策略</h3>
-                  <el-tag size="small" type="warning">缠论策略</el-tag>
-                </div>
-                <p class="strategy-description">基于缠论理论的三买点交易策略，精准把握底部买入时机。</p>
-                <div class="strategy-metrics">
-                  <span class="metric">胜率: <span class="metric-value positive">65%</span></span>
-                  <span class="metric">年化收益: <span class="metric-value positive">28.5%</span></span>
-                </div>
-                <div class="strategy-complexity">
-                  <span>复杂度: <el-rate :value="3" disabled text-color="#ff9900" score-template="{value}"></el-rate></span>
-                </div>
-                <div class="strategy-resources">
-                  <span>资源需求: <el-tag size="mini" type="warning">中</el-tag></span>
-                  <span style="margin-left: 10px;">运行速度: <el-tag size="mini" type="success">快</el-tag></span>
-                </div>
-                <div class="strategy-actions">
-                  <el-button type="primary" size="small">查看详情</el-button>
-                  <el-button size="small">使用策略</el-button>
-                </div>
-              </div>
-            </el-card>
-          </el-col>
-
-          <el-col :xs="24" :sm="12" :md="8" :lg="8" :xl="8" style="margin-bottom: 20px;">
-            <el-card shadow="hover" class="strategy-card">
-              <div class="strategy-card-content">
-                <div class="strategy-card-header">
-                  <h3 class="strategy-title">道氏理论突破策略</h3>
-                  <el-tag size="small" type="danger">道氏理论</el-tag>
-                </div>
-                <p class="strategy-description">基于道氏理论的价格突破交易策略，结合成交量确认信号。</p>
-                <div class="strategy-metrics">
-                  <span class="metric">胜率: <span class="metric-value positive">55%</span></span>
-                  <span class="metric">年化收益: <span class="metric-value positive">24.3%</span></span>
-                </div>
-                <div class="strategy-complexity">
-                  <span>复杂度: <el-rate :value="2" disabled text-color="#ff9900" score-template="{value}"></el-rate></span>
-                </div>
-                <div class="strategy-resources">
-                  <span>资源需求: <el-tag size="mini" type="success">低</el-tag></span>
-                  <span style="margin-left: 10px;">运行速度: <el-tag size="mini" type="success">快</el-tag></span>
-                </div>
-                <div class="strategy-actions">
-                  <el-button type="primary" size="small">查看详情</el-button>
-                  <el-button size="small">使用策略</el-button>
-                </div>
-              </div>
-            </el-card>
-          </el-col>
         </el-row>
       </el-tab-pane>
 
       <!-- 高级策略标签页 -->
+      <!-- TODO: Apply similar v-for logic here if needed, potentially filtering allStrategies -->
       <el-tab-pane label="高级策略" name="advanced-strategies">
         <div style="margin-bottom: 20px;">
           <el-row type="flex" justify="space-between" align="middle">
@@ -854,7 +696,7 @@ class MyStrategy(CtaTemplate):
         </div>
         <div v-else style="text-align: center; padding: 50px 0;">
           <i class="el-icon-data-analysis" style="font-size: 48px; color: #909399; margin-bottom: 20px;"></i>
-          <p>还没有运行回测，请点击“运行回测”按钮开始回测。</p>
+          <p>还没有运行回测，请点击"运行回测"按钮开始回测。</p>
         </div>
       </el-tab-pane>
 
@@ -935,7 +777,7 @@ class MyStrategy(CtaTemplate):
         </div>
         <div v-else style="text-align: center; padding: 50px 0;">
           <i class="el-icon-cpu" style="font-size: 48px; color: #909399; margin-bottom: 20px;"></i>
-          <p>还没有运行优化，请选择参数并点击“运行优化”按钮。</p>
+          <p>还没有运行优化，请选择参数并点击"运行优化"按钮。</p>
         </div>
       </el-tab-pane>
 
@@ -1021,10 +863,18 @@ class MyStrategy(CtaTemplate):
 </template>
 
 <script>
+// 导入 API 函数
+import { getStrategies } from '@/api/strategies'
+
 export default {
   name: 'StrategyCenterView',
   data() {
     return {
+      // Loading state for strategies
+      strategiesLoading: false,
+      // Array to store fetched strategies
+      allStrategies: [],
+      // --- Existing data properties below ---
       activeTab: 'basic-strategies',
       // 所有标签页
       tabOptions: [
@@ -1113,10 +963,41 @@ export default {
       liveTradeRecords: []
     }
   },
+  // Add created hook to fetch data when component is created
+  created() {
+    this.fetchStrategies();
+  },
   methods: {
+    // --- Add method to fetch strategies ---
+    fetchStrategies() {
+      this.strategiesLoading = true;
+      getStrategies() // Fetch all strategies (no filters/pagination for now)
+        .then(response => {
+          if (response.data && response.data.success) {
+            this.allStrategies = response.data.data || []; // Ensure it's an array
+            this.$message.success('策略列表已加载');
+          } else {
+            this.$message.error(response.data.message || '加载策略列表失败');
+            this.allStrategies = []; // Clear on failure
+          }
+        })
+        .catch(error => {
+          console.error('加载策略列表错误:', error);
+          this.$message.error('网络错误，无法加载策略列表');
+          this.allStrategies = []; // Clear on error
+        })
+        .finally(() => {
+          this.strategiesLoading = false;
+        });
+    },
+    // --- Existing methods below ---
     // 导航到策略详情页面
     navigateToDetail(strategyId) {
-      this.$router.push(`/strategy-detail/${strategyId}`);
+      // TODO: This needs actual strategy ID from fetched data
+      // For now, keep the placeholder logic or adapt if IDs are available
+      const idToUse = typeof strategyId === 'object' ? strategyId.id : strategyId; // Handle potential object passing
+      this.$router.push(`/strategy-detail/${idToUse}`);
+      // Original line: this.$router.push(`/strategy-detail/${strategyId}`);
     },
 
     // 查看策略详情

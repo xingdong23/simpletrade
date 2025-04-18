@@ -62,6 +62,9 @@
 </template>
 
 <script>
+// 导入 API 函数
+import { getStrategies } from '@/api/strategies' // 假设 @ 指向 src 目录
+
 export default {
   name: 'StrategyIndex',
   data() {
@@ -97,13 +100,43 @@ export default {
     },
     fetchStrategies() {
       this.loading = true;
-      // TODO: Call API to fetch strategy list with pagination
-      console.log(`Fetching strategies page ${this.currentPage} size ${this.pageSize}`);
-      setTimeout(() => {
-        // Update strategyList and total based on API response
-        this.loading = false;
-         this.$message.info('策略列表已刷新 (模拟)');
-      }, 1000);
+      // console.log(`Fetching strategies page ${this.currentPage} size ${this.pageSize}`);
+      // setTimeout(() => {
+      //   // Update strategyList and total based on API response
+      //   this.loading = false;
+      //    this.$message.info('策略列表已刷新 (模拟)');
+      // }, 1000);
+
+      // 调用 API 获取数据
+      // 注意：当前后端 API 和 api/strategies.js 中的 getStrategies 暂未支持分页参数
+      // 如果需要分页，需要前后端同步修改
+      getStrategies() // 暂不传递分页或过滤参数
+        .then(response => {
+          // 检查后端返回的数据结构
+          if (response.data && response.data.success) {
+            // 假设后端返回的数据在 response.data.data 中
+            this.strategyList = response.data.data;
+            // 注意：后端目前似乎没有返回 total，暂时用列表长度代替，如果需要准确分页，后端需返回 total
+            this.total = this.strategyList.length; 
+            this.$message.success('策略列表已更新');
+          } else {
+            // 处理后端返回的业务错误消息
+            this.$message.error(response.data.message || '获取策略列表失败');
+            this.strategyList = []; // 清空列表
+            this.total = 0;
+          }
+        })
+        .catch(error => {
+          // 处理网络错误或其他JS异常
+          console.error('获取策略列表失败:', error);
+          this.$message.error('网络错误，无法获取策略列表');
+          this.strategyList = []; // 清空列表
+          this.total = 0;
+        })
+        .finally(() => {
+          // 无论成功失败，最终都停止加载状态
+          this.loading = false;
+        });
     },
     toggleStrategy(row) {
       const action = row.status === 'running' ? '停止' : '启动';

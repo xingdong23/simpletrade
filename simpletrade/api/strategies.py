@@ -5,7 +5,7 @@ SimpleTrade策略API
 """
 
 from typing import List, Optional, Dict, Any
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Request
 from pydantic import BaseModel, Field
 from datetime import date
 from sqlalchemy.orm import Session
@@ -15,26 +15,32 @@ from simpletrade.models.database import Strategy, UserStrategy, BacktestRecord
 from simpletrade.services.strategy_service import StrategyService
 from simpletrade.services.backtest_service import BacktestService
 from simpletrade.services.monitor_service import MonitorService
-from simpletrade.core.engine import STMainEngine
+# from simpletrade.core.engine import STMainEngine # 类型提示已通过下方导入
 
-# 定义依赖注入函数
-def get_strategy_service(db: Session = Depends(get_db)) -> StrategyService:
-    return StrategyService(db=db)
+# 移除全局导入
+# from simpletrade.main import main_engine as global_main_engine
+from simpletrade.core.engine import STMainEngine # 导入类型提示
 
-# 假设 MonitorService 和 BacktestService 也需要 db
-def get_monitor_service(db: Session = Depends(get_db)) -> MonitorService:
-    # 这里需要 MonitorService 的实际实现
-    # return MonitorService(db=db)
-    # 暂时返回一个模拟对象或引发未实现错误
-    raise NotImplementedError("MonitorService dependency not fully implemented")
+# --- 依赖注入函数定义 (移到前面) ---
 
-def get_backtest_service(db: Session = Depends(get_db)) -> BacktestService:
-    # 这里需要 BacktestService 的实际实现
-    # return BacktestService(db=db)
-    # 暂时返回一个模拟对象或引发未实现错误
-    raise NotImplementedError("BacktestService dependency not fully implemented")
+def get_main_engine(request: Request) -> STMainEngine:
+    """依赖函数：从 FastAPI app state 获取主引擎实例"""
+    if hasattr(request.app.state, 'main_engine') and request.app.state.main_engine:
+        return request.app.state.main_engine
+    else:
+        # 如果引擎不在 state 中，说明启动时存储失败或未存储
+        raise RuntimeError("Main engine not found in app state. Check server startup.")
 
-# 创建路由器
+def get_strategy_service(main_engine: STMainEngine = Depends(get_main_engine)) -> StrategyService:
+    return StrategyService(main_engine=main_engine)
+
+def get_monitor_service(main_engine: STMainEngine = Depends(get_main_engine)) -> MonitorService:
+    return MonitorService(main_engine=main_engine)
+
+def get_backtest_service() -> BacktestService:
+    return BacktestService()
+
+# --- 创建路由器 --- 
 router = APIRouter(prefix="/api/strategies", tags=["strategies"])
 
 # 数据模型
@@ -95,12 +101,13 @@ class BacktestRequest(BaseModel):
 async def get_strategies(
     type: Optional[str] = None,
     category: Optional[str] = None,
+    db: Session = Depends(get_db),
     strategy_service: StrategyService = Depends(get_strategy_service)
 ):
     """获取策略列表"""
     try:
-        # 使用策略服务获取策略列表
-        strategies = strategy_service.get_strategies(type, category)
+        # 将 db 会话传递给服务方法
+        strategies = strategy_service.get_strategies(db, type, category)
 
         # 如果没有策略，返回空列表
         if not strategies:
@@ -137,11 +144,15 @@ async def get_strategies(
         }
 
 @router.get("/{strategy_id}", response_model=ApiResponse)
-async def get_strategy(strategy_id: int, strategy_service: StrategyService = Depends(get_strategy_service)):
+async def get_strategy(
+    strategy_id: int, 
+    db: Session = Depends(get_db),
+    strategy_service: StrategyService = Depends(get_strategy_service)
+):
     """获取策略详情"""
     try:
-        # 使用策略服务获取策略详情
-        strategy = strategy_service.get_strategy(strategy_id)
+        # 将 db 会话传递给服务方法
+        strategy = strategy_service.get_strategy(db, strategy_id)
 
         if not strategy:
             return {
@@ -185,11 +196,15 @@ async def get_strategy(strategy_id: int, strategy_service: StrategyService = Dep
         }
 
 @router.get("/user/{user_id}", response_model=ApiResponse)
-async def get_user_strategies(user_id: int, strategy_service: StrategyService = Depends(get_strategy_service)):
+async def get_user_strategies(
+    user_id: int, 
+    db: Session = Depends(get_db),
+    strategy_service: StrategyService = Depends(get_strategy_service)
+):
     """获取用户策略列表"""
     try:
-        # 使用策略服务获取用户策略列表
-        user_strategies = strategy_service.get_user_strategies(user_id)
+        # 将 db 会话传递给服务方法
+        user_strategies = strategy_service.get_user_strategies(db, user_id)
 
         # 如果没有用户策略，返回空列表
         if not user_strategies:
@@ -295,7 +310,10 @@ async def create_user_strategy(request: CreateUserStrategyRequest, strategy_serv
         }
 
 @router.post("/user/{user_strategy_id}/init", response_model=ApiResponse)
-async def init_strategy(user_strategy_id: int, strategy_service: StrategyService = Depends(get_strategy_service)):
+async def init_strategy(
+    user_strategy_id: int, 
+    strategy_service: StrategyService = Depends(get_strategy_service)
+):
     """初始化策略"""
     try:
         # 初始化策略

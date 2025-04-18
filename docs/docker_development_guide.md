@@ -673,431 +673,178 @@ docker-compose -f docker-compose.arm64.yml build $REBUILD api
 
 ### 启动步骤
 
-1. **确保 Colima 正在运行**
+1.  **确保 Docker 环境运行:** 确保 Colima (或其他 Docker 环境) 已经启动。
 
-   在启动开发环境之前，确保 Colima 虚拟机已经启动。您可以使用以下命令检查 Colima 状态：
+2.  **导航到项目根目录:** 在终端中，`cd` 到 SimpleTrade 项目的根目录。
 
-   ```bash
-   colima status
-   ```
+3.  **执行启动脚本 (推荐):**
+    *   对于 **ARM64 (M系列芯片)**: 运行 `./start_docker_arm64.sh`
+    *   对于 **Intel (x86_64)**: 运行 `./start_docker_intel.sh`
 
-   如果 Colima 未启动，请使用以下命令启动它：
+    该脚本会自动处理环境检查、构建必要的 Docker 镜像、启动所有必需的服务（MySQL, API, 前端, Jupyter）。首次运行或代码有重大更改时，构建过程可能需要一些时间。后续启动会利用缓存，速度更快。
 
-   ```bash
-   colima start
-   ```
+4.  **直接使用 Docker Compose (可选):**
+    如果您只想启动部分服务或更精细地控制，可以直接使用 `docker-compose` 命令：
 
-2. **打开终端**
+    *   **启动所有服务:**
+      ```bash
+      # ARM64
+      docker-compose -f docker-compose.arm64.yml up
+      # Intel
+      docker-compose -f docker-compose.yml up
+      ```
+    *   **仅启动 API 和 数据库:**
+      ```bash
+      # ARM64
+      docker-compose -f docker-compose.arm64.yml up api
+      # Intel (假设依赖正确设置)
+      docker-compose -f docker-compose.yml up api
+      ```
+    *   **在后台运行:** 在 `up` 命令后添加 `-d` 参数，例如 `docker-compose -f docker-compose.arm64.yml up -d`。
 
-   打开终端应用程序。
-
-3. **导航到项目目录**
-
-   ```bash
-   cd /path/to/simpletrade
-   ```
-
-   或者使用您的项目实际路径。
-
-4. **配置环境变量**
-
-   复制环境变量配置示例文件，并根据需要修改：
-
-   ```bash
-   cp .env.example .env
-   ```
-
-   编辑 `.env` 文件，根据您的需要修改数据库连接参数、API 配置等。如果您使用默认配置，可以跳过这一步。
-
-   > **注意：** 如果您使用 `start_docker.sh` 脚本启动，它会自动检查 `.env` 文件是否存在，如果不存在，会自动复制 `.env.example`。
-
-5. **添加脚本执行权限（重要）**
-
-   由于项目目录会挂载到容器中，一些位于 `docker_scripts` 目录下的脚本（如 Jupyter 启动脚本）需要在主机上具有执行权限才能在容器内正确运行。请在项目根目录下执行以下命令：
-
-   ```bash
-   chmod +x docker_scripts/*.sh
-   ```
-
-6. **启动开发环境 (关键步骤)**
-
-   **对于 Apple Silicon (ARM64) Mac 用户:**
-
-   **必须**使用为 ARM64 优化的启动方式，以确保兼容性和性能。
-
-   *   **推荐方式: 使用启动脚本**
-       ```bash
-       # 给脚本添加执行权限 (首次执行前)
-       chmod +x ./start_docker_arm64.sh
-
-       # 运行启动脚本
-       ./start_docker_arm64.sh
-       ```
-       这个脚本会自动处理使用 `docker-compose.arm64.yml` 文件和相关的 Dockerfile (`Dockerfile.arm64`) 来构建和启动服务。
-
-   *   **手动方式 (等效于脚本):**
-       ```bash
-       # 首次启动或修改了 Dockerfile/依赖后需要 --build
-       docker-compose -f docker-compose.arm64.yml up --build api
-
-       # 后续如果只是代码变动，可以省略 --build
-       # docker-compose -f docker-compose.arm64.yml up api
-       ```
-       **务必**使用 `-f docker-compose.arm64.yml` 参数指定正确的配置文件。
-
-   *   **错误的方式 (请避免):**
-       **切勿**在 ARM64 Mac 上直接运行 `docker-compose up` 或 `docker-compose up --build`。这会默认使用 `docker-compose.yml` 和 `Dockerfile`，它们可能不兼容 ARM64，导致之前遇到的各种错误。
-
-   **对于 Intel Mac 或其他 x86_64 系统用户:**
-
-   可以使用默认的启动脚本或命令：
-
-   ```bash
-   # 使用默认启动脚本
-   chmod +x ./start_docker.sh
-   ./start_docker.sh
-
-   # 或者直接使用 docker-compose
-   # docker-compose up --build
-   ```
-
-7. **等待服务启动**
-
-   启动过程中，您将看到以下步骤：
-
-   - MySQL 数据库服务启动
-   - API 服务等待 MySQL 启动完成
-   - 数据库初始化（创建表和添加示例数据）
-   - API 服务启动
-   - 前端服务启动
-
-   整个过程是自动的，您只需要等待所有服务启动完成。
+5.  **等待服务就绪:** 脚本或 `docker-compose up` 命令会显示各个服务的启动日志。等待所有服务启动完成，特别是 MySQL 和 API 服务。
 
 ### 验证开发环境
 
-构建完成并启动容器后，您应该能看到类似以下的输出：
+启动成功后，您可以通过以下方式验证：
 
-```
-mysql_1     | [Note] [Entrypoint]: MySQL init process done. Ready for start up.
-mysql_1     | [Note] [Entrypoint]: Starting MySQL 8.0.x
-...
-api_1       | Waiting for MySQL to start...
-api_1       | MySQL started
-api_1       | Initializing database...
-api_1       | 开始初始化数据库...
-api_1       | 数据库 simpletrade 创建成功或已存在
-api_1       | 数据库表创建成功
-api_1       | 示例数据添加成功
-api_1       | 数据库初始化完成
-api_1       | Starting application...
-api_1       | INFO:     Will watch for changes in these directories: ['/app']
-api_1       | INFO:     Uvicorn running on http://0.0.0.0:8003 (Press CTRL+C to quit)
-api_1       | INFO:     Started reloader process [1] using WatchFiles
-api_1       | Test API routes added successfully.
-api_1       | Health check API route added.
-api_1       | Analysis API routes added.
-api_1       | Strategies API routes added.
-...
-frontend_1  | App running at:
-frontend_1  | - Local:   http://localhost:8080/
-```
-
-现在，您可以进行以下验证：
-
-1. **验证 API 服务**
-
-   在浏览器中访问 `http://localhost:8003/docs` 查看 API 文档。
-
-2. **验证前端服务**
-
-   在浏览器中访问 `http://localhost:8080` 查看前端页面。
-
-3. **验证数据库连接**
-
-   您可以使用以下命令进入 MySQL 容器并验证数据库：
-
-   ```bash
-   # 进入 MySQL 容器
-   docker exec -it simpletrade-mysql bash
-
-   # 连接到 MySQL
-   mysql -uroot -pCz159csa simpletrade
-
-   # 查看数据库表
-   SHOW TABLES;
-
-   # 查询交易品种表
-   SELECT * FROM symbols;
-
-   # 查询策略表
-   SELECT * FROM strategies;
-   ```
-
-4. **验证 API 端点**
-
-   您可以使用 curl 命令测试 API 端点：
-
-   ```bash
-   # 测试健康检查端点
-   curl -s http://localhost:8003/api/health/
-
-   # 测试交易品种端点
-   curl -s http://localhost:8003/api/data/symbols
-
-   # 测试策略端点
-   curl -s http://localhost:8003/api/strategies/
-   ```
-
-5. **验证 Jupyter Notebook**
-
-   在浏览器中访问 `http://localhost:8888` 查看 Jupyter Notebook 界面。您可以创建新的笔记本或打开现有的笔记本。
-
-   Jupyter Notebook 是一个交互式的开发环境，可用于数据分析、策略开发和回测结果分析。它允许您编写和执行代码，可视化数据，并以文档形式保存分析过程。
-
-   在 `notebooks` 目录中提供了一些示例笔记本，包括数据分析示例、策略开发示例等。
-
-### 关于 Docker 缓存和构建选项
-
-Docker 使用分层缓存机制来加速构建过程。了解这一机制对于提高开发效率非常重要。
-
-#### 缓存机制工作原理
-
-1. **默认构建方式**：
-   - 当您运行 `docker-compose build` 或 `docker-compose up --build` 时，Docker 会使用缓存的层
-   - 只有当 Dockerfile 中的指令或其上下文（如复制的文件）发生变化时，才会重新构建该层及其后续层
-   - 这意味着如果您只修改了应用代码，基础镜像和系统依赖安装等步骤不会重新执行
-
-2. **强制重新构建（`--no-cache`）**：
-   - 当您使用 `docker-compose build --no-cache` 或 `./start_docker_arm64.sh --rebuild` 时，Docker 会忽略所有缓存
-   - 所有层都会重新构建，包括下载基础镜像、安装系统依赖等
-   - 这通常用于解决缓存导致的问题，或确保使用最新的依赖版本
-
-#### 添加新依赖的最佳实践
-
-当需要添加新的 Python 依赖时，您有几种选择：
-
-1. **修改 requirements.txt 并重新构建（不使用 `--no-cache`）**：
-   ```bash
-   # 编辑 requirements.txt 添加新依赖
-   ./start_docker_arm64.sh
-   ```
-   - 这会重用大部分缓存，只重新执行安装依赖的步骤
-   - 基础镜像和系统包不会重新下载
-   - 这是最常用的方法
-
-2. **直接在运行中的容器内安装**：
-   ```bash
-   docker exec -it simpletrade-api pip install 新依赖
-   ```
-   - 这会立即在运行中的容器内安装新依赖
-   - 但容器重启后会丢失这些更改
-   - 适合临时测试
-
-3. **完全重新构建（仅在必要时）**：
-   ```bash
-   ./start_docker_arm64.sh --rebuild
-   ```
-   - 这会忽略所有缓存，从头开始构建整个镜像
-   - 适用于需要彻底清理的情况，如依赖冲突或系统包更新
-
-### 关于首次构建时间
-
-首次构建 Docker 镜像可能需要相当长的时间，特别是编译 TA-Lib 库的步骤。这是正常的，您可能需要等待 25-30 分钟才能完成首次构建。
-
-具体来说，您可能会看到类似以下的输出，显示 TA-Lib 编译正在进行：
-
-```
-[+] Building 1602.2s (6/9)
- => [api 4/6] RUN wget http://prdownloads.sourceforge.net/ta-lib/ta-lib-0.4.0-src.tar.gz &&     tar -xzf ta-lib-0.4.0-src.tar.gz &&     cd ta-lib/ &&     ./  1545.4s
-```
-
-#### 重要说明：跨机器缓存
-
-需要注意的是，Docker 镜像缓存是与每台机器相关的，而不是跨机器共享的。这意味着：
-
-1. **每台机器的首次构建**：在每台新机器上（如从公司的 M4 Mac 切换到家里的 Intel Mac），您都需要经历一次漫长的首次构建过程。
-
-2. **同一台机器的后续启动**：一旦在特定机器上完成首次构建，后续在该机器上的启动将非常快速（通常只需要几秒钟）。
-
-#### 跨机器共享 Docker 镜像的方法
-
-为了避免在每台机器上都经历漫长的构建过程，您可以考虑以下方法：
-
-1. **导出和导入 Docker 镜像**：
-   ```bash
-   # 在第一台机器上导出镜像
-   docker save simpletrade_api > simpletrade_api.tar
-
-   # 将 tar 文件复制到第二台机器
-   # 然后在第二台机器上导入
-   docker load < simpletrade_api.tar
-   ```
-
-2. **使用 Docker Registry**：
-   - 设置一个私有的 Docker Registry
-   - 将构建好的镜像推送到 Registry
-   - 在其他机器上从 Registry 拉取镜像
-
-3. **预构建基础镜像**：
-   - 创建一个包含已编译 TA-Lib 的基础镜像
-   - 将这个基础镜像发布到 Docker Hub
-   - 在 Dockerfile 中使用这个基础镜像
+- **API 服务:** 访问 `http://localhost:8003` 或 API 文档 `http://localhost:8003/docs`。
+- **前端界面:** 访问 `http://localhost:8080`。
+- **Jupyter Notebook:** 访问 `http://localhost:8888`。
+- **检查容器状态:** 运行 `docker ps` 或 `docker-compose -f <your_compose_file>.yml ps` 查看正在运行的容器。
 
 ## 4. 开发工作流
 
-使用 Docker 进行开发的工作流程如下（以 ARM64 Mac 为例，其他架构类似但需使用对应配置）：
+### 编辑代码
 
-### 编辑代码和自动重载
+- **直接编辑:** 由于项目目录通过 Docker 卷挂载到了容器内部的 `/app` 目录，您可以直接在本地 IDE（如 PyCharm, VS Code）中编辑项目文件。
+- **后端热重载:** API 服务 (`simpletrade-api`) 配置了 Uvicorn 的 `--reload` 模式。当您修改并保存后端 Python 代码 (`.py` 文件) 时，API 服务会自动重启加载更改，无需手动重启容器。您可以在 API 服务的日志中看到重载信息。
+- **前端热重载:** 前端开发服务器 (`simpletrade-frontend`) 也通常配置了热重载。修改前端代码 (`.vue`, `.js`, `.css` 等) 会自动更新浏览器中的页面或需要手动刷新。
 
-您可以使用您喜欢的编辑器（如 VS Code、PyCharm 等）在主机上编辑代码。由于我们在 `docker-compose.arm64.yml` 中配置了卷挂载 (`.:/app`)，您在主机上对代码的修改会**实时反映**到正在运行的容器中。
+### 连接到容器内数据库 (MySQL)
 
-#### 代码自动重载机制
+您可以使用 IDE（如 PyCharm）或独立的数据库客户端连接到运行在 Docker 容器内的 MySQL 数据库进行查看和调试。
 
-当使用**正确**的配置（如 `docker-compose.arm64.yml`）启动时，开发环境配置了代码自动重载机制：
+**连接参数:**
 
-1. **后端 API 服务（FastAPI）**：
-   - API 服务使用 Uvicorn 的 `--reload` 选项运行。
-   - 当您修改并保存后端 Python (`.py`) 文件时，Uvicorn 会检测到变化并**自动重新加载**服务进程。您应该能在日志中看到重载信息。
-   - 这通常意味着修改 Python 代码后**不需要手动重启**。
+- **主机 (Host):** `localhost` 或 `127.0.0.1`
+- **端口 (Port):** `3307` (注意：我们已将宿主机端口从默认的 3306 修改为 3307，以避免与本机可能运行的 MySQL 冲突)
+- **用户名 (User):** `root` (或在 `.env` 文件中配置的值)
+- **密码 (Password):** `Cz159csa` (或在 `.env` 文件中配置的值)
+- **数据库 (Database):** `simpletrade` (或在 `.env` 文件中配置的值)
 
-2. **前端服务（Vue.js）**：
-   - 前端使用 Vue CLI 的开发服务器，它会自动监控文件变化
-   - 当您修改前端代码时，它会自动重新编译并刷新浏览器
-   - 这是通过 `npm run serve` 命令实现的
+**在 PyCharm 中设置:**
 
-3. **Jupyter 服务**：
-   - Jupyter Notebook 本身就是交互式的，您可以直接在浏览器中编辑和运行代码
-   - 修改保存在 notebooks 目录中的笔记本会立即生效
+1.  打开 **Database** 工具窗口 (`View -> Tool Windows -> Database`)。
+2.  点击 **+** -> **Data Source** -> **MySQL**。
+3.  在配置窗口中填写上述 **连接参数**。
+4.  如果提示下载驱动，请点击 **Download missing driver files**。
+5.  点击 **Test Connection** 验证连接是否成功。
+6.  点击 **OK** 或 **Apply** 保存。
+7.  现在您可以在 Database 工具窗口中浏览 `simpletrade` 数据库的表结构和数据了。
 
-#### 代码修改示例
+### 进入容器内部 (Shell)
 
-例如，您可以修改 `simpletrade/api/server.py` 文件中的 `/api/test/hello` 路由：
+有时您可能需要进入容器内部执行命令、检查文件或进行调试。
 
-```python
-@router.get("/hello")
-async def hello():
-    return {"message": "Hello from Docker Development Environment!"}
+使用 `docker exec` 命令：
+
+```bash
+docker exec -it <container_name_or_id> bash
 ```
 
-保存文件后，由于我们使用了 `--reload` 参数，服务器会自动重新加载，您可以立即在浏览器中看到更改的效果。
+- `-i`: 保持标准输入打开 (interactive)。
+- `-t`: 分配一个伪终端 (pseudo-TTY)。
+- `<container_name_or_id>`: 要进入的容器的名称或 ID。您可以通过 `docker ps` 查看。
+- `bash`: 在容器内启动 `bash` shell。
 
-#### 修改文件后的处理逻辑 (重要)
+**常用容器名称:**
 
-根据您修改的文件类型，决定是否需要手动操作：
+- **API 服务:** `simpletrade-api`
+- **前端服务:** `simpletrade-frontend`
+- **MySQL 服务:** `simpletrade-mysql`
+- **Jupyter 服务:** `simpletrade-jupyter`
 
-1.  **修改 Python 代码 (`.py` 文件):**
-    *   **通常无需操作:** 服务会自动重载。观察日志确认重载发生。
-    *   **手动重启 (特殊情况):** 如果自动重载未生效或遇到问题，可以手动重启 `api` 服务（这比停止再启动更快）：
-        ```bash
-        docker-compose -f docker-compose.arm64.yml restart api
-        ```
+**示例：进入 API 服务容器:**
 
-2.  **修改 Docker 配置 (如 `Dockerfile.arm64`, `docker-compose.arm64.yml`):**
-    *   **需要重新构建和重启:** 这些文件定义了镜像或容器运行方式。
-        ```bash
-        # 停止当前容器
-        docker-compose -f docker-compose.arm64.yml down
-        # 使用构建方式重新启动
-        docker-compose -f docker-compose.arm64.yml up --build api
-        # 或者直接运行启动脚本
-        # ./start_docker_arm64.sh
-        ```
+```bash
+docker exec -it simpletrade-api bash
+```
 
-3.  **修改依赖 (如 `requirements.txt` 或 conda 环境文件):**
-    *   **需要重新构建和重启:** 同上，需要更新镜像内容。使用 `--build` 选项。
-
-#### 卷挂载工作原理
-
-很多开发者对"由于我们使用了卷挂载，您在主机上对代码的修改会立即反映到容器中"这句话的工作原理感到疑惑。以下是对这个机制的详细解释：
-
-1. **文件系统映射**：当我们在 `docker-compose.yml` 文件中定义卷挂载（如 `.:/app`）时，Docker 创建了一个从主机目录（当前目录 `.`）到容器内目录（`/app`）的实时映射。
-
-2. **实时同步**：这不是一个复制操作，而是一个实时的文件系统映射。容器内的 `/app` 目录实际上是直接访问主机上的目录，就像一个"窗口"，通过这个"窗口"可以看到和操作主机上的文件。
-
-3. **双向访问**：这个映射是双向的，意味着：
-   - 容器可以读取主机上的文件
-   - 容器可以写入主机上的文件
-   - 主机可以读取这些文件
-   - 主机可以修改这些文件，修改会立即在容器中可见
-
-4. **代码变化检测**：
-   - Docker 本身不会主动监控文件变化
-   - 实际上，是在容器内运行的 Uvicorn 服务器（使用 `--reload` 参数）在监控文件变化
-   - Uvicorn 会定期检查文件的修改时间或使用操作系统的文件系统事件通知机制来检测文件变化
-   - 当检测到文件变化时，Uvicorn 会重新加载 Python 模块，使得代码更改立即生效
-
-5. **跨机器工作的原理**：
-   - 在 `docker-compose.yml` 文件中，我们使用的是相对路径 `.:/app`，而不是绝对路径
-   - 这意味着无论您在哪台机器上，Docker 都会挂载当前目录（即运行 `docker-compose up` 命令的目录）
-   - 只要您在不同机器上保持相同的项目结构，卷挂载就会正常工作
-
-这种机制使得您可以在主机上使用熟悉的编辑器编辑代码，而容器内的应用程序会立即反映这些更改，提供了非常流畅的开发体验。
+进入后，您就像在容器的 Linux 环境中一样，可以执行 `ls`, `cd`, `pip list`, `python` 等命令。
+输入 `exit` 或按 `Ctrl+D` 可以退出容器 shell。
 
 ### 查看日志
 
-*   **启动时前台运行:** 如果您使用 `./start_docker_arm64.sh` 或 `docker-compose -f docker-compose.arm64.yml up ...` 启动且未加 `-d`，日志会直接输出到当前终端。
-*   **后台运行或另开终端:** 使用以下命令实时查看 `api` 服务的日志：
-    ```bash
-    # 务必带上 -f docker-compose.arm64.yml 指定正确的配置文件
-    docker-compose -f docker-compose.arm64.yml logs -f api
-    ```
+查看运行中服务的日志对于调试至关重要。
+
+**使用 Docker Compose 查看 (推荐):**
+
+此方法按服务名称查看，更方便。
+
+```bash
+docker-compose -f <your_compose_file>.yml logs <service_name>
+```
+
+- `<your_compose_file>.yml`: 指向您使用的 compose 文件 (`docker-compose.arm64.yml` 或 `docker-compose.yml`)。
+- `<service_name>`: 要查看日志的服务名称 (例如: `api`, `frontend`, `mysql`, `jupyter`)。
+
+**常用选项:**
+
+- `-f` 或 `--follow`: 持续跟踪日志输出 (按 `Ctrl+C` 停止)。
+- `-t` 或 `--timestamps`: 显示时间戳。
+- `--tail <number>`: 只显示最后 N 行日志 (例如 `--tail 100`)。
+
+**示例：持续跟踪 API 服务日志并显示时间戳:**
+
+```bash
+docker-compose -f docker-compose.arm64.yml logs -ft api
+```
+
+**使用 Docker CLI 查看 (按容器名称):**
+
+```bash
+docker logs <container_name_or_id>
+```
+
+选项与 `docker-compose logs` 类似 (`-f`, `-t`, `--tail`)。
+
+**示例：查看 MySQL 容器的最后 50 行日志:**
+
+```bash
+docker logs --tail 50 simpletrade-mysql
+```
 
 ### 停止开发环境
 
-当您完成开发时，可以按 `Ctrl+C` (如果前台运行) 停止容器，或者在另一个终端中运行：
+完成开发工作后，停止并移除容器以释放资源。
+
+**使用 Docker Compose:**
 
 ```bash
-# 务必带上 -f docker-compose.arm64.yml 指定正确的配置文件
-docker-compose -f docker-compose.arm64.yml down
+docker-compose -f <your_compose_file>.yml down
 ```
+
+这将停止并移除由该 compose 文件定义的所有服务相关的容器、网络。
+
+**注意:** 默认情况下，`down` 命令**不会**删除 Docker 卷 (Volumes)，这意味着您的数据库数据 (`mysql-data`) 和其他持久化数据会保留。如果需要彻底清除卷，可以添加 `-v` 参数: `docker-compose -f <your_compose_file>.yml down -v` (请谨慎使用)。
 
 ## 5. 常见问题解决
 
-### 问题 1: 端口冲突
-
-如果端口 8002 已被占用，您会看到类似以下的错误：
-
-```
-Error response from daemon: Ports are not available: listen tcp 0.0.0.0:8002: bind: address already in use
-```
-
-解决方案：修改 `docker-compose.yml` 文件中的端口映射，例如将 `8002:8002` 改为 `8003:8002`，然后重新启动容器。
-
-### 问题 2: 权限问题
-
-如果遇到权限问题，可能会看到类似以下的错误：
-
-```
-permission denied while trying to connect to the Docker daemon socket
-```
-
-解决方案：确保您的用户属于 docker 组，或者使用 sudo 运行命令：
-
-```bash
-sudo docker-compose up --build
-```
-
-### 问题 3: 镜像构建失败
-
-如果镜像构建失败，可能会看到各种错误信息。常见的解决方案包括：
-
-1. 检查网络连接
-2. 确保 Colima 正在运行
-3. 尝试重新构建镜像：
-
-```bash
-docker-compose build --no-cache
-```
-
-### 问题 4: 卷挂载问题
-
-如果代码更改没有反映到容器中，可能是卷挂载问题。解决方案：
-
-1. 确保 `docker-compose.arm64.yml` (或您架构对应的文件) 中的卷挂载配置正确 (`.:/app`)。
-2. **检查是否使用了正确的配置文件启动？** (尤其在 ARM64 Mac 上，确认使用了 `-f docker-compose.arm64.yml` 或 `./start_docker_arm64.sh`)。
-3. 尝试手动重启服务：`docker-compose -f docker-compose.arm64.yml restart api`。
-4. 尝试完全重启容器：`docker-compose -f docker-compose.arm64.yml down` 然后 `up`。
-5. 检查 Colima 的文件共享设置（较少见）。
+*   **端口冲突 (`Bind for 0.0.0.0:XXXX failed: port is already allocated`):**
+    *   **原因:** 您宿主机上的另一个应用程序正在使用 Docker 想要映射的端口 (如 3306, 8080, 8003, 8888)。
+    *   **解决:**
+        1.  找到并停止占用端口的本机应用程序 (例如，停止本机的 MySQL 服务以释放 3306)。
+        2.  或者，修改 `docker-compose.*.yml` 文件中的 `ports` 映射，将**冒号左侧**的宿主机端口改为一个未被占用的端口 (就像我们将 MySQL 改为 `3307:3306` 一样)。修改后需要 `down` 和 `up` 重启服务。
+*   **后端代码修改后 API 未更新:**
+    *   **原因:** Uvicorn 热重载可能因文件系统事件问题未触发。
+    *   **解决:** 确认 `api` 服务的 `command` 中包含 `--reload` 和 `--reload-dir /app` 参数。如果问题仍然存在，尝试重启 Docker 服务 (`down` 和 `up`)。
+*   **依赖安装失败:**
+    *   **原因:** 网络问题、镜像源问题、依赖冲突。
+    *   **解决:** 检查 Dockerfile 和 `docker-compose.*.yml` 中的镜像源配置是否正确且可用。尝试清理 Docker 缓存 (`docker system prune -a`) 并重新构建 (`<start_script>.sh --rebuild` 或 `docker-compose build --no-cache`)。
+*   **容器启动失败/日志无输出:**
+    *   **原因:** 启动命令错误、脚本内部错误、资源不足。
+    *   **解决:** 使用 `docker logs <container_name>` 查看具体错误。尝试进入容器 (`docker exec -it <container_name> bash`) 手动执行启动命令排查。
 
 ## 6. 跨平台开发注意事项
 
@@ -1135,57 +882,7 @@ Docker 会根据使用的 Dockerfile (如 `Dockerfile.arm64` vs `Dockerfile`) �
 
 当您在不同机器之间切换时，需要注意数据持久化问题。如果您的应用程序在容器内存储数据，这些数据在不同机器之间不会自动同步。您可能需要使用外部存储或手动同步数据。
 
-## 7. Jupyter Notebook 使用指南
-
-Jupyter Notebook 是一个交互式的开发环境，可用于数据分析、策略开发和回测结果分析。在 SimpleTrade 项目中，我们已经集成了 Jupyter Notebook 服务，可以通过浏览器访问。
-
-### 访问 Jupyter Notebook
-
-1. 启动 SimpleTrade 容器后，在浏览器中访问：`http://localhost:8888`
-2. 无需密码即可登录（在生产环境中应设置密码）
-
-### Jupyter Notebook 的主要用途
-
-1. **数据分析**：
-   - 加载和探索历史行情数据
-   - 计算和可视化技术指标
-   - 分析交易品种的统计特性
-   - 研究市场模式和相关性
-
-2. **策略开发**：
-   - 编写和测试交易策略
-   - 可视化策略信号和交易结果
-   - 优化策略参数
-   - 分析策略性能指标
-
-3. **回测结果分析**：
-   - 加载和可视化回测结果
-   - 分析策略的盈亏分布
-   - 计算风险指标
-   - 比较不同策略的性能
-
-4. **实时监控**：
-   - 连接到实时交易系统
-   - 监控策略运行状态
-   - 分析实时交易数据
-   - 调整策略参数
-
-### 示例笔记本
-
-在 `notebooks` 目录中提供了一些示例笔记本，包括：
-
-1. **数据分析示例.ipynb**：展示如何加载和分析历史数据
-
-这些示例笔记本可以帮助您快速上手使用 Jupyter Notebook 进行数据分析和策略开发。
-
-### 注意事项
-
-1. Jupyter Notebook 服务运行在 Docker 容器中，数据保存在 notebooks 数据卷中
-2. 重启容器不会丢失 Notebook 文件，但请定期备份重要的 Notebook
-3. 在生产环境中，应设置 Jupyter Notebook 的访问密码
-4. 避免在 Notebook 中运行耗时的计算，这可能会影响其他服务的性能
-
-## 8. Docker 常用命令参考
+## 7. Docker 常用命令参考
 
 以下是一些常用的 Docker 命令，可以帮助您管理开发环境。
 

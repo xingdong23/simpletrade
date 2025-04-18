@@ -10,39 +10,9 @@ from pathlib import Path
 from fastapi import FastAPI, APIRouter
 import uvicorn
 from fastapi.middleware.cors import CORSMiddleware
-class APIServer:
-    """SimpleTrade API服务"""
-
-    def __init__(self, host="0.0.0.0", port=8000):
-        """初始化"""
-        self.host = host
-        self.port = port
-        self.app = FastAPI(title="SimpleTrade API", version="0.1.0")
-
-        # 添加CORS中间件，允许所有来源的跨域请求
-        self.app.add_middleware(
-            CORSMiddleware,
-            allow_origins=["*"],  # 允许所有来源
-            allow_credentials=True,
-            allow_methods=["*"],  # 允许所有方法
-            allow_headers=["*"],  # 允许所有头
-        )
-
-        self.routers = []
-
-    def add_router(self, router: APIRouter):
-        """添加路由器"""
-        self.app.include_router(router)
-        self.routers.append(router)
-
-    def start(self):
-        """启动服务"""
-        uvicorn.run(self.app, host=self.host, port=self.port)
-
-    def stop(self):
-        """停止服务"""
-        # uvicorn没有提供优雅停止的API，这里只是占位
-        pass
+# APIServer 类不再需要，因为 app 是外部传入的
+# class APIServer:
+#     ...
 
 # 创建一个简单的测试路由
 test_router = APIRouter(prefix="/api/test", tags=["test"])
@@ -60,17 +30,29 @@ async def info():
         "time": "2024-04-17"
     }
 
-def create_server(main_engine=None, event_engine=None):
-    """创建API服务器"""
+# 修改函数签名，接收 FastAPI app 实例
+def configure_server(app: FastAPI, main_engine=None, event_engine=None):
+    """配置现有的 FastAPI 应用实例"""
     import logging
     logger = logging.getLogger("simpletrade.api.server")
-    logger.setLevel(logging.DEBUG)
+    logger.setLevel(logging.DEBUG) # 保持日志级别
+    logger.debug("Configuring FastAPI app instance...")
 
-    server = APIServer()
-    logger.debug("API Server created")
+    # server = APIServer() # 不再创建 APIServer
+    # logger.debug("API Server created")
+
+    # 添加CORS中间件 (移到这里配置)
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],  # 允许所有来源
+        allow_credentials=True,
+        allow_methods=["*"],  # 允许所有方法
+        allow_headers=["*"],  # 允许所有头
+    )
+    logger.debug("CORS middleware added.")
 
     # 添加测试路由
-    server.add_router(test_router)
+    app.include_router(test_router)
     print("Test API routes added successfully.")
 
     # 添加健康检查路由
@@ -80,29 +62,35 @@ def create_server(main_engine=None, event_engine=None):
     async def health_check():
         return {"status": "ok", "message": "API服务正常运行"}
 
-    server.add_router(health_router)
+    app.include_router(health_router)
     print("Health check API route added.")
 
     # 检查main_engine是否已初始化
     if main_engine:
         logger.debug(f"Using provided main_engine: {main_engine}")
     else:
-        logger.debug("No main_engine provided, using global instance from simpletrade.main")
-        try:
-            from simpletrade.main import main_engine as global_main_engine
-            main_engine = global_main_engine
-            logger.debug(f"Global main_engine loaded: {main_engine}")
+        # 如果没有 main_engine，可能需要引发错误或有默认行为
+        logger.warning("No main_engine provided during configuration!") 
 
-            # 检查可用的网关
-            all_gateways = main_engine.get_all_gateway_names()
-            logger.debug(f"Available gateways: {all_gateways}")
-        except Exception as e:
-            logger.error(f"Failed to load global main_engine: {e}")
+    # 将 main_engine 存储到 app state 中，供依赖注入使用
+    # app = server.app # app 是传入的
+    app.state.main_engine = main_engine
+    logger.debug("Main engine stored in app state.")
+
+    # 检查可用的网关
+    try:
+        if main_engine:
+             all_gateways = main_engine.get_all_gateway_names()
+             logger.debug(f"Available gateways: {all_gateways}")
+        else:
+             logger.warning("Cannot get gateway names without main_engine.")
+    except Exception as e:
+        logger.warning(f"Could not get gateway names (might be harmless): {e}")
 
     # 添加数据管理API路由
     try:
         from simpletrade.apps.st_datamanager.api import router as data_router
-        server.add_router(data_router)
+        app.include_router(data_router)
         logger.debug("Data management API routes added.")
     except Exception as e:
         import traceback
@@ -113,8 +101,8 @@ def create_server(main_engine=None, event_engine=None):
     # 添加微信小程序API路由
     try:
         from simpletrade.api.wechat import auth_router, data_router as wechat_data_router
-        server.add_router(auth_router)
-        server.add_router(wechat_data_router)
+        app.include_router(auth_router)
+        app.include_router(wechat_data_router)
         print("WeChat Mini Program API routes added.")
     except Exception as e:
         import traceback
@@ -125,7 +113,7 @@ def create_server(main_engine=None, event_engine=None):
     # 添加分析API路由
     try:
         from simpletrade.api.analysis import router as analysis_router
-        server.add_router(analysis_router)
+        app.include_router(analysis_router)
         print("Analysis API routes added.")
     except Exception as e:
         import traceback
@@ -136,7 +124,7 @@ def create_server(main_engine=None, event_engine=None):
     # 添加策略API路由
     try:
         from simpletrade.api.strategies import router as strategies_router
-        server.add_router(strategies_router)
+        app.include_router(strategies_router)
         print("Strategies API routes added.")
     except Exception as e:
         import traceback
@@ -144,8 +132,9 @@ def create_server(main_engine=None, event_engine=None):
         logger.error(error_msg)
         print(error_msg)
 
-    return server
+    # 不再需要返回 server 对象
+    # return server
 
-# 创建FastAPI应用实例，用于uvicorn直接运行
-server = create_server()
-app = server.app
+# 移除全局服务器和 app 创建
+# server = create_server()
+# app = server.app

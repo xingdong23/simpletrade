@@ -6,6 +6,7 @@
 
 import logging
 from typing import Dict, List, Optional, Any, Union
+from sqlalchemy.orm import Session
 
 from simpletrade.core.engine import STMainEngine
 from simpletrade.config.database import get_db
@@ -45,72 +46,72 @@ class StrategyService:
         """
         return get_strategy_class_details()
     
-    def get_strategies(self, type: Optional[str] = None, category: Optional[str] = None) -> List[Strategy]:
+    def get_strategies(self, db: Session, type: Optional[str] = None, category: Optional[str] = None) -> List[Strategy]:
         """
-        获取所有策略记录
+        获取所有策略记录 (使用传入的 db session)
         
         参数:
+            db (Session): 数据库会话
             type (str, optional): 策略类型
             category (str, optional): 策略分类
             
         返回:
             List[Strategy]: 策略记录列表
         """
-        with get_db() as db:
-            query = db.query(Strategy).filter(Strategy.is_active == True)
+        query = db.query(Strategy).filter(Strategy.is_active == True)
+        
+        # 应用过滤条件
+        if type:
+            query = query.filter(Strategy.type == type)
+        if category:
+            query = query.filter(Strategy.category == category)
             
-            # 应用过滤条件
-            if type:
-                query = query.filter(Strategy.type == type)
-            if category:
-                query = query.filter(Strategy.category == category)
-                
-            return query.all()
+        return query.all()
     
-    def get_strategy(self, strategy_id: int) -> Optional[Strategy]:
+    def get_strategy(self, db: Session, strategy_id: int) -> Optional[Strategy]:
         """
-        获取策略记录
+        获取策略记录 (使用传入的 db session)
         
         参数:
+            db (Session): 数据库会话
             strategy_id (int): 策略ID
             
         返回:
             Strategy: 策略记录，如果不存在则返回None
         """
-        with get_db() as db:
-            return db.query(Strategy).filter(Strategy.id == strategy_id, Strategy.is_active == True).first()
+        return db.query(Strategy).filter(Strategy.id == strategy_id, Strategy.is_active == True).first()
     
-    def get_user_strategies(self, user_id: int) -> List[UserStrategy]:
+    def get_user_strategies(self, db: Session, user_id: int) -> List[UserStrategy]:
         """
-        获取用户策略记录
+        获取用户策略记录 (使用传入的 db session)
         
         参数:
+            db (Session): 数据库会话
             user_id (int): 用户ID
             
         返回:
             List[UserStrategy]: 用户策略记录列表
         """
-        with get_db() as db:
-            return db.query(UserStrategy).filter(
-                UserStrategy.user_id == user_id,
-                UserStrategy.is_active == True
-            ).all()
+        return db.query(UserStrategy).filter(
+            UserStrategy.user_id == user_id,
+            UserStrategy.is_active == True
+        ).all()
     
-    def get_user_strategy(self, user_strategy_id: int) -> Optional[UserStrategy]:
+    def get_user_strategy(self, db: Session, user_strategy_id: int) -> Optional[UserStrategy]:
         """
-        获取用户策略记录
+        获取用户策略记录 (使用传入的 db session)
         
         参数:
+            db (Session): 数据库会话
             user_strategy_id (int): 用户策略ID
             
         返回:
             UserStrategy: 用户策略记录，如果不存在则返回None
         """
-        with get_db() as db:
-            return db.query(UserStrategy).filter(
-                UserStrategy.id == user_strategy_id,
-                UserStrategy.is_active == True
-            ).first()
+        return db.query(UserStrategy).filter(
+            UserStrategy.id == user_strategy_id,
+            UserStrategy.is_active == True
+        ).first()
     
     def create_strategy(self, name: str, description: str, type: str, 
                        category: str, parameters: Dict[str, Any]) -> Optional[Strategy]:

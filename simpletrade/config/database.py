@@ -50,16 +50,11 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 # 创建Base类，用于创建模型类
 Base = declarative_base()
 
-@contextmanager
 def get_db():
-    """获取数据库会话的上下文管理器"""
+    """FastAPI 依赖项：获取数据库会话"""
     db = SessionLocal()
     try:
         yield db
-        db.commit()
-    except Exception:
-        db.rollback()
-        raise
     finally:
         db.close()
 
