@@ -15,9 +15,19 @@
                 prefix-icon="el-icon-search"
                 style="width: 200px; margin-right: 10px;"
               ></el-input>
-              <el-select placeholder="所有类型" style="width: 150px;">
+              <el-select
+                placeholder="所有类型"
+                style="width: 150px;"
+                v-model="selectedType"
+                @change="handleTypeChange"
+              >
                 <el-option label="所有类型" value="all"></el-option>
-                <!-- TODO: Populate types dynamically if needed -->
+                <el-option
+                  v-for="type in strategyTypes"
+                  :key="type"
+                  :label="type"
+                  :value="type"
+                ></el-option>
               </el-select>
             </el-col>
           </el-row>
@@ -869,7 +879,7 @@ class MyStrategy(CtaTemplate):
 
 <script>
 // 导入 API 函数
-import { getStrategies, getUserStrategies } from '@/api/strategies'
+import { getStrategies, getUserStrategies, getStrategyTypes } from '@/api/strategies'
 
 export default {
   name: 'StrategyCenterView',
@@ -883,7 +893,10 @@ export default {
       myStrategiesLoading: false,
       myStrategiesList: [], // 用于存储从API获取的用户策略
       // Hardcoded user ID for now
-      currentUserId: 1, 
+      currentUserId: 1,
+      // --- Add data for type filter ---
+      strategyTypes: [], // 存储从API获取的类型列表
+      selectedType: 'all', // 绑定下拉框选择的值，默认为 'all'
       // --- Existing data properties below ---
       activeTab: 'basic-strategies',
       // 所有标签页
@@ -908,20 +921,20 @@ export default {
       rsiPeriod: 14,
       positionSize: 10,
       builderMode: 'visual',
-      myStrategies: [
-        {
-          name: '我的双均线策略',
-          type: 'CTA策略',
-          createTime: '2023-10-15',
-          status: '运行中'
-        },
-        {
-          name: 'LSTM预测模型',
-          type: 'AI策略',
-          createTime: '2023-10-10',
-          status: '待运行'
-        }
-      ],
+      // myStrategies: [ // 移除硬编码数据
+      //   {
+      //     name: '我的双均线策略',
+      //     type: 'CTA策略',
+      //     createTime: '2023-10-15',
+      //     status: '运行中'
+      //   },
+      //   {
+      //     name: 'LSTM预测模型',
+      //     type: 'AI策略',
+      //     createTime: '2023-10-10',
+      //     status: '待运行'
+      //   }
+      // ],
       // 策略详情对话框
       strategyDetailVisible: false,
       currentStrategy: null,
@@ -975,33 +988,56 @@ export default {
   },
   // Add created hook to fetch data when component is created
   created() {
-    this.fetchStrategies();
-    this.fetchMyStrategies();
+    this.fetchStrategies(); // 获取所有基础策略 (初始不过滤)
+    this.fetchMyStrategies(); // 获取我的策略
+    this.fetchStrategyTypes(); // 获取策略类型
   },
   methods: {
-    // --- Add method to fetch strategies ---
-    fetchStrategies() {
+    // --- Modify fetchStrategies to accept type filter ---
+    fetchStrategies(type = null) { // 移除 category 参数，如果需要后续添加
       this.strategiesLoading = true;
-      getStrategies() // Fetch all strategies (no filters/pagination for now)
+      // 如果类型是 'all'，则不传递 type 参数给 API
+      const typeParam = (type === 'all' || type === null) ? null : type;
+      getStrategies(typeParam) // 传递 typeParam
         .then(response => {
           if (response.data && response.data.success) {
-            this.allStrategies = response.data.data || []; // Ensure it's an array
-            this.$message.success('策略列表已加载');
+            this.allStrategies = response.data.data || [];
+            // this.$message.success('策略列表已加载'); // 频繁调用时可能不需要提示
           } else {
             this.$message.error(response.data.message || '加载策略列表失败');
-            this.allStrategies = []; // Clear on failure
+            this.allStrategies = [];
           }
         })
         .catch(error => {
           console.error('加载策略列表错误:', error);
           this.$message.error('网络错误，无法加载策略列表');
-          this.allStrategies = []; // Clear on error
+          this.allStrategies = [];
         })
         .finally(() => {
           this.strategiesLoading = false;
         });
     },
-    // --- Add method to fetch user strategies ---
+    // --- Add method to fetch strategy types ---
+    fetchStrategyTypes() {
+      getStrategyTypes()
+        .then(response => {
+          if (response.data && response.data.success) {
+            this.strategyTypes = response.data.data || [];
+          } else {
+            this.$message.error(response.data.message || '加载策略类型失败');
+          }
+        })
+        .catch(error => {
+          console.error('加载策略类型错误:', error);
+          this.$message.error('网络错误，无法加载策略类型');
+        });
+    },
+    // --- Add handler for type selection change ---
+    handleTypeChange() {
+      // 当下拉框选择变化时，使用选中的类型重新获取策略列表
+      this.fetchStrategies(this.selectedType);
+    },
+    // --- fetchMyStrategies 方法保持不变 --- 
     fetchMyStrategies() {
       this.myStrategiesLoading = true;
       // 使用硬编码的用户ID调用API
@@ -1093,16 +1129,28 @@ export default {
           type: 'warning'
         }).then(() => {
           // 模拟停止策略
-          row.status = '待运行';
+          row.status = '待运行'; // TODO: Call stop API
           this.$message({
             type: 'success',
-            message: `策略 ${row.name} 已停止`
+            message: `策略 ${row.name} 已停止` // TODO: Update based on API result
           });
+          this.fetchMyStrategies(); // Refresh list after action
         }).catch(() => {});
       } else {
-        // 启动策略
-        this.handleView(row);
-        this.detailActiveTab = 'backtest';
+        // 启动策略 // TODO: Call start API
+         this.$message({
+            type: 'info',
+            message: `正在启动策略 ${row.name}...`
+          });
+         // 模拟启动
+         setTimeout(() => {
+            row.status = '运行中';
+            this.$message.success(`策略 ${row.name} 已启动`);
+            this.fetchMyStrategies(); // Refresh list after action
+         }, 1000);
+         // For now, also open the detail view
+        // this.handleView(row);
+        // this.detailActiveTab = 'live'; // Navigate to live tab if needed
       }
     },
 
@@ -1168,7 +1216,7 @@ export default {
             this.currentStrategy.status = '运行中';
 
             // 同步更新列表中的策略状态
-            const strategy = this.myStrategies.find(s => s.name === this.currentStrategy.name);
+            const strategy = this.myStrategiesList.find(s => s.name === this.currentStrategy.name); // Use myStrategiesList
             if (strategy) {
               strategy.status = '运行中';
             }

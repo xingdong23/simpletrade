@@ -28,14 +28,21 @@ class StrategyService:
         self.main_engine = main_engine
         self.cta_engine = main_engine.get_cta_engine()
         
-    def get_strategy_types(self) -> List[str]:
+    def get_strategy_types(self, db: Session) -> List[str]:
         """
-        获取所有可用的策略类型
+        获取数据库中所有活跃策略的不重复类型列表
         
+        参数:
+            db (Session): 数据库会话
         返回:
             List[str]: 策略类型列表
         """
-        return get_strategy_class_names()
+        # 查询数据库获取不重复的 type
+        query = db.query(Strategy.type).filter(Strategy.is_active == True).distinct()
+        # SQLAlchemy 返回的是元组列表，例如 [('DoubleMaStrategy',), ('AtrRsiStrategy',)]
+        # 需要将其转换为字符串列表
+        types = [item[0] for item in query.all() if item[0]] # 确保类型不是 None 或空字符串
+        return types
     
     def get_strategy_details(self) -> List[Dict[str, Any]]:
         """

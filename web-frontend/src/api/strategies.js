@@ -37,3 +37,10 @@ export function getStrategyDetail(strategyId) {
 export function getUserStrategies(userId) {
   return axios.get(`${API_BASE_URL}/strategies/user/${userId}`)
 }
+
+/**
+ * 获取所有策略类型
+ */
+export function getStrategyTypes() {
+  return axios.get(`${API_BASE_URL}/strategies/types`);
+}

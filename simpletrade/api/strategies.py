@@ -21,6 +21,7 @@ from simpletrade.services.monitor_service import MonitorService
 # 移除全局导入
 # from simpletrade.main import main_engine as global_main_engine
 from simpletrade.core.engine import STMainEngine # 导入类型提示
+from simpletrade.strategies import get_strategy_class_names
 
 # 获取 logger 实例
 logger = logging.getLogger(__name__)
@@ -101,6 +102,19 @@ class BacktestRequest(BaseModel):
     initial_capital: float
 
 # API路由
+@router.get("/types", response_model=ApiResponse)
+async def get_strategy_types_api(
+    db: Session = Depends(get_db),
+    strategy_service: StrategyService = Depends(get_strategy_service)
+):
+    """获取数据库中所有活跃策略的不重复类型列表"""
+    try:
+        types = strategy_service.get_strategy_types(db)
+        return {"success": True, "message": "获取策略类型成功", "data": types}
+    except Exception as e:
+        logger.error(f"Failed to get strategy types: {e}\n{traceback.format_exc()}")
+        return {"success": False, "message": f"获取策略类型失败: {str(e)}"}
+
 @router.get("/", response_model=ApiResponse)
 async def get_strategies(
     type: Optional[str] = None,
