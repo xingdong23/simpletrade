@@ -9,6 +9,7 @@ from fastapi import APIRouter, HTTPException, Depends, Request
 from pydantic import BaseModel, Field
 from datetime import date
 from sqlalchemy.orm import Session
+import logging
 
 from simpletrade.config.database import get_db
 from simpletrade.models.database import Strategy, UserStrategy, BacktestRecord
@@ -20,6 +21,9 @@ from simpletrade.services.monitor_service import MonitorService
 # 移除全局导入
 # from simpletrade.main import main_engine as global_main_engine
 from simpletrade.core.engine import STMainEngine # 导入类型提示
+
+# 获取 logger 实例
+logger = logging.getLogger(__name__)
 
 # --- 依赖注入函数定义 (移到前面) ---
 
@@ -201,42 +205,29 @@ async def get_user_strategies(
     db: Session = Depends(get_db),
     strategy_service: StrategyService = Depends(get_strategy_service)
 ):
-    """获取用户策略列表"""
+    """获取用户策略列表 (包含状态)"""
     try:
-        # 将 db 会话传递给服务方法
-        user_strategies = strategy_service.get_user_strategies(db, user_id)
+        # StrategyService 现在直接返回字典列表，包含状态
+        user_strategies_data = strategy_service.get_user_strategies(db, user_id)
 
         # 如果没有用户策略，返回空列表
-        if not user_strategies:
+        if not user_strategies_data:
             return {
                 "success": True,
                 "message": f"用户 {user_id} 没有策略",
                 "data": []
             }
-
-        # 将数据库对象转换为字典
-        strategies = []
-        for us in user_strategies:
-            strategy = us.strategy
-            strategy_dict = {
-                "id": us.id,
-                "name": us.name,
-                "strategy_id": strategy.id,
-                "strategy_name": strategy.name,
-                "category": strategy.category,
-                "type": strategy.type,
-                "complexity": strategy.complexity,
-                "resource_requirement": strategy.resource_requirement,
-                "parameters": us.parameters
-            }
-            strategies.append(strategy_dict)
-
+        
+        # 直接返回 service 层处理好的数据
         return {
             "success": True,
-            "message": f"获取用户策略成功，共 {len(strategies)} 个",
-            "data": strategies
+            "message": f"获取用户策略成功，共 {len(user_strategies_data)} 个",
+            "data": user_strategies_data
         }
     except Exception as e:
+        # 添加更详细的错误日志
+        import traceback
+        logger.error(f"Failed to get user strategies for user {user_id}: {e}\n{traceback.format_exc()}")
         return {
             "success": False,
             "message": f"获取用户策略失败: {str(e)}"

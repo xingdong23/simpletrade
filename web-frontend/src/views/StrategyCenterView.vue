@@ -517,11 +517,30 @@ class MyStrategy(CtaTemplate):
               <el-tag size="small">{{ scope.row.type }}</el-tag>
             </template>
           </el-table-column>
+          <el-table-column prop="createTime" label="创建时间" width="180"></el-table-column>
+          <el-table-column prop="status" label="状态" width="120">
+            <template slot-scope="scope">
+              <el-tag 
+                :type="scope.row.status === '运行中' ? 'success' : scope.row.status === '已初始化' ? 'warning' : scope.row.status === '未加载' ? 'info' : 'danger'" 
+                size="small"
+              >
+                {{ scope.row.status }}
+              </el-tag>
+            </template>
+          </el-table-column>
           <el-table-column label="操作">
             <template slot-scope="scope">
               <el-button size="mini" type="text" @click="navigateToDetail(scope.row.id)">查看</el-button>
               <el-button size="mini" type="text" @click="handleBacktest(scope.row)">回测</el-button>
               <el-button size="mini" type="text" @click="handleOptimize(scope.row)">优化</el-button>
+              <el-button
+                size="mini"
+                type="text"
+                :style="{ color: scope.row.status === '运行中' ? '#F56C6C' : '#67C23A' }" 
+                @click="handleAction(scope.row)"
+              >
+                {{ scope.row.status === '运行中' ? '停止' : '启动' }}
+              </el-button>
             </template>
           </el-table-column>
         </el-table>

@@ -6,7 +6,7 @@
 
 import logging
 from typing import Dict, List, Optional, Any, Union
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from simpletrade.core.engine import STMainEngine
 from simpletrade.config.database import get_db
@@ -81,21 +81,62 @@ class StrategyService:
         """
         return db.query(Strategy).filter(Strategy.id == strategy_id, Strategy.is_active == True).first()
     
-    def get_user_strategies(self, db: Session, user_id: int) -> List[UserStrategy]:
+    def get_user_strategies(self, db: Session, user_id: int) -> List[Dict[str, Any]]:
         """
-        获取用户策略记录 (使用传入的 db session)
+        获取用户策略记录列表，并包含实时状态和创建时间
         
         参数:
             db (Session): 数据库会话
             user_id (int): 用户ID
             
         返回:
-            List[UserStrategy]: 用户策略记录列表
+            List[Dict[str, Any]]: 包含策略信息、状态和创建时间字典的列表
         """
-        return db.query(UserStrategy).filter(
+        user_strategies_orm = db.query(UserStrategy).filter(
             UserStrategy.user_id == user_id,
             UserStrategy.is_active == True
-        ).all()
+        ).options(joinedload(UserStrategy.strategy)).all() # 预加载关联的 Strategy
+        
+        result_list = []
+        for us in user_strategies_orm:
+            strategy_template = us.strategy # 从预加载中获取关联的 Strategy
+            if not strategy_template:
+                # 如果关联的 Strategy 被删除了或不存在，跳过这个用户策略
+                logger.warning(f"UserStrategy {us.id} ({us.name}) references a non-existent Strategy {us.strategy_id}. Skipping.")
+                continue
+
+            # 尝试从 cta_engine 获取策略实例和状态
+            strategy_instance = self.cta_engine.strategies.get(us.name)
+            
+            status = "已停止" # 默认状态
+            if strategy_instance:
+                if strategy_instance.trading:
+                    status = "运行中"
+                elif strategy_instance.inited:
+                    status = "已初始化"
+                # else: status remains "已停止" (or could be '未初始化' if needed)
+            else:
+                 # 如果 cta_engine 中没有实例，也认为是停止状态
+                 status = "未加载"
+
+            strategy_dict = {
+                "id": us.id,
+                "name": us.name,
+                "strategy_id": strategy_template.id,
+                "strategy_name": strategy_template.name,
+                "category": strategy_template.category,
+                "type": strategy_template.type,
+                # 假设 UserStrategy 模型有 created_at 字段
+                "createTime": us.created_at.strftime("%Y-%m-%d %H:%M:%S") if us.created_at else None, 
+                "status": status, # 添加状态字段
+                "parameters": us.parameters,
+                # 可以选择性添加其他需要的字段
+                # "complexity": strategy_template.complexity, 
+                # "resource_requirement": strategy_template.resource_requirement,
+            }
+            result_list.append(strategy_dict)
+            
+        return result_list
     
     def get_user_strategy(self, db: Session, user_strategy_id: int) -> Optional[UserStrategy]:
         """
