@@ -86,7 +86,12 @@ class StrategyService:
         返回:
             Strategy: 策略记录，如果不存在则返回None
         """
-        return db.query(Strategy).filter(Strategy.id == strategy_id, Strategy.is_active == True).first()
+        strategy = db.query(Strategy).filter(Strategy.id == strategy_id, Strategy.is_active == True).first()
+        if strategy:
+            logger.info(f"StrategyService.get_strategy: Found strategy ID {strategy_id}. Name: {strategy.name}, Identifier from DB object: {getattr(strategy, 'identifier', '[identifier attribute not found]')}")
+        else:
+            logger.info(f"StrategyService.get_strategy: Strategy ID {strategy_id} not found in DB.")
+        return strategy
     
     def get_user_strategies(self, db: Session, user_id: int) -> List[Dict[str, Any]]:
         """

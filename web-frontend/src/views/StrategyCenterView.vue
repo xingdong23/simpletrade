@@ -1067,7 +1067,7 @@ export default {
       // TODO: This needs actual strategy ID from fetched data
       // For now, keep the placeholder logic or adapt if IDs are available
       const idToUse = typeof strategyId === 'object' ? strategyId.id : strategyId; // Handle potential object passing
-      this.$router.push(`/strategy-detail/${idToUse}`);
+      this.$router.push(`/strategy/${idToUse}`); // <-- 更正为匹配路由配置的路径
       // Original line: this.$router.push(`/strategy-detail/${strategyId}`);
     },
 

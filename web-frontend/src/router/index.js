@@ -15,9 +15,9 @@ const routes = [
     component: () => import(/* webpackChunkName: "strategy" */ '../views/StrategyCenterView.vue')
   },
   {
-    path: '/strategy-detail/:id',
-    name: 'strategyDetail',
-    component: () => import(/* webpackChunkName: "strategy" */ '../views/StrategyDetailView.vue'),
+    path: '/strategy/:id',
+    name: 'StrategyDetail',
+    component: () => import(/* webpackChunkName: "strategy-detail" */ '../views/StrategyDetailView.vue'),
     props: true
   },
   {

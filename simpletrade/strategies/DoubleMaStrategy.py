@@ -11,7 +11,7 @@ from vnpy.trader.constant import Interval, Direction
 from vnpy.trader.utility import ArrayManager
 
 
-class MovingAverageStrategy(CtaTemplate):
+class DoubleMaStrategy(CtaTemplate):
     """
     移动平均线策略
     

@@ -12,6 +12,7 @@
           <el-descriptions :column="2" border>
             <el-descriptions-item label="策略名称">{{ strategy ? strategy.name : '' }}</el-descriptions-item>
             <el-descriptions-item label="策略类型">{{ strategy ? strategy.type : '' }}</el-descriptions-item>
+            <el-descriptions-item label="标识符">{{ strategy ? strategy.identifier : '' }}</el-descriptions-item>
             <el-descriptions-item label="创建时间">{{ strategy ? strategy.createTime : '' }}</el-descriptions-item>
             <el-descriptions-item label="状态">
               <el-tag :type="strategy && strategy.status === '运行中' ? 'success' : strategy && strategy.status === '待运行' ? 'warning' : 'info'" size="small">
@@ -84,6 +85,14 @@
                 <el-button type="success" @click="activeTab = 'backtest'">运行回测</el-button>
               </el-form-item>
             </el-form>
+          </div>
+
+          <!-- 显示策略代码 -->
+          <div v-if="strategy && strategy.code" style="margin-top: 20px;">
+            <h3>策略代码</h3>
+            <el-card shadow="never" style="max-height: 400px; overflow-y: auto;">
+              <pre style="margin: 0;"><code class="language-python">{{ strategy.code }}</code></pre>
+            </el-card>
           </div>
         </el-tab-pane>
         <el-tab-pane label="回测" name="backtest">
@@ -184,7 +193,7 @@
           </div>
           <div v-else style="text-align: center; padding: 50px 0;">
             <i class="el-icon-data-analysis" style="font-size: 48px; color: #909399; margin-bottom: 20px;"></i>
-            <p>还没有运行回测，请点击“运行回测”按钮开始回测。</p>
+            <p>还没有运行回测，请点击"运行回测"按钮开始回测。</p>
           </div>
         </el-tab-pane>
         <el-tab-pane label="参数优化" name="optimize">
@@ -261,7 +270,7 @@
           </div>
           <div v-else style="text-align: center; padding: 50px 0;">
             <i class="el-icon-cpu" style="font-size: 48px; color: #909399; margin-bottom: 20px;"></i>
-            <p>还没有运行优化，请选择参数并点击“运行优化”按钮。</p>
+            <p>还没有运行优化，请选择参数并点击"运行优化"按钮。</p>
           </div>
         </el-tab-pane>
         <el-tab-pane label="实盘交易" name="live">
@@ -367,8 +376,16 @@
 </template>
 
 <script>
+import { getStrategyDetail } from '@/api/strategies';
+
 export default {
   name: 'StrategyDetailView',
+  props: {
+    id: { // 接收来自路由的 strategy ID
+      type: [String, Number],
+      required: true
+    }
+  },
   data() {
     return {
       strategy: null,
@@ -403,121 +420,49 @@ export default {
         paramSets: []
       },
       // 实盘交易记录
-      liveTradeRecords: []
+      liveTradeRecords: [],
+      loading: false,
+      error: null
+    }
+  },
+  computed: {
+    parameterList() {
+      // 将 strategy.parameters (如果存在且是对象) 转换为数组以方便表格渲染
+      if (!this.strategy || !this.strategy.parameters || typeof this.strategy.parameters !== 'object') {
+        return [];
+      }
+      return Object.entries(this.strategy.parameters).map(([name, details]) => ({
+        name,
+        ...details
+      }));
     }
   },
   methods: {
     goBack() {
       this.$router.push('/strategy-center');
     },
-    loadStrategyData() {
-      // 模拟加载策略数据
-      const strategyId = this.$route.params.id;
-      console.log('Loading strategy data for ID:', strategyId);
-
-      // 模拟异步加载
-      setTimeout(() => {
-        // 根据策略ID生成不同的模拟数据
-        if (strategyId === 'strategy1') {
-          this.strategy = {
-            id: 'strategy1',
-            name: '双均线突破策略',
-            type: '技术指标策略',
-            createTime: '2023-10-15',
-            status: '待运行'
-          };
-          this.strategyComplexity = 2;
-          this.strategyParams = {
-            shortPeriod: 5,
-            longPeriod: 20,
-            rsiPeriod: 14,
-            rsiOverbought: 70,
-            rsiOversold: 30,
-            positionSize: 10,
-            stopLoss: 5,
-            takeProfit: 15
-          };
-        } else if (strategyId === 'strategy2') {
-          this.strategy = {
-            id: 'strategy2',
-            name: 'LSTM预测模型',
-            type: 'AI策略',
-            createTime: '2023-10-10',
-            status: '待运行'
-          };
-          this.strategyComplexity = 4;
-          this.strategyParams = {
-            shortPeriod: 3,
-            longPeriod: 15,
-            rsiPeriod: 10,
-            rsiOverbought: 75,
-            rsiOversold: 25,
-            positionSize: 15,
-            stopLoss: 3,
-            takeProfit: 20
-          };
-        } else if (strategyId === 'ai-strategy1') {
-          this.strategy = {
-            id: 'ai-strategy1',
-            name: '可视化AI策略',
-            type: 'AI策略',
-            createTime: '2023-10-18',
-            status: '待运行'
-          };
-          this.strategyComplexity = 4;
-          this.strategyParams = {
-            epochs: 100,
-            batchSize: 32,
-            learningRate: 0.001,
-            dropout: 0.2,
-            lookbackPeriod: 30,
-            predictionPeriod: 5,
-            positionSize: 15,
-            stopLoss: 5,
-            takeProfit: 20
-          };
-        } else if (strategyId === 'multi-factor1') {
-          this.strategy = {
-            id: 'multi-factor1',
-            name: '多因子线性策略',
-            type: '多因子策略',
-            createTime: '2023-10-16',
-            status: '待运行'
-          };
-          this.strategyComplexity = 3;
-          this.strategyParams = {
-            momentumWeight: 0.3,
-            valueWeight: 0.3,
-            qualityWeight: 0.4,
-            rebalancePeriod: 20,
-            stocksCount: 10,
-            positionSize: 10,
-            stopLoss: 8,
-            takeProfit: 25
-          };
+    async fetchStrategyDetail() {
+      console.log('StrategyDetailView: fetchStrategyDetail() called with id:', this.id);
+      this.loading = true;
+      this.error = null;
+      try {
+        const response = await getStrategyDetail(this.id);
+        if (response.data && response.data.success) {
+          this.strategy = response.data.data;
+          this.strategyComplexity = this.strategy.complexity || 3;
+          this.strategyParams = this.strategy.parameters || {};
         } else {
-          this.strategy = {
-            id: strategyId,
-            name: '测试策略',
-            type: 'CTA策略',
-            createTime: '2023-10-20',
-            status: '待运行'
-          };
-          this.strategyComplexity = 2;
-          this.strategyParams = {
-            shortPeriod: 10,
-            longPeriod: 30,
-            rsiPeriod: 14,
-            rsiOverbought: 70,
-            rsiOversold: 30,
-            positionSize: 10,
-            stopLoss: 5,
-            takeProfit: 15
-          };
+          this.error = response.data.message || '获取策略详情失败';
+          this.strategy = null;
         }
-      }, 500);
+      } catch (err) {
+        console.error('Error fetching strategy detail:', err);
+        this.error = (err.response && err.response.data && err.response.data.message) || err.message || '网络错误或服务器内部错误';
+        this.strategy = null;
+      } finally {
+        this.loading = false;
+      }
     },
-
     // 保存策略参数
     saveStrategyParams() {
       this.$message({
@@ -525,7 +470,6 @@ export default {
         message: '策略参数保存成功'
       });
     },
-
     // 运行回测
     runBacktest() {
       // 模拟回测过程
@@ -559,7 +503,6 @@ export default {
         });
       }, 1500);
     },
-
     // 部署到实盘
     deployToLive() {
       this.$confirm('确定要将策略部署到实盘吗？', '提示', {
@@ -596,7 +539,6 @@ export default {
         }, 1500);
       }).catch(() => {});
     },
-
     // 运行参数优化
     runOptimization() {
       if (!this.optimizeParams.parameters.length) {
@@ -640,7 +582,6 @@ export default {
         });
       }, 2000);
     },
-
     // 应用最佳参数
     applyOptimizedParams() {
       // 将最佳参数应用到策略参数
@@ -654,7 +595,6 @@ export default {
       // 切换到策略信息标签页
       this.activeTab = 'info';
     },
-
     // 应用特定参数组合
     applyParamSet(paramSet) {
       // 将选中的参数组合应用到策略参数
@@ -672,7 +612,6 @@ export default {
       // 切换到策略信息标签页
       this.activeTab = 'info';
     },
-
     // 停止策略
     stopStrategy() {
       this.$confirm('确定要停止该策略吗？', '提示', {
@@ -692,7 +631,17 @@ export default {
     }
   },
   created() {
-    this.loadStrategyData();
+    console.log('StrategyDetailView: Component created with id prop:', this.id);
+    this.fetchStrategyDetail();
+  },
+  watch: {
+    id(newId, oldId) {
+      console.log(`StrategyDetailView: Watcher triggered. ID changed from ${oldId} to ${newId}`);
+      // 如果 strategy ID 变化 (例如通过浏览器前进/后退), 重新获取数据
+      if (newId && newId !== oldId) {
+        this.fetchStrategyDetail();
+      }
+    }
   }
 }
 </script>

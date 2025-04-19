@@ -10,6 +10,8 @@ from pydantic import BaseModel, Field
 from datetime import date
 from sqlalchemy.orm import Session
 import logging
+import traceback
+from pathlib import Path
 
 from simpletrade.config.database import get_db
 from simpletrade.models.database import Strategy, UserStrategy, BacktestRecord
@@ -167,16 +169,38 @@ async def get_strategy(
     db: Session = Depends(get_db),
     strategy_service: StrategyService = Depends(get_strategy_service)
 ):
-    """获取策略详情"""
+    """获取策略详情，并从文件加载策略代码"""
     try:
-        # 将 db 会话传递给服务方法
         strategy = strategy_service.get_strategy(db, strategy_id)
 
         if not strategy:
-            return {
-                "success": False,
-                "message": f"未找到ID为 {strategy_id} 的策略"
-            }
+            # 返回 404 更符合 RESTful 规范
+            raise HTTPException(status_code=404, detail=f"未找到ID为 {strategy_id} 的策略")
+
+        # --- 从文件加载代码 --- 
+        strategy_code = None
+        file_path_str = ""
+        # 假设模型中已有 identifier 属性
+        if hasattr(strategy, 'identifier') and strategy.identifier:
+            try:
+                # 假设工作区根目录是基础路径
+                base_path = Path('.') 
+                strategies_dir = base_path / "simpletrade" / "strategies"
+                file_path = strategies_dir / f"{strategy.identifier}.py"
+                file_path_str = str(file_path)
+
+                if file_path.is_file():
+                    strategy_code = file_path.read_text(encoding='utf-8')
+                    logger.info(f"成功加载策略代码文件: {file_path_str}")
+                else:
+                    logger.warning(f"策略代码文件未找到: {file_path_str}")
+            except FileNotFoundError:
+                 logger.warning(f"策略代码文件未找到: {file_path_str}")
+            except Exception as e:
+                logger.error(f"读取策略代码文件失败 ({file_path_str}): {e}\n{traceback.format_exc()}")
+        else:
+             logger.warning(f"策略 {strategy.id} ({strategy.name}) 没有有效的 identifier 字段，无法加载代码。")
+        # --- 代码加载结束 --- 
 
         # 获取策略类详细信息
         strategy_details = None
@@ -192,10 +216,11 @@ async def get_strategy(
             "description": strategy.description,
             "category": strategy.category,
             "type": strategy.type,
+            "identifier": strategy.identifier if hasattr(strategy, 'identifier') else None,
             "complexity": strategy.complexity,
             "resource_requirement": strategy.resource_requirement,
             "parameters": strategy.parameters,
-            "code": strategy.code
+            "code": strategy_code
         }
 
         # 添加策略类详细信息
@@ -207,11 +232,13 @@ async def get_strategy(
             "message": f"获取策略详情成功",
             "data": strategy_dict
         }
+    except HTTPException as http_exc:
+        # 重新抛出 HTTPException 以便 FastAPI 处理
+        raise http_exc
     except Exception as e:
-        return {
-            "success": False,
-            "message": f"获取策略详情失败: {str(e)}"
-        }
+        logger.error(f"获取策略详情失败 (ID: {strategy_id}): {e}\n{traceback.format_exc()}")
+        # 对于其他内部错误，也抛出 HTTPException
+        raise HTTPException(status_code=500, detail=f"获取策略详情时发生内部错误")
 
 @router.get("/user/{user_id}", response_model=ApiResponse)
 async def get_user_strategies(
