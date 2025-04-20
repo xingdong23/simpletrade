@@ -1,7 +1,7 @@
 <template>
   <div>
     <!-- 顶部标签导航 -->
-    <el-tabs v-model="activeTab" type="border-card">
+    <el-tabs v-model="activeTab" type="border-card" @tab-click="handleTabClick">
       <!-- 基础策略标签页 -->
       <el-tab-pane label="基础策略" name="basic-strategies" v-loading="strategiesLoading">
         <div style="margin-bottom: 20px;">
@@ -16,14 +16,15 @@
                 style="width: 200px; margin-right: 10px;"
               ></el-input>
               <el-select
-                placeholder="所有类型"
+                placeholder="所有基础类型"
                 style="width: 150px;"
-                v-model="selectedType"
-                @change="handleTypeChange"
+                v-model="selectedBasicType" 
+                @change="filterBasicStrategies" 
+                clearable
               >
-                <el-option label="所有类型" value="all"></el-option>
+                <el-option label="所有基础类型" value="all"></el-option>
                 <el-option
-                  v-for="type in strategyTypes"
+                  v-for="type in basicStrategyTypes" 
                   :key="type"
                   :label="type"
                   :value="type"
@@ -33,13 +34,12 @@
           </el-row>
         </div>
 
-        <!-- 策略卡片列表 - Modified to use v-for -->
+        <!-- 策略卡片列表 - 遍历 filteredBasicStrategies -->
         <el-row :gutter="20">
-          <!-- Loop through fetched strategies -->
-          <el-col v-if="allStrategies.length === 0 && !strategiesLoading" :span="24" style="text-align: center; color: #909399; padding: 40px 0;">
-             暂无策略数据
+          <el-col v-if="filteredBasicStrategies.length === 0 && !strategiesLoading" :span="24" style="text-align: center; color: #909399; padding: 40px 0;">
+             暂无符合条件的基础策略
           </el-col>
-          <el-col v-for="strategy in allStrategies" :key="strategy.id" :xs="24" :sm="12" :md="8" :lg="8" :xl="8" style="margin-bottom: 20px;">
+          <el-col v-for="strategy in filteredBasicStrategies" :key="strategy.id" :xs="24" :sm="12" :md="8" :lg="8" :xl="8" style="margin-bottom: 20px;">
              <el-card shadow="hover" class="strategy-card">
                <div class="strategy-card-content">
                  <div class="strategy-card-header">
@@ -56,89 +56,43 @@
                 <!-- <div class="strategy-resources"> ... </div> -->
                  <div class="strategy-actions">
                    <el-button type="primary" size="small" @click="navigateToDetail(strategy.id)">查看详情</el-button>
-                   <el-button size="small">使用策略</el-button> <!-- TODO: Implement 'Use Strategy' logic -->
+                   <!-- <el-button size="small">使用策略</el-button> --> <!-- 模板页不应有"使用" -->
                  </div>
                </div>
              </el-card>
           </el-col>
-
-          <!-- Original hardcoded cards removed -->
-          <!-- <el-col :xs="24" :sm="12" :md="8" :lg="8" :xl="8" style="margin-bottom: 20px;"> ... </el-col> -->
-          <!-- ... more hardcoded cards ... -->
-
         </el-row>
       </el-tab-pane>
 
       <!-- 高级策略标签页 -->
-      <!-- TODO: Apply similar v-for logic here if needed, potentially filtering allStrategies -->
-      <el-tab-pane label="高级策略" name="advanced-strategies">
-        <div style="margin-bottom: 20px;">
-          <el-row type="flex" justify="space-between" align="middle">
-            <el-col :span="12">
-              <h2 style="font-size: 20px; font-weight: 600; margin: 0;">高级策略</h2>
-            </el-col>
-            <el-col :span="12" style="text-align: right;">
-              <el-input
-                placeholder="搜索策略..."
-                prefix-icon="el-icon-search"
-                style="width: 200px; margin-right: 10px;"
-              ></el-input>
-              <el-select placeholder="所有类型" style="width: 150px;">
-                <el-option label="所有类型" value="all"></el-option>
-                <el-option label="多因子策略" value="multi-factor"></el-option>
-                <el-option label="AI策略" value="ai"></el-option>
-                <el-option label="组合策略" value="portfolio"></el-option>
-              </el-select>
-            </el-col>
-          </el-row>
-        </div>
-
-        <!-- 高级策略卡片列表 -->
+      <el-tab-pane label="高级策略 (AI)" name="advanced-strategies" v-loading="strategiesLoading">
+         <!-- ... (可以添加类似的搜索和过滤, 如果高级策略多的话) ... -->
+         <div style="margin-bottom: 20px;">
+            <el-row type="flex" justify="space-between" align="middle">
+                 <el-col :span="12">
+                    <h2 style="font-size: 20px; font-weight: 600; margin: 0;">高级策略 (AI)</h2>
+                 </el-col>
+                 <!-- Optional Filters -->
+            </el-row>
+         </div>
+        <!-- 高级策略卡片列表 - 遍历 advancedStrategies -->
         <el-row :gutter="20">
-          <el-col :xs="24" :sm="12" :md="8" :lg="8" :xl="8" style="margin-bottom: 20px;">
-            <el-card shadow="hover" class="strategy-card">
-              <div class="strategy-card-content">
-                <div class="strategy-card-header">
-                  <h3 class="strategy-title">可视化AI策略</h3>
-                  <el-tag size="small" type="danger">AI策略</el-tag>
-                </div>
-                <p class="strategy-description">训练AI模型进行未来因子权重预测，以期增强策略收益。</p>
-                <div class="strategy-metrics">
-                  <span class="metric">胜率: <span class="metric-value positive">62%</span></span>
-                  <span class="metric">年化收益: <span class="metric-value positive">32.5%</span></span>
-                </div>
-                <div class="strategy-complexity">
-                  <span>复杂度: <el-rate :value="4" disabled text-color="#ff9900" score-template="{value}"></el-rate></span>
-                </div>
-                <div class="strategy-actions">
-                  <el-button type="primary" size="small" @click="navigateToDetail('ai-strategy1')">查看详情</el-button>
-                  <el-button size="small">使用策略</el-button>
-                </div>
-              </div>
-            </el-card>
-          </el-col>
-
-          <el-col :xs="24" :sm="12" :md="8" :lg="8" :xl="8" style="margin-bottom: 20px;">
-            <el-card shadow="hover" class="strategy-card">
-              <div class="strategy-card-content">
-                <div class="strategy-card-header">
-                  <h3 class="strategy-title">多因子线性策略</h3>
-                  <el-tag size="small" type="warning">多因子策略</el-tag>
-                </div>
-                <p class="strategy-description">通过预计算因子权重，结合多因子线性组合实现选股和排序。</p>
-                <div class="strategy-metrics">
-                  <span class="metric">胜率: <span class="metric-value positive">59%</span></span>
-                  <span class="metric">年化收益: <span class="metric-value positive">26.8%</span></span>
-                </div>
-                <div class="strategy-complexity">
-                  <span>复杂度: <el-rate :value="3" disabled text-color="#ff9900" score-template="{value}"></el-rate></span>
-                </div>
-                <div class="strategy-actions">
-                  <el-button type="primary" size="small" @click="navigateToDetail('multi-factor1')">查看详情</el-button>
-                  <el-button size="small">使用策略</el-button>
-                </div>
-              </div>
-            </el-card>
+            <el-col v-if="advancedStrategies.length === 0 && !strategiesLoading" :span="24" style="text-align: center; color: #909399; padding: 40px 0;">
+                 暂无高级策略数据
+            </el-col>
+           <el-col v-for="strategy in advancedStrategies" :key="strategy.id" :xs="24" :sm="12" :md="8" :lg="8" :xl="8" style="margin-bottom: 20px;">
+             <el-card shadow="hover" class="strategy-card">
+               <div class="strategy-card-content">
+                 <div class="strategy-card-header">
+                   <h3 class="strategy-title">{{ strategy.name }}</h3>
+                   <el-tag size="small" type="danger">{{ strategy.type }}</el-tag> 
+                 </div>
+                 <p class="strategy-description">{{ strategy.description || '暂无描述' }}</p>
+                 <div class="strategy-actions">
+                   <el-button type="primary" size="small" @click="navigateToDetail(strategy.id)">查看详情</el-button>
+                 </div>
+               </div>
+             </el-card>
           </el-col>
         </el-row>
       </el-tab-pane>
@@ -896,7 +850,7 @@ export default {
       currentUserId: 1,
       // --- Add data for type filter ---
       strategyTypes: [], // 存储从API获取的类型列表
-      selectedType: 'all', // 绑定下拉框选择的值，默认为 'all'
+      selectedBasicType: 'all', // 基础策略类型过滤器
       // --- Existing data properties below ---
       activeTab: 'basic-strategies',
       // 所有标签页
@@ -986,38 +940,64 @@ export default {
       liveTradeRecords: []
     }
   },
+  computed: {
+      // 计算基础策略的类型列表 (排除 AI 策略)
+      basicStrategyTypes() {
+          return this.strategyTypes.filter(type => type !== 'AI策略'); // 假设高级是 'AI策略'
+      }
+  },
   // Add created hook to fetch data when component is created
   created() {
-    this.fetchStrategies(); // 获取所有基础策略 (初始不过滤)
-    this.fetchMyStrategies(); // 获取我的策略
-    this.fetchStrategyTypes(); // 获取策略类型
+    this.fetchAllStrategiesAndGroup(); // 获取所有策略并分组
+    this.fetchMyStrategies(); 
+    this.fetchStrategyTypes(); // 获取所有类型用于过滤
   },
   methods: {
-    // --- Modify fetchStrategies to accept type filter ---
-    fetchStrategies(type = null) { // 移除 category 参数，如果需要后续添加
+    // 获取所有策略并进行分组
+    fetchAllStrategiesAndGroup() {
       this.strategiesLoading = true;
-      // 如果类型是 'all'，则不传递 type 参数给 API
-      const typeParam = (type === 'all' || type === null) ? null : type;
-      getStrategies(typeParam) // 传递 typeParam
+      getStrategies() // 不带参数获取所有
         .then(response => {
           if (response.data && response.data.success) {
             this.allStrategies = response.data.data || [];
-            // this.$message.success('策略列表已加载'); // 频繁调用时可能不需要提示
+            this.groupStrategies(); // 调用分组方法
+            this.filterBasicStrategies(); // 初始化基础策略显示
           } else {
             this.$message.error(response.data.message || '加载策略列表失败');
             this.allStrategies = [];
+            this.basicStrategies = [];
+            this.advancedStrategies = [];
+            this.filteredBasicStrategies = [];
           }
         })
         .catch(error => {
           console.error('加载策略列表错误:', error);
           this.$message.error('网络错误，无法加载策略列表');
           this.allStrategies = [];
+          this.basicStrategies = [];
+          this.advancedStrategies = [];
+          this.filteredBasicStrategies = [];
         })
         .finally(() => {
           this.strategiesLoading = false;
         });
     },
-    // --- Add method to fetch strategy types ---
+    // 将 allStrategies 分组到 basic 和 advanced
+    groupStrategies() {
+        this.basicStrategies = this.allStrategies.filter(s => s.type !== 'advanced'); // 假设 'AI策略' 是高级
+        this.advancedStrategies = this.allStrategies.filter(s => s.type === 'advanced');
+        console.log("Basic Strategies:", this.basicStrategies);
+        console.log("Advanced Strategies:", this.advancedStrategies);
+    },
+    // 根据选择的基础类型过滤基础策略列表
+    filterBasicStrategies() {
+        if (this.selectedBasicType === 'all') {
+            this.filteredBasicStrategies = [...this.basicStrategies];
+        } else {
+            this.filteredBasicStrategies = this.basicStrategies.filter(s => s.type === this.selectedBasicType);
+        }
+    },
+    // 获取所有策略类型 (保持不变)
     fetchStrategyTypes() {
       getStrategyTypes()
         .then(response => {
@@ -1032,10 +1012,13 @@ export default {
           this.$message.error('网络错误，无法加载策略类型');
         });
     },
-    // --- Add handler for type selection change ---
-    handleTypeChange() {
-      // 当下拉框选择变化时，使用选中的类型重新获取策略列表
-      this.fetchStrategies(this.selectedType);
+    // 处理 Tab 点击 (如果需要根据 Tab 加载不同数据，可以在这里触发)
+    handleTabClick(tab) {
+        console.log("Tab clicked:", tab.name);
+        // 目前我们在 created 时加载所有数据并分组，所以这里暂时不需要做什么
+        // 如果将来数据量大，可以考虑在这里按需加载
+        // if (tab.name === 'basic-strategies') { ... } 
+        // else if (tab.name === 'advanced-strategies') { ... }
     },
     // --- fetchMyStrategies 方法保持不变 --- 
     fetchMyStrategies() {

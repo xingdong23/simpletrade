@@ -84,7 +84,7 @@ export default {
         '/ai-analysis': 'AI分析',
         '/user-center': '用户中心'
       };
-      return routeMap[this.$route.path] || '页面';
+      return routeMap[this.$route.path] || '';
     }
   },
   methods: {
