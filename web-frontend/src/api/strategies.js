@@ -44,3 +44,22 @@ export function getUserStrategies(userId) {
 export function getStrategyTypes() {
   return axios.get(`${API_BASE_URL}/strategies/types`);
 }
+
+/**
+ * 运行策略回测
+ * @param {object} backtestConfig 回测配置对象
+ * @param {number} backtestConfig.strategy_id 
+ * @param {string} backtestConfig.symbol
+ * @param {string} backtestConfig.exchange
+ * @param {string} backtestConfig.interval
+ * @param {string} backtestConfig.start_date (YYYY-MM-DD)
+ * @param {string} backtestConfig.end_date (YYYY-MM-DD)
+ * @param {number} backtestConfig.initial_capital
+ * @param {number} backtestConfig.rate
+ * @param {number} backtestConfig.slippage
+ * @param {object} [backtestConfig.parameters] 可选的用户自定义参数
+ * @param {number} backtestConfig.user_id
+ */
+export function runStrategyBacktest(backtestConfig) {
+  return axios.post(`${API_BASE_URL}/strategies/backtest`, backtestConfig);
+}

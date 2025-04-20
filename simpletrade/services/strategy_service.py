@@ -349,62 +349,49 @@ class StrategyService:
             user_strategy_id (int): 用户策略ID
             
         返回:
-            Dict[str, Any]: 策略配置，包含策略名称、类型和参数
+            Dict[str, Any]: 策略配置，包含策略名称、Python类对象和参数
         """
-        user_strategy = self.get_user_strategy(user_strategy_id)
-        if not user_strategy:
-            logger.error(f"User strategy {user_strategy_id} not found")
-            return {}
-        
-        strategy = self.get_strategy(user_strategy.strategy_id)
-        if not strategy:
-            logger.error(f"Strategy {user_strategy.strategy_id} not found")
-            return {}
-        
-        # 获取策略类
-        strategy_class = get_strategy_class(strategy.type)
-        if not strategy_class:
-            logger.error(f"Strategy class {strategy.type} not found")
-            return {}
-        
-        # 构建策略配置
-        strategy_config = {
-            "strategy_name": user_strategy.name,
-            "strategy_class": strategy.type,
-            "setting": user_strategy.parameters
-        }
-        
-        return strategy_config
-    
-    def init_strategy(self, user_strategy_id: int) -> bool:
-        """
-        初始化策略
-        
-        参数:
-            user_strategy_id (int): 用户策略ID
-            
-        返回:
-            bool: 是否初始化成功
-        """
-        strategy_config = self.load_user_strategy(user_strategy_id)
-        if not strategy_config:
-            return False
-        
+        # 使用 with get_db() 来确保会话关闭
+        db = next(get_db()) # 获取 db 会话
         try:
-            # 添加策略
-            self.cta_engine.add_strategy(
-                strategy_config["strategy_class"],
-                strategy_config["strategy_name"],
-                strategy_config["setting"]
-            )
+            user_strategy = db.query(UserStrategy).filter(
+                UserStrategy.id == user_strategy_id,
+                UserStrategy.is_active == True
+            ).options(joinedload(UserStrategy.strategy)).first() # 预加载 Strategy
+
+            if not user_strategy:
+                logger.error(f"User strategy {user_strategy_id} not found")
+                return {}
             
-            # 初始化策略
-            self.cta_engine.init_strategy(strategy_config["strategy_name"])
-            logger.info(f"Strategy {strategy_config['strategy_name']} initialized successfully")
-            return True
-        except Exception as e:
-            logger.error(f"Failed to initialize strategy: {e}")
-            return False
+            strategy = user_strategy.strategy # 使用预加载的 Strategy
+            if not strategy:
+                logger.error(f"Strategy {user_strategy.strategy_id} associated with user strategy {user_strategy_id} not found")
+                return {}
+
+            # --- 修正获取策略类的逻辑 --- 
+            # 检查 strategy 对象是否有 identifier 属性
+            if not hasattr(strategy, 'identifier') or not strategy.identifier:
+                logger.error(f"Strategy {strategy.id} ({strategy.name}) is missing a valid identifier.")
+                return {}
+                
+            # 使用 identifier 获取策略类
+            strategy_class_object = get_strategy_class(strategy.identifier)
+            if not strategy_class_object:
+                logger.error(f"Strategy class for identifier '{strategy.identifier}' not found")
+                return {}
+            # --------------------------
+            
+            # 构建策略配置
+            strategy_config = {
+                "strategy_name": user_strategy.name,
+                # "strategy_class": strategy.type, # <-- 不再使用 type
+                "strategy_class": strategy_class_object, # <-- 使用获取到的类对象
+                "setting": user_strategy.parameters
+            }
+            
+            return strategy_config
+        finally:
+            db.close() # 确保关闭会话
     
     def start_strategy(self, user_strategy_id: int) -> bool:
         """

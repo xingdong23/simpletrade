@@ -102,6 +102,9 @@ class BacktestRequest(BaseModel):
     start_date: date
     end_date: date
     initial_capital: float
+    parameters: Optional[Dict[str, Any]] = Field(None, description="用户自定义策略参数，覆盖默认值")
+    rate: float = Field(..., description="手续费率 (例如 0.0001 for 0.01%)")
+    slippage: float = Field(..., description="滑点大小 (例如 0.2)")
 
 # API路由
 @router.get("/types", response_model=ApiResponse)
@@ -174,18 +177,20 @@ async def get_strategy(
         strategy = strategy_service.get_strategy(db, strategy_id)
 
         if not strategy:
-            # 返回 404 更符合 RESTful 规范
             raise HTTPException(status_code=404, detail=f"未找到ID为 {strategy_id} 的策略")
 
-        # --- 从文件加载代码 --- 
+        # --- 从文件加载代码 (使用更可靠的路径) --- 
         strategy_code = None
         file_path_str = ""
-        # 假设模型中已有 identifier 属性
         if hasattr(strategy, 'identifier') and strategy.identifier:
             try:
-                # 假设工作区根目录是基础路径
-                base_path = Path('.') 
-                strategies_dir = base_path / "simpletrade" / "strategies"
+                # --- 基于当前文件 (__file__) 定位 strategies 目录 --- 
+                current_file_path = Path(__file__).resolve() # 获取 strategies.py 的绝对路径
+                # simpletrade/api/strategies.py -> simpletrade/api/ -> simpletrade/
+                simpletrade_root = current_file_path.parent.parent 
+                strategies_dir = simpletrade_root / "strategies"
+                # ---------------------------------------------------
+                
                 file_path = strategies_dir / f"{strategy.identifier}.py"
                 file_path_str = str(file_path)
 
@@ -193,9 +198,9 @@ async def get_strategy(
                     strategy_code = file_path.read_text(encoding='utf-8')
                     logger.info(f"成功加载策略代码文件: {file_path_str}")
                 else:
-                    logger.warning(f"策略代码文件未找到: {file_path_str}")
+                    logger.warning(f"策略代码文件未找到 (检查路径): {file_path_str}") # 更新日志消息
             except FileNotFoundError:
-                 logger.warning(f"策略代码文件未找到: {file_path_str}")
+                 logger.warning(f"策略代码文件未找到 (FileNotFoundError): {file_path_str}")
             except Exception as e:
                 logger.error(f"读取策略代码文件失败 ({file_path_str}): {e}\n{traceback.format_exc()}")
         else:
@@ -341,31 +346,32 @@ async def create_user_strategy(request: CreateUserStrategyRequest, strategy_serv
             "message": f"创建用户策略失败: {str(e)}"
         }
 
-@router.post("/user/{user_strategy_id}/init", response_model=ApiResponse)
-async def init_strategy(
-    user_strategy_id: int, 
-    strategy_service: StrategyService = Depends(get_strategy_service)
-):
-    """初始化策略"""
-    try:
-        # 初始化策略
-        result = strategy_service.init_strategy(user_strategy_id)
-
-        if not result:
-            return {
-                "success": False,
-                "message": "初始化策略失败"
-            }
-
-        return {
-            "success": True,
-            "message": "初始化策略成功"
-        }
-    except Exception as e:
-        return {
-            "success": False,
-            "message": f"初始化策略失败: {str(e)}"
-        }
+# @router.post("/user/{user_strategy_id}/init", response_model=ApiResponse)
+# async def init_strategy(
+#     user_strategy_id: int, 
+#     strategy_service: StrategyService = Depends(get_strategy_service)
+# ):
+#     """初始化策略 (已移除)"""
+#     # try:
+#     #     # 初始化策略
+#     #     result = strategy_service.init_strategy(user_strategy_id)
+# 
+#     #     if not result:
+#     #         return {
+#     #             "success": False,
+#     #             "message": "初始化策略失败"
+#     #         }
+# 
+#     #     return {
+#     #         "success": True,
+#     #         "message": "初始化策略成功"
+#     #     }
+#     # except Exception as e:
+#     #     return {
+#     #         "success": False,
+#     #         "message": f"初始化策略失败: {str(e)}"
+#     #     }
+#     raise HTTPException(status_code=404, detail="This endpoint is no longer available.")
 
 @router.post("/user/{user_strategy_id}/start", response_model=ApiResponse)
 async def start_strategy(
@@ -483,6 +489,7 @@ async def run_backtest(request: BacktestRequest, backtest_service: BacktestServi
     """运行回测"""
     try:
         # 运行回测
+        # 注意：不再传递 size 和 pricetick, 让 service 使用默认值
         result = backtest_service.run_backtest(
             strategy_id=request.strategy_id,
             symbol=request.symbol,
@@ -493,24 +500,29 @@ async def run_backtest(request: BacktestRequest, backtest_service: BacktestServi
             initial_capital=request.initial_capital,
             rate=request.rate,
             slippage=request.slippage,
-            size=request.size,
-            pricetick=request.pricetick,
-            user_id=request.user_id
+            # size=request.size, # <-- 移除
+            # pricetick=request.pricetick, # <-- 移除
+            user_id=request.user_id,
+            parameters=request.parameters # <-- 传递用户自定义参数
         )
 
+        # --- 后续处理保持不变 ---
         if not result["success"]:
-            return result
+            # 返回包含错误信息的完整结果字典
+            # 例如: return {"success": False, "message": result.get("message", "回测失败"), "data": None}
+             raise HTTPException(status_code=400, detail=result.get("message", "运行回测时发生错误"))
 
+        # 成功时返回结果
         return {
             "success": True,
             "message": "回测成功",
             "data": result["data"]
         }
+    except HTTPException as http_exc:
+        raise http_exc # 重新抛出已知的 HTTP 异常
     except Exception as e:
-        return {
-            "success": False,
-            "message": f"运行回测失败: {str(e)}"
-        }
+        logger.error(f"运行回测 API 出错: {e}\n{traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"运行回测时发生内部服务器错误: {str(e)}")
 
 @router.get("/backtest/records", response_model=ApiResponse)
 async def get_backtest_records(

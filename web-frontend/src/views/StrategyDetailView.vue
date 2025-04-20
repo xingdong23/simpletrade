@@ -30,60 +30,22 @@
 
           <!-- 策略参数 -->
           <div style="margin-top: 20px;">
-            <h3>策略参数</h3>
+            <h3>策略参数 (默认)</h3>
+            <!-- TODO: Dynamically generate based on strategy.parameters -->
             <el-form label-width="150px" style="margin-top: 20px;">
               <el-row :gutter="20">
                 <el-col :span="12">
                   <el-form-item label="短周期移动平均线">
-                    <el-input-number v-model="strategyParams.shortPeriod" :min="1" :max="50"></el-input-number>
+                    <el-input-number v-model="strategyParams.fast_window" disabled></el-input-number>
                   </el-form-item>
                 </el-col>
                 <el-col :span="12">
                   <el-form-item label="长周期移动平均线">
-                    <el-input-number v-model="strategyParams.longPeriod" :min="5" :max="200"></el-input-number>
+                    <el-input-number v-model="strategyParams.long_window" disabled></el-input-number>
                   </el-form-item>
                 </el-col>
               </el-row>
-              <el-row :gutter="20">
-                <el-col :span="12">
-                  <el-form-item label="RSI周期">
-                    <el-input-number v-model="strategyParams.rsiPeriod" :min="1" :max="50"></el-input-number>
-                  </el-form-item>
-                </el-col>
-                <el-col :span="12">
-                  <el-form-item label="RSI超买线">
-                    <el-input-number v-model="strategyParams.rsiOverbought" :min="50" :max="100"></el-input-number>
-                  </el-form-item>
-                </el-col>
-              </el-row>
-              <el-row :gutter="20">
-                <el-col :span="12">
-                  <el-form-item label="RSI超卖线">
-                    <el-input-number v-model="strategyParams.rsiOversold" :min="0" :max="50"></el-input-number>
-                  </el-form-item>
-                </el-col>
-                <el-col :span="12">
-                  <el-form-item label="仓位大小">
-                    <el-input-number v-model="strategyParams.positionSize" :min="1" :max="100"></el-input-number>
-                  </el-form-item>
-                </el-col>
-              </el-row>
-              <el-row :gutter="20">
-                <el-col :span="12">
-                  <el-form-item label="止损百分比">
-                    <el-input-number v-model="strategyParams.stopLoss" :min="1" :max="20"></el-input-number>
-                  </el-form-item>
-                </el-col>
-                <el-col :span="12">
-                  <el-form-item label="止盈百分比">
-                    <el-input-number v-model="strategyParams.takeProfit" :min="1" :max="50"></el-input-number>
-                  </el-form-item>
-                </el-col>
-              </el-row>
-              <el-form-item>
-                <el-button type="primary" @click="saveStrategyParams">保存参数</el-button>
-                <el-button type="success" @click="activeTab = 'backtest'">运行回测</el-button>
-              </el-form-item>
+              <!-- Add other default params as needed -->
             </el-form>
           </div>
 
@@ -95,105 +57,153 @@
             </el-card>
           </div>
         </el-tab-pane>
-        <el-tab-pane label="回测" name="backtest">
-          <el-form :inline="true" class="demo-form-inline" style="margin-bottom: 20px;">
-            <el-form-item label="回测起始日期">
-              <el-date-picker v-model="backtestParams.startDate" type="date" placeholder="选择日期"></el-date-picker>
-            </el-form-item>
-            <el-form-item label="回测结束日期">
-              <el-date-picker v-model="backtestParams.endDate" type="date" placeholder="选择日期"></el-date-picker>
-            </el-form-item>
-            <el-form-item label="初始资金">
-              <el-input-number v-model="backtestParams.initialCapital" :min="10000" :step="10000"></el-input-number>
-            </el-form-item>
-            <el-form-item>
+        <el-tab-pane label="回测" name="backtest" v-loading="backtestLoading">
+          <el-form :inline="false" label-width="120px" class="demo-form-inline" style="margin-bottom: 20px;">
+            <el-row :gutter="20">
+                <el-col :span="12">
+                    <el-form-item label="合约代码">
+                        <el-input v-model="backtestSymbol" placeholder="例如 rb2410"></el-input>
+                    </el-form-item>
+                </el-col>
+                <el-col :span="12">
+                     <el-form-item label="交易所">
+                        <el-input v-model="backtestExchange" placeholder="例如 SHFE"></el-input>
+                    </el-form-item>
+                </el-col>
+            </el-row>
+            <el-row :gutter="20">
+                 <el-col :span="12">
+                    <el-form-item label="K线周期">
+                        <el-select v-model="backtestInterval" placeholder="选择周期">
+                            <el-option label="1分钟" value="1m"></el-option>
+                            <el-option label="5分钟" value="5m"></el-option>
+                            <el-option label="15分钟" value="15m"></el-option>
+                            <el-option label="30分钟" value="30m"></el-option>
+                            <el-option label="1小时" value="1h"></el-option>
+                            <el-option label="4小时" value="4h"></el-option>
+                            <el-option label="日线" value="d"></el-option>
+                            <el-option label="周线" value="w"></el-option>
+                        </el-select>
+                    </el-form-item>
+                 </el-col>
+                 <el-col :span="12">
+                    <el-form-item label="初始资金">
+                        <el-input-number v-model="backtestParams.initialCapital" :min="1000" :step="10000"></el-input-number>
+                    </el-form-item>
+                 </el-col>
+            </el-row>
+             <el-row :gutter="20">
+                <el-col :span="12">
+                     <el-form-item label="起始日期">
+                        <el-date-picker v-model="backtestParams.startDate" type="date" placeholder="选择日期" value-format="yyyy-MM-dd"></el-date-picker>
+                    </el-form-item>
+                </el-col>
+                <el-col :span="12">
+                    <el-form-item label="结束日期">
+                        <el-date-picker v-model="backtestParams.endDate" type="date" placeholder="选择日期" value-format="yyyy-MM-dd"></el-date-picker>
+                    </el-form-item>
+                </el-col>
+            </el-row>
+            <el-row :gutter="20">
+                <el-col :span="12">
+                    <el-form-item label="手续费率">
+                         <el-input-number v-model="backtestRate" :precision="5" :step="0.0001" :min="0"></el-input-number>
+                    </el-form-item>
+                </el-col>
+                 <el-col :span="12">
+                    <el-form-item label="滑点">
+                        <el-input-number v-model="backtestSlippage" :precision="2" :step="0.1" :min="0"></el-input-number>
+                    </el-form-item>
+                 </el-col>
+            </el-row>
+             <el-row>
+                <el-col :span="24">
+                    <el-form-item label="自定义参数(JSON)">
+                        <el-input type="textarea" v-model="backtestUserParamsJson" placeholder='可选, 输入JSON覆盖默认参数, 例如: {"fast_window": 5, "slow_window": 15}'></el-input>
+                    </el-form-item>
+                </el-col>
+            </el-row>
+            <el-form item>
               <el-button type="primary" @click="runBacktest">运行回测</el-button>
-            </el-form-item>
+            </el-form>
           </el-form>
 
           <!-- 回测结果 -->
           <div v-if="backtestResult.hasResult">
-            <el-divider content-position="left">回测结果</el-divider>
-
+            <el-divider content-position="left">回测结果 (记录 ID: {{ backtestResult.record_id }})</el-divider>
             <!-- 回测指标 -->
             <el-row :gutter="20" style="margin-bottom: 20px;">
               <el-col :span="6">
                 <el-card shadow="hover">
                   <div style="text-align: center;">
-                    <h3 style="margin: 0 0 10px; font-size: 16px; color: #606266;">总收益率</h3>
-                    <p style="font-size: 24px; font-weight: 600; color: #67C23A; margin: 0;">+{{ backtestResult.totalReturn }}%</p>
+                    <h3 class="result-title">总收益率</h3>
+                    <p class="result-value positive">{{ formatPercent(backtestResult.statistics.total_return) }}</p>
                   </div>
                 </el-card>
               </el-col>
               <el-col :span="6">
                 <el-card shadow="hover">
                   <div style="text-align: center;">
-                    <h3 style="margin: 0 0 10px; font-size: 16px; color: #606266;">年化收益率</h3>
-                    <p style="font-size: 24px; font-weight: 600; color: #67C23A; margin: 0;">+{{ backtestResult.annualReturn }}%</p>
+                    <h3 class="result-title">年化收益率</h3>
+                    <p class="result-value positive">{{ formatPercent(backtestResult.statistics.annual_return) }}</p>
                   </div>
                 </el-card>
               </el-col>
               <el-col :span="6">
                 <el-card shadow="hover">
                   <div style="text-align: center;">
-                    <h3 style="margin: 0 0 10px; font-size: 16px; color: #606266;">最大回撤率</h3>
-                    <p style="font-size: 24px; font-weight: 600; color: #F56C6C; margin: 0;">{{ backtestResult.maxDrawdown }}%</p>
+                    <h3 class="result-title">最大回撤率</h3>
+                    <p class="result-value negative">{{ formatPercent(backtestResult.statistics.max_drawdown) }}</p>
                   </div>
                 </el-card>
               </el-col>
               <el-col :span="6">
                 <el-card shadow="hover">
                   <div style="text-align: center;">
-                    <h3 style="margin: 0 0 10px; font-size: 16px; color: #606266;">胜率</h3>
-                    <p style="font-size: 24px; font-weight: 600; color: #409EFF; margin: 0;">{{ backtestResult.winRate }}%</p>
+                    <h3 class="result-title">胜率</h3>
+                    <p class="result-value">{{ formatPercent(backtestResult.statistics.win_rate) }}</p>
+                  </div>
+                </el-card>
+              </el-col>
+              <!-- Add more statistic cards as needed -->
+               <el-col :span="6" style="margin-top: 20px;">
+                <el-card shadow="hover">
+                  <div style="text-align: center;">
+                    <h3 class="result-title">夏普比率</h3>
+                    <p class="result-value">{{ formatNumber(backtestResult.statistics.sharpe_ratio, 2) }}</p>
+                  </div>
+                </el-card>
+              </el-col>
+               <el-col :span="6" style="margin-top: 20px;">
+                <el-card shadow="hover">
+                  <div style="text-align: center;">
+                    <h3 class="result-title">盈亏比</h3>
+                    <p class="result-value">{{ formatNumber(backtestResult.statistics.profit_factor, 2) }}</p>
+                  </div>
+                </el-card>
+              </el-col>
+               <el-col :span="6" style="margin-top: 20px;">
+                <el-card shadow="hover">
+                  <div style="text-align: center;">
+                    <h3 class="result-title">交易次数</h3>
+                    <p class="result-value">{{ backtestResult.statistics.total_trade_count }}</p>
                   </div>
                 </el-card>
               </el-col>
             </el-row>
 
-            <!-- 收益曲线图 -->
-            <el-card shadow="hover" style="margin-bottom: 20px;">
-              <div slot="header">
-                <span>收益曲线</span>
-              </div>
-              <div style="height: 300px; display: flex; align-items: center; justify-content: center; color: #909399;">
-                <i class="el-icon-data-line" style="font-size: 24px; margin-right: 10px;"></i>
-                收益曲线图（这里将显示图表）
-              </div>
-            </el-card>
+            <!-- 收益曲线图 (Placeholder) -->
+            <!-- ... existing placeholder ... -->
 
-            <!-- 交易记录 -->
-            <el-card shadow="hover">
-              <div slot="header">
-                <span>交易记录</span>
-              </div>
-              <el-table :data="backtestResult.trades" style="width: 100%">
-                <el-table-column prop="date" label="日期" width="180"></el-table-column>
-                <el-table-column prop="type" label="类型" width="100">
-                  <template slot-scope="scope">
-                    <el-tag :type="scope.row.type === '买入' ? 'success' : 'danger'" size="small">{{ scope.row.type }}</el-tag>
-                  </template>
-                </el-table-column>
-                <el-table-column prop="price" label="价格" width="120"></el-table-column>
-                <el-table-column prop="quantity" label="数量" width="120"></el-table-column>
-                <el-table-column prop="profit" label="盈亏" width="120">
-                  <template slot-scope="scope">
-                    <span :style="{ color: scope.row.profit >= 0 ? '#67C23A' : '#F56C6C' }">
-                      {{ scope.row.profit >= 0 ? '+' : '' }}{{ scope.row.profit }}
-                    </span>
-                  </template>
-                </el-table-column>
-              </el-table>
-            </el-card>
+            <!-- 交易记录 (Placeholder/Optional) -->
+            <!-- ... existing placeholder or table for trades if API returns them ... -->
 
-            <!-- 部署到实盘按钮 -->
-            <div style="margin-top: 20px; text-align: center;">
-              <el-button type="success" @click="deployToLive">部署到实盘</el-button>
-            </div>
+            <!-- 部署到实盘按钮 (保留) -->
+            <!-- ... existing button ... -->
           </div>
           <div v-else style="text-align: center; padding: 50px 0;">
             <i class="el-icon-data-analysis" style="font-size: 48px; color: #909399; margin-bottom: 20px;"></i>
-            <p>还没有运行回测，请点击"运行回测"按钮开始回测。</p>
+            <p>请配置参数并点击"运行回测"按钮开始回测。</p>
           </div>
         </el-tab-pane>
         <el-tab-pane label="参数优化" name="optimize">
@@ -376,58 +386,60 @@
 </template>
 
 <script>
-import { getStrategyDetail } from '@/api/strategies';
+import { getStrategyDetail, runStrategyBacktest } from '@/api/strategies';
+import dayjs from 'dayjs';
 
 export default {
   name: 'StrategyDetailView',
   props: {
-    id: { // 接收来自路由的 strategy ID
+    id: {
       type: [String, Number],
       required: true
     }
   },
   data() {
+    const endDate = dayjs().format('YYYY-MM-DD');
+    const startDate = dayjs().subtract(3, 'month').format('YYYY-MM-DD');
+    
     return {
       strategy: null,
       activeTab: 'info',
       strategyComplexity: 3,
-      // 策略参数
       strategyParams: {},
-      // 回测参数
+      loading: false,
+      error: null,
+      
+      backtestLoading: false,
+      backtestSymbol: '',
+      backtestExchange: '',
+      backtestInterval: 'd',
+      backtestRate: 0.0001,
+      backtestSlippage: 0.2,
+      backtestUserParamsJson: '',
       backtestParams: {
-        startDate: new Date(new Date().getTime() - 90 * 24 * 60 * 60 * 1000), // 90天前
-        endDate: new Date(),
+        startDate: startDate,
+        endDate: endDate,
         initialCapital: 100000
       },
-      // 回测结果
       backtestResult: {
         hasResult: false,
-        totalReturn: 0,
-        annualReturn: 0,
-        maxDrawdown: 0,
-        winRate: 0,
-        trades: []
+        record_id: null,
+        statistics: {}
       },
-      // 优化参数
       optimizeParams: {
         target: 'totalReturn',
         parameters: []
       },
-      // 优化结果
       optimizeResult: {
         hasResult: false,
         bestParams: {},
         paramSets: []
       },
-      // 实盘交易记录
-      liveTradeRecords: [],
-      loading: false,
-      error: null
-    }
+      liveTradeRecords: []
+    };
   },
   computed: {
     parameterList() {
-      // 将 strategy.parameters (如果存在且是对象) 转换为数组以方便表格渲染
       if (!this.strategy || !this.strategy.parameters || typeof this.strategy.parameters !== 'object') {
         return [];
       }
@@ -463,68 +475,108 @@ export default {
         this.loading = false;
       }
     },
-    // 保存策略参数
+    async runBacktest() {
+      if (!this.strategy) {
+        this.$message.error('策略信息未加载，无法回测');
+        return;
+      }
+      if (!this.backtestSymbol || !this.backtestExchange) {
+          this.$message.error('请输入合约代码和交易所');
+          return;
+      }
+      if (!this.backtestParams.startDate || !this.backtestParams.endDate) {
+          this.$message.error('请选择回测起始和结束日期');
+          return;
+      }
+      if (dayjs(this.backtestParams.endDate).isBefore(dayjs(this.backtestParams.startDate))) {
+           this.$message.error('结束日期不能早于起始日期');
+          return;
+      }
+
+      let userParams = null;
+      if (this.backtestUserParamsJson.trim()) {
+        try {
+          userParams = JSON.parse(this.backtestUserParamsJson);
+          if (typeof userParams !== 'object' || userParams === null) {
+             throw new Error('自定义参数必须是 JSON 对象');
+          }
+        } catch (e) {
+          this.$message.error(`自定义参数 JSON 格式错误: ${e.message}`);
+          return;
+        }
+      }
+
+      const backtestConfig = {
+        strategy_id: parseInt(this.id),
+        symbol: this.backtestSymbol,
+        exchange: this.backtestExchange,
+        interval: this.backtestInterval,
+        start_date: this.backtestParams.startDate,
+        end_date: this.backtestParams.endDate,
+        initial_capital: this.backtestParams.initialCapital,
+        rate: this.backtestRate,
+        slippage: this.backtestSlippage,
+        parameters: userParams,
+        user_id: 1
+      };
+
+      this.backtestLoading = true;
+      this.backtestResult.hasResult = false;
+      try {
+        console.log("Sending backtest request:", backtestConfig);
+        const response = await runStrategyBacktest(backtestConfig);
+        console.log("Backtest response:", response);
+
+        if (response.data && response.data.success) {
+          this.$message.success('回测成功');
+          this.backtestResult.hasResult = true;
+          this.backtestResult.record_id = response.data.data.record_id;
+          this.backtestResult.statistics = response.data.data.statistics || {};
+        } else {
+          this.$message.error(`回测失败: ${response.data.message || '未知错误'}`);
+          this.backtestResult.statistics = {};
+        }
+      } catch (err) {
+        console.error('Error running backtest:', err);
+        const errorMsg = (err.response && err.response.data && err.response.data.message)
+                           || (err.response && err.response.data && err.response.detail)
+                           || err.message
+                           || '网络错误或服务器内部错误';
+        this.$message.error(`回测请求失败: ${errorMsg}`);
+         this.backtestResult.statistics = {};
+      } finally {
+        this.backtestLoading = false;
+      }
+    },
+    formatPercent(value) {
+        if (value === null || value === undefined || isNaN(value)) return '-';
+        return (value * 100).toFixed(2) + '%';
+    },
+    formatNumber(value, precision = 2) {
+        if (value === null || value === undefined || isNaN(value)) return '-';
+        return Number(value).toFixed(precision);
+    },
     saveStrategyParams() {
       this.$message({
         type: 'success',
         message: '策略参数保存成功'
       });
     },
-    // 运行回测
-    runBacktest() {
-      // 模拟回测过程
-      this.$message({
-        type: 'info',
-        message: '正在运行回测...'
-      });
-
-      // 模拟异步回测
-      setTimeout(() => {
-        // 生成模拟回测结果
-        this.backtestResult = {
-          hasResult: true,
-          totalReturn: 28.5,
-          annualReturn: 32.7,
-          maxDrawdown: 12.3,
-          winRate: 58,
-          trades: [
-            { date: '2023-10-01', type: '买入', price: '150.25', quantity: '100', profit: 0 },
-            { date: '2023-10-05', type: '卖出', price: '155.50', quantity: '100', profit: 525 },
-            { date: '2023-10-10', type: '买入', price: '152.75', quantity: '100', profit: 0 },
-            { date: '2023-10-15', type: '卖出', price: '158.25', quantity: '100', profit: 550 },
-            { date: '2023-10-20', type: '买入', price: '156.50', quantity: '100', profit: 0 },
-            { date: '2023-10-25', type: '卖出', price: '153.75', quantity: '100', profit: -275 }
-          ]
-        };
-
-        this.$message({
-          type: 'success',
-          message: '回测完成'
-        });
-      }, 1500);
-    },
-    // 部署到实盘
     deployToLive() {
       this.$confirm('确定要将策略部署到实盘吗？', '提示', {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
         type: 'warning'
       }).then(() => {
-        // 模拟部署过程
         this.$message({
           type: 'info',
           message: '正在部署策略...'
         });
 
         setTimeout(() => {
-          // 更新策略状态
           if (this.strategy) {
             this.strategy.status = '运行中';
-
-            // 切换到实盘标签页
             this.activeTab = 'live';
-
-            // 生成模拟实盘交易记录
             this.liveTradeRecords = [
               { date: '2023-10-25 09:30:15', type: '买入', price: '156.50', quantity: '100', amount: '15,650.00', status: '已成交' },
               { date: '2023-10-25 10:15:30', type: '卖出', price: '157.25', quantity: '50', amount: '7,862.50', status: '已成交' },
@@ -539,7 +591,6 @@ export default {
         }, 1500);
       }).catch(() => {});
     },
-    // 运行参数优化
     runOptimization() {
       if (!this.optimizeParams.parameters.length) {
         this.$message({
@@ -549,15 +600,12 @@ export default {
         return;
       }
 
-      // 模拟优化过程
       this.$message({
         type: 'info',
         message: '正在运行参数优化...'
       });
 
-      // 模拟异步优化
       setTimeout(() => {
-        // 生成模拟优化结果
         this.optimizeResult = {
           hasResult: true,
           bestParams: {
@@ -582,44 +630,32 @@ export default {
         });
       }, 2000);
     },
-    // 应用最佳参数
     applyOptimizedParams() {
-      // 将最佳参数应用到策略参数
       Object.assign(this.strategyParams, this.optimizeResult.bestParams);
-
+      this.activeTab = 'info';
       this.$message({
         type: 'success',
         message: '已应用最佳参数'
       });
-
-      // 切换到策略信息标签页
-      this.activeTab = 'info';
     },
-    // 应用特定参数组合
     applyParamSet(paramSet) {
-      // 将选中的参数组合应用到策略参数
       Object.keys(paramSet).forEach(key => {
         if (key !== 'totalReturn' && key !== 'maxDrawdown' && key !== 'winRate') {
           this.strategyParams[key] = paramSet[key];
         }
       });
-
+      this.activeTab = 'info';
       this.$message({
         type: 'success',
         message: '已应用选中的参数组合'
       });
-
-      // 切换到策略信息标签页
-      this.activeTab = 'info';
     },
-    // 停止策略
     stopStrategy() {
       this.$confirm('确定要停止该策略吗？', '提示', {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
         type: 'warning'
       }).then(() => {
-        // 模拟停止策略
         if (this.strategy) {
           this.strategy.status = '待运行';
           this.$message({
@@ -637,13 +673,17 @@ export default {
   watch: {
     id(newId, oldId) {
       console.log(`StrategyDetailView: Watcher triggered. ID changed from ${oldId} to ${newId}`);
-      // 如果 strategy ID 变化 (例如通过浏览器前进/后退), 重新获取数据
       if (newId && newId !== oldId) {
         this.fetchStrategyDetail();
+        this.backtestResult.hasResult = false;
+        this.backtestResult.statistics = {};
+        this.backtestSymbol = '';
+        this.backtestExchange = '';
+        this.backtestUserParamsJson = '';
       }
     }
   }
-}
+};
 </script>
 
 <style scoped>
@@ -658,5 +698,22 @@ export default {
   padding: 20px;
   border-radius: 4px;
   box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+}
+.result-title {
+  margin: 0 0 10px;
+  font-size: 14px;
+  color: #606266;
+  font-weight: normal;
+}
+.result-value {
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0;
+}
+.result-value.positive {
+  color: #67C23A;
+}
+.result-value.negative {
+  color: #F56C6C;
 }
 </style>
