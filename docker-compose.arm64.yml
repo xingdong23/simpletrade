@@ -34,6 +34,7 @@ services:
       - data-volume:/app/data
       - logs-volume:/app/logs
       - configs-volume:/app/configs
+      - /Users/chengzheng/.qlib/qlib_data:/qlib_data:ro
     environment:
       - PYTHONPATH=/app
       - SIMPLETRADE_DB_HOST=mysql

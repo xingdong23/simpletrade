@@ -9,15 +9,44 @@ from typing import Dict, List, Optional, Any, Union
 from datetime import datetime, date
 import traceback
 import numpy as np
+import os
+import pandas as pd
+import inspect # Import inspect module
 
 from vnpy_ctastrategy.backtesting import BacktestingEngine
-from vnpy.trader.constant import Interval
+from vnpy.trader.constant import Interval, Exchange
+import vnpy.trader.database as database_module # Import the module itself
 
 from simpletrade.config.database import SessionLocal
 from simpletrade.models.database import Strategy, BacktestRecord
 from simpletrade.strategies import get_strategy_class
+# from simpletrade.apps.st_datamanager.importers.qlib_importer import QlibDataImporter
 
 logger = logging.getLogger("simpletrade.services.backtest_service")
+
+# Helper function to convert string interval to VnPy Interval enum
+def _get_vnpy_interval(interval_str: str) -> Optional[Interval]:
+    interval_map = {
+        "1m": Interval.MINUTE,
+        # Add other supported intervals by Qlib Importer AND VnPy backtester here
+        # "5m": Interval.MIN5,  # Assuming these are the correct names now
+        # "15m": Interval.MIN15,
+        # "30m": Interval.MIN30,
+        "1h": Interval.HOUR,
+        # "4h": Interval.HOUR4,
+        "d": Interval.DAILY,
+        "w": Interval.WEEKLY,
+    }
+    return interval_map.get(interval_str)
+
+# Helper function to convert string exchange to VnPy Exchange enum
+def _get_vnpy_exchange(exchange_str: str) -> Optional[Exchange]:
+    try:
+        return Exchange(exchange_str.upper()) # Try direct conversion (e.g., "SHFE")
+    except ValueError:
+        # Add mappings if needed, e.g., "XSHG" -> Exchange.SSE
+        logger.warning(f"Could not directly convert '{exchange_str}' to Exchange enum. Returning None.")
+        return None
 
 class BacktestService:
     """回测服务"""
@@ -41,7 +70,7 @@ class BacktestService:
                     size: float = 1.0, 
                     pricetick: float = 0.01) -> Dict[str, Any]:
         """
-        运行回测
+        运行回测 (现在直接使用VnPy数据库数据)
         
         参数:
             strategy_id (int): 策略ID
@@ -63,9 +92,24 @@ class BacktestService:
                              data 包含 statistics 和可能的 trades
         """
         engine = BacktestingEngine()
-        
-        db = SessionLocal()
+        db = SessionLocal() # Session for reading strategy/writing record, NOT for bar data anymore
+
         try:
+            # --- Convert string inputs to VnPy enums (Still needed for engine) ---
+            vnpy_interval: Optional[Interval] = _get_vnpy_interval(interval)
+            if not vnpy_interval:
+                logger.error(f"Backtest failed: Invalid interval string '{interval}'")
+                return {"success": False, "message": f"Invalid interval: {interval}", "data": None}
+
+            vnpy_exchange: Optional[Exchange] = _get_vnpy_exchange(exchange)
+            if not vnpy_exchange:
+                 logger.error(f"Backtest failed: Invalid exchange string '{exchange}'")
+                 return {"success": False, "message": f"Invalid exchange: {exchange}", "data": None}
+
+            start_dt = datetime.combine(start_date, datetime.min.time())
+            end_dt = datetime.combine(end_date, datetime.max.time())
+
+            # --- Get Strategy Class and Parameters (from DB) ---
             strategy = db.query(Strategy).filter(
                 Strategy.id == strategy_id,
                 Strategy.is_active == True
@@ -92,37 +136,20 @@ class BacktestService:
             except TypeError as e:
                  logger.error(f"Backtest failed: Error merging parameters. Default: {default_params}, User: {user_params}. Error: {e}")
                  return {"success": False, "message": f"Invalid user parameters format: {e}", "data": None}
-            logger.info(f"Running backtest for {strategy.identifier} with final parameters: {final_params}")
+            logger.info(f"Using strategy {strategy.identifier} with final parameters: {final_params}")
             
-            start = datetime.combine(start_date, datetime.min.time())
-            end = datetime.combine(end_date, datetime.max.time())
-            
-            interval_map = {
-                "1m": Interval.MINUTE,
-                "5m": Interval.MINUTE5,
-                "15m": Interval.MINUTE15,
-                "30m": Interval.MINUTE30,
-                "1h": Interval.HOUR,
-                "4h": Interval.HOUR4,
-                "d": Interval.DAILY,
-                "w": Interval.WEEKLY,
-            }
-            vnpy_interval = interval_map.get(interval)
-            if not vnpy_interval:
-                logger.error(f"Backtest failed: Invalid interval string '{interval}'")
-                return {"success": False, "message": f"Invalid interval: {interval}", "data": None}
-            
+            # --- Set Backtesting Engine Parameters ---
             if size <= 0 or pricetick <= 0:
-                 logger.warning(f"Backtest for {symbol}.{exchange}: size or pricetick is zero or negative (size={size}, pricetick={pricetick}). Using defaults 1.0 and 0.01.")
+                 logger.warning(f"Backtest for {symbol}.{vnpy_exchange.value}: size or pricetick is zero or negative (size={size}, pricetick={pricetick}). Using defaults 1.0 and 0.01.")
                  size = 1.0
                  pricetick = 0.01
 
             try:
                 engine.set_parameters(
-                    vt_symbol=f"{symbol}.{exchange}",
+                    vt_symbol=f"{symbol}.{vnpy_exchange.value}",
                     interval=vnpy_interval,
-                    start=start,
-                    end=end,
+                    start=start_dt,
+                    end=end_dt,
                     rate=rate,
                     slippage=slippage,
                     size=size,
@@ -138,9 +165,13 @@ class BacktestService:
                 final_params
             )
             
+            # --- Remove the conditional engine.load_data block --- 
+            logger.info("Proceeding to run_backtesting. Engine will load data from its configured source (database_manager pointed to MySQL).")
+
+            # --- Run Backtesting ---
             try:
-                logger.info(f"Starting backtest run for {strategy.identifier} ({symbol}.{exchange}) from {start_date} to {end_date}")
-                engine.run_backtesting()
+                logger.info(f"Starting backtest run for {strategy.identifier} ({symbol}.{vnpy_exchange.value}) from {start_date} to {end_date}")
+                engine.run_backtesting() 
                 logger.info(f"Backtest run finished for {strategy.identifier}")
                 
                 logger.info(f"Calculating backtest results...")
@@ -153,6 +184,8 @@ class BacktestService:
                 for key, value in statistics.items():
                     if isinstance(value, (float, int)) and not np.isfinite(value):
                         cleaned_statistics[key] = None
+                    elif isinstance(value, (pd.Timestamp, datetime)): # Handle datetime/timestamp if needed
+                        cleaned_statistics[key] = value.isoformat() # Or str(value)
                     else:
                         cleaned_statistics[key] = value
 
@@ -160,8 +193,8 @@ class BacktestService:
                     user_id=user_id,
                     strategy_id=strategy_id,
                     symbol=symbol,
-                    exchange=exchange,
-                    interval=interval,
+                    exchange=exchange, # Use original string exchange
+                    interval=interval, # Use original string interval
                     start_date=start_date,
                     end_date=end_date,
                     initial_capital=initial_capital,
@@ -197,11 +230,22 @@ class BacktestService:
                 }
 
             except Exception as e:
-                 logger.error(f"Failed during backtest run or result processing: {e}\n{traceback.format_exc()}")
+                 logger.error(f"Failed during backtest run or result processing: {e}\\n{traceback.format_exc()}")
                  db.rollback()
-                 return {"success": False, "message": f"Error during backtest: {e}", "data": None}
+                 message = f"Error during backtest execution: {e}" 
+                 # Can add more specific error checks if needed
+                 if "No history data found for" in str(e): # Check if engine failed loading
+                     message = f"Backtest failed: No history data found in the database for {symbol}.{exchange} [{interval}] in the specified range. Please ensure data synchronization is complete."
+                 return {"success": False, "message": message, "data": None}
+
+        except Exception as outer_e:
+            logger.error(f"Failed during backtest preparation: {outer_e}\\n{traceback.format_exc()}")
+            if 'db' in locals() and db.is_active:
+                 db.rollback()
+            return {"success": False, "message": f"Error during backtest preparation: {outer_e}", "data": None}
+
         finally:
-            if db:
+            if 'db' in locals() and db:
                 db.close()
                 logger.debug("Database session closed in BacktestService.run_backtest")
     

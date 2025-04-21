@@ -38,3 +38,30 @@ LOG_CONFIG = {
     "LEVEL": os.environ.get("SIMPLETRADE_LOG_LEVEL", "INFO"),
     "FORMAT": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 }
+
+# 数据同步目标配置
+# 列表中的每个字典定义一个同步目标
+# source: 数据源标识符 (需要与 DataSyncService 中的导入器逻辑对应)
+# symbol, exchange, interval: VnPy 标准格式
+DATA_SYNC_TARGETS = [
+    {
+        "source": "qlib",        # 数据源为 qlib
+        "symbol": "AAPL",       # 品种代码
+        "exchange": "NASDAQ",   # 交易所 (使用 VnPy 枚举值对应的字符串)
+        "interval": "d"         # K线周期 (日线)
+    },
+    # {
+    #     "source": "qlib",      
+    #     "symbol": "600036",    # 招商银行
+    #     "exchange": "SSE",      # 上海证券交易所
+    #     "interval": "d"
+    # },
+    # 添加更多目标...
+    # {
+    #     "source": "csv",       # 示例: 来自 CSV 文件
+    #     "symbol": "RBIF",     # 螺纹钢指数 (示例)
+    #     "exchange": "LOCAL",  # 本地数据交易所代码 (示例)
+    #     "interval": "1h",     # 1小时线
+    #     "csv_path": "/data/csv/rbif_1h.csv" # CSV 导入器可能需要的额外参数
+    # },
+]

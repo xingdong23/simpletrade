@@ -18,50 +18,24 @@ if vendors_path.exists() and str(vendors_path) not in sys.path:
     print(f"[INFO] Added vendors path to sys.path: {vendors_path}")
 # --- End sys.path modification ---
 
-# --- Remove Debugging Imports and sys.path modifications ---
-# # --- Remove Debugging Imports ---
-# # try:
-# #     import vnpy
-# #     print(f\"[DEBUG] Successfully imported vnpy. Path: {vnpy.__path__}\")
-# # except ImportError as e:
-# #     print(f\"[DEBUG] Failed to import vnpy: {e}\")
-# #     # Print sys.path here as well for early diagnosis
-# #     print(\"[DEBUG] Current sys.path:\")
-# #     for i, p in enumerate(sys.path):
-# #         print(f\"  {i}: {p}\")
-# # --- End Debugging Imports ---
-# 
-# # --- Add specific vendor paths to sys.path --- 
-# project_root = str(Path(__file__).parent.parent.absolute())
-# vendors_dir = os.path.join(project_root, 'vendors')
-# 
-# # Add the inner vnpy source directory
-# vnpy_source_path = os.path.join(vendors_dir, 'vnpy', 'vnpy') 
-# print(f\"[DEBUG] Calculated vnpy_source_path: {vnpy_source_path}\") # Debug path calc
-# if os.path.exists(vnpy_source_path):
-#     if vnpy_source_path not in sys.path:
-#         sys.path.insert(0, vnpy_source_path)
-#         print(f\"[DEBUG] Inserted {vnpy_source_path} into sys.path\")
-#     else:
-#         print(f\"[DEBUG] {vnpy_source_path} already in sys.path\")
-# else:
-#      print(f\"[DEBUG] ERROR: vnpy_source_path does NOT exist: {vnpy_source_path}\")
-# 
-# # Add vnpy_tiger path
-# vnpy_tiger_path = os.path.join(vendors_dir, 'vnpy_tiger')
-# if os.path.exists(vnpy_tiger_path):
-#     if vnpy_tiger_path not in sys.path:
-#         sys.path.insert(0, vnpy_tiger_path)
-#         print(f\"[DEBUG] Inserted {vnpy_tiger_path} into sys.path\")
-#     else:
-#         print(f\"[DEBUG] {vnpy_tiger_path} already in sys.path\")
-# else:
-#     print(f\"[DEBUG] WARNING: vnpy_tiger_path does NOT exist: {vnpy_tiger_path}\")
-# 
-# print(\"[DEBUG] sys.path immediately BEFORE importing vnpy.event:\")
-# for i, p in enumerate(sys.path):
-#     print(f\"  {i}: {p}\")
-# # --- End sys.path modification ---
+# --- Configure VnPy Database Settings EARLY ---
+# Import necessary modules for configuration
+from vnpy.trader.setting import SETTINGS
+from simpletrade.config.settings import DB_CONFIG # Import DB_CONFIG from your settings
+
+# Set VnPy database settings to match project's MySQL config
+SETTINGS["database.driver"] = "mysql"  # Explicitly set driver to mysql
+SETTINGS["database.host"] = DB_CONFIG["DB_HOST"]
+SETTINGS["database.port"] = int(DB_CONFIG["DB_PORT"]) # Ensure port is integer
+SETTINGS["database.database"] = DB_CONFIG["DB_NAME"]
+SETTINGS["database.user"] = DB_CONFIG["DB_USER"]
+SETTINGS["database.password"] = DB_CONFIG["DB_PASSWORD"]
+
+# Optional: Log the settings being applied (use logger after basicConfig)
+# We need to ensure logging is configured before using logger here.
+# Moving logging config up or delaying this log message.
+# print("[INFO] Applied MySQL settings to VnPy global SETTINGS.") # Temporary print
+# --- End VnPy Database Configuration ---
 
 # Use standard vnpy import 
 from vnpy.event import EventEngine
@@ -88,13 +62,23 @@ from simpletrade.apps.st_message import STMessageApp
 # 导入外部模块
 import logging
 
-# 配置日志
+# 配置日志 (Moved up slightly to allow logging VnPy settings)
 logging.basicConfig(
-    level=logging.DEBUG,  # 修改为DEBUG级别
+    level=logging.DEBUG, 
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[logging.StreamHandler()]
 )
 logger = logging.getLogger("simpletrade.main")
+
+# Log the applied VnPy settings now that logger is configured
+logger.info("Applied MySQL database settings to VnPy global SETTINGS:")
+logger.info(f"  Driver: {SETTINGS.get('database.driver')}")
+logger.info(f"  Host: {SETTINGS.get('database.host')}")
+logger.info(f"  Port: {SETTINGS.get('database.port')}")
+logger.info(f"  Database: {SETTINGS.get('database.database')}")
+logger.info(f"  User: {SETTINGS.get('database.user')}")
+# Avoid logging password directly
+logger.info(f"  Password: {'********' if SETTINGS.get('database.password') else ''}")
 
 # Remove debug sys.path print
 # # Display Python search paths (Remove this one, moved to earlier debug print)

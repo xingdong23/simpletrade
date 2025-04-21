@@ -6,7 +6,7 @@
 
 import json
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, Text, Boolean, Float, DateTime, ForeignKey, Date, Numeric
+from sqlalchemy import Column, Integer, String, Text, Boolean, Float, DateTime, ForeignKey, Date, Numeric, func, Index
 from sqlalchemy.orm import relationship
 from sqlalchemy.types import TypeDecorator, VARCHAR
 
@@ -113,3 +113,32 @@ class BacktestRecord(Base):
     __table_args__ = (
         {'mysql_charset': 'utf8mb4', 'mysql_collate': 'utf8mb4_unicode_ci'},
     )
+
+class DataImportLog(Base):
+    """数据导入日志/状态表"""
+    __tablename__ = "data_import_log"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    source = Column(String(50), nullable=False, index=True, comment="数据来源 (e.g., 'qlib', 'csv', 'yahoo')")
+    symbol = Column(String(50), nullable=False, index=True)
+    exchange = Column(String(50), nullable=False, index=True)
+    interval = Column(String(10), nullable=False, index=True)
+    # 记录从源导入到VnPy数据库的最新数据的日期
+    last_import_date = Column(DateTime, nullable=True, comment="导入数据的最新日期")
+    # 记录上次尝试同步的时间
+    last_attempt_time = Column(DateTime, server_default=func.now(), onupdate=func.now(), comment="上次尝试同步时间")
+    # 记录同步状态 (e.g., 'idle', 'syncing', 'success', 'failed')
+    status = Column(String(20), nullable=False, default='idle', comment="同步状态")
+    # 记录相关信息或错误消息
+    message = Column(String(500), nullable=True, comment="同步消息或错误")
+
+    __table_args__ = (
+        # 创建联合唯一索引确保同一来源/品种/交易所/周期的记录唯一
+        Index('uix_data_import_target', 'source', 'symbol', 'exchange', 'interval', unique=True),
+        {'mysql_charset': 'utf8mb4', 'mysql_collate': 'utf8mb4_unicode_ci'},
+    )
+
+    def __repr__(self):
+        return f"<DataImportLog(source='{self.source}', symbol='{self.symbol}', exchange='{self.exchange}', interval='{self.interval}', last_date='{self.last_import_date}', status='{self.status}')>"
+
+# 注意: 添加新模型后, 可能需要数据库迁移 (如果使用 Alembic) 或手动创建表。

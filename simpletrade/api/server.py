@@ -10,6 +10,10 @@ from pathlib import Path
 from fastapi import FastAPI, APIRouter
 import uvicorn
 from fastapi.middleware.cors import CORSMiddleware
+import asyncio # Import asyncio
+from simpletrade.services.data_sync_service import run_initial_data_sync # Import the sync function
+# Import database engine and Base
+from simpletrade.config.database import engine, Base
 # APIServer 类不再需要，因为 app 是外部传入的
 # class APIServer:
 #     ...
@@ -30,6 +34,14 @@ async def info():
         "time": "2024-04-17"
     }
 
+# --- Define Startup Event Handler ---
+async def startup_event():
+    """FastAPI startup event handler to run initial data sync."""
+    # Use asyncio.to_thread to run the synchronous sync function in a separate thread,
+    # preventing it from blocking the main async event loop during potentially long sync.
+    await asyncio.to_thread(run_initial_data_sync)
+# --- End Startup Event Handler ---
+
 # 修改函数签名，接收 FastAPI app 实例
 def configure_server(app: FastAPI, main_engine=None, event_engine=None):
     """配置现有的 FastAPI 应用实例"""
@@ -37,6 +49,21 @@ def configure_server(app: FastAPI, main_engine=None, event_engine=None):
     logger = logging.getLogger("simpletrade.api.server")
     logger.setLevel(logging.DEBUG) # 保持日志级别
     logger.debug("Configuring FastAPI app instance...")
+
+    # --- Create Database Tables (if they don't exist) ---
+    try:
+        logger.info("Attempting to create database tables based on models...")
+        Base.metadata.create_all(bind=engine)
+        logger.info("Database tables check/creation complete.")
+    except Exception as e:
+        logger.error(f"Error creating database tables: {e}", exc_info=True)
+        # Decide if you want to proceed or raise the error depending on severity
+    # --- End Create Database Tables ---
+
+    # --- Register Startup Event --- 
+    logger.info("Registering startup event handler for initial data sync.")
+    app.add_event_handler("startup", startup_event)
+    # --- End Register Startup Event ---
 
     # server = APIServer() # 不再创建 APIServer
     # logger.debug("API Server created")
