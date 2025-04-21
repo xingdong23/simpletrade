@@ -21,6 +21,7 @@ from simpletrade.models.database import DataImportLog
 from vnpy.trader.constant import Exchange, Interval
 import vnpy.trader.database as database_module
 from vnpy.trader.object import BarData
+from vnpy.trader.setting import SETTINGS as VNPY_SETTINGS
 
 # 导入数据导入器 (目前只有Qlib)
 from simpletrade.apps.st_datamanager.importers.qlib_importer import QlibDataImporter
@@ -37,6 +38,7 @@ class DataSyncService:
     def __init__(self):
         """初始化，加载目标列表"""
         self.targets = DATA_SYNC_TARGETS
+        
         logger.info(f"DataSyncService initialized with {len(self.targets)} target(s).")
 
     def sync_all_targets(self):
@@ -181,6 +183,10 @@ class DataSyncService:
                  logger.info(f"Attempting to save {len(bars_to_save)} bars for {symbol}.{exchange_str} to VnPy database...")
                  try:
                      # Get the configured database manager instance from VnPy
+                     # --- Log current VnPy DB settings before getting manager ---
+                     logger.info(f"VnPy SETTINGS before get_database(): driver={VNPY_SETTINGS.get('database.driver')}, host={VNPY_SETTINGS.get('database.host')}, db={VNPY_SETTINGS.get('database.database')}")
+                     # --- End logging ---
+
                      database_manager = database_module.get_database()
                      logger.info(f"Obtained database manager instance: {type(database_manager)}")
                      
