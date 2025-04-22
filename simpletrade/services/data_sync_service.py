@@ -4,16 +4,17 @@
 负责根据配置，从不同的数据源同步历史数据到VnPy数据库。
 """
 
-import logging
-from datetime import datetime, timedelta, date
+import logging # Keep import for now, but won't use logger object directly below
+from datetime import datetime, timedelta, date, timezone
 from typing import List, Dict, Any, Optional
 import traceback
 import os
+import asyncio
 
 from sqlalchemy.orm import Session
 
 # 导入配置和模型
-from simpletrade.config.settings import DATA_SYNC_TARGETS
+from simpletrade.config.settings import DATA_SYNC_TARGETS, settings as app_settings
 from simpletrade.config.database import SessionLocal, get_db
 from simpletrade.models.database import DataImportLog
 
@@ -21,7 +22,9 @@ from simpletrade.models.database import DataImportLog
 from vnpy.trader.constant import Exchange, Interval
 import vnpy.trader.database as database_module
 from vnpy.trader.object import BarData
-from vnpy.trader.setting import SETTINGS as VNPY_SETTINGS
+from vnpy.trader.setting import SETTINGS as VNPY_SETTINGS # Keep this import
+from vnpy.trader.database import get_database  # Use get_database
+# from vnpy.trader.database.mysql import MysqlDatabase # Remove direct import
 
 # 导入数据导入器 (目前只有Qlib)
 from simpletrade.apps.st_datamanager.importers.qlib_importer import QlibDataImporter
@@ -30,220 +33,340 @@ from simpletrade.apps.st_datamanager.importers.qlib_importer import QlibDataImpo
 # 导入辅助函数
 from .backtest_service import _get_vnpy_exchange, _get_vnpy_interval # Reuse helper functions
 
-logger = logging.getLogger("simpletrade.services.data_sync_service")
+logger = logging.getLogger("simpletrade.services.data_sync_service") # Restore logger usage
 
 class DataSyncService:
     """数据同步服务类"""
 
-    def __init__(self):
-        """初始化，加载目标列表"""
-        self.targets = DATA_SYNC_TARGETS
-        
-        logger.info(f"DataSyncService initialized with {len(self.targets)} target(s).")
+    def __init__(self, db):
+        """
+        Initializes the DataSyncService.
+        Uses print for logging.
+        """
+        print("[DataSyncService] Initializing...")
+        if db is None:
+             print("[DataSyncService] Error: Received None for database instance.")
+             raise ValueError("Database instance is None.")
+        self.db = db
+        self.targets = app_settings.DATA_SYNC_TARGETS
+        print(f"[DataSyncService] Initialization complete. DB Type: {type(self.db)}, Targets: {self.targets}")
 
-    def sync_all_targets(self):
-        """同步所有配置的目标"""
-        logger.info("Starting sync for all configured targets...")
+    async def sync_all_targets(self):
+        """
+        Synchronizes data for all targets specified in the configuration.
+        Uses print for logging.
+        """
+        print("[DataSyncService] Starting sync_all_targets...")
         if not self.targets:
-            logger.warning("No data sync targets configured in settings.py")
+            print("[DataSyncService] No data synchronization targets configured.")
             return
 
-        for target_config in self.targets:
-            self.sync_target(target_config)
-        
-        logger.info("Finished sync for all configured targets.")
+        if not self.db:
+            print("[DataSyncService] Error: Database manager not available in sync_all_targets.")
+            return
 
-    def sync_target(self, target_config: Dict[str, Any]):
-        """同步单个目标"""
-        source = target_config.get("source")
-        symbol = target_config.get("symbol")
-        exchange_str = target_config.get("exchange")
-        interval_str = target_config.get("interval")
+        tasks = [self.sync_target(target) for target in self.targets]
+        await asyncio.gather(*tasks)
+        print("[DataSyncService] Finished sync_all_targets.")
 
-        # 基本参数校验
+    async def sync_target(self, target: dict):
+        """
+        Synchronizes data for a single target.
+        Uses print for logging.
+        """
+        source = target.get("source")
+        symbol = target.get("symbol")
+        exchange_str = target.get("exchange")
+        interval_str = target.get("interval")
+        start_date_str = target.get("start_date", "2020-01-01") # Default start date
+        end_date_str = datetime.now(timezone.utc).strftime('%Y-%m-%d') # Default to today
+
+        print(f"[DataSyncService] Processing target: {target}")
+
         if not all([source, symbol, exchange_str, interval_str]):
-            logger.error(f"Invalid target configuration, missing required fields: {target_config}")
+            print(f"[DataSyncService] Skipping invalid target: {target}")
             return
-            
-        logger.info(f"Starting sync for target: {source}/{symbol}.{exchange_str}[{interval_str}]")
-        
-        # 获取数据库会话
-        db: Optional[Session] = None
-        log_entry: Optional[DataImportLog] = None
-        start_sync_time = datetime.now()
 
         try:
-            db = SessionLocal()
-            
-            # --- 1. 查找或创建日志条目 --- 
-            log_entry = db.query(DataImportLog).filter(
-                DataImportLog.source == source,
-                DataImportLog.symbol == symbol,
-                DataImportLog.exchange == exchange_str,
-                DataImportLog.interval == interval_str
-            ).first()
-            
-            if not log_entry:
-                log_entry = DataImportLog(
-                    source=source,
-                    symbol=symbol,
-                    exchange=exchange_str,
-                    interval=interval_str,
-                    status='idle' # Start with idle
-                )
-                db.add(log_entry)
-                db.commit() # Commit early to get an ID and establish the record
-                db.refresh(log_entry)
-                logger.info(f"Created new DataImportLog entry for target.")
+            # Convert string representations to Enum members
+            exchange = Exchange(exchange_str)
+            interval = Interval(interval_str)
+        except ValueError as e:
+            print(f"[DataSyncService] Invalid exchange or interval in target {target}: {e}")
+            return
+
+        # Check if data for this period already exists or has been attempted
+        if self._check_import_log(source, symbol, exchange_str, interval_str):
+            print(f"[DataSyncService] Data for {symbol} ({exchange_str}, {interval_str}) from {source} already imported or failed recently. Skipping.")
+            return
+
+        success = False
+        message = ""
+        try:
+            print(f"[DataSyncService] Starting data import for {symbol} from {source}...")
+            if source.lower() == "qlib":
+                success, message = await self._import_data_from_qlib(symbol, exchange_str, interval_str, start_date_str, end_date_str)
+            # Add other sources here (e.g., "tushare", "baostock")
+            # elif source.lower() == "tushare":
+            #     success, message = await self._import_data_from_tushare(...)
             else:
-                 logger.info(f"Found existing DataImportLog entry. Last imported date: {log_entry.last_import_date}, Status: {log_entry.status}")
-            
-            # 更新状态为 'syncing' 并记录尝试时间
-            log_entry.status = 'syncing'
-            log_entry.message = "Starting sync..."
-            log_entry.last_attempt_time = start_sync_time 
-            db.commit()
+                message = f"Unsupported data source: {source}"
+                print(f"[DataSyncService] {message}")
 
-            # --- 2. 确定需要同步的开始日期 --- 
-            # 从上次导入日期+1天开始，如果从未导入过，则从一个较早的默认日期开始 (可配置)
-            # TODO: Make default start date configurable
-            default_start_date = datetime(2010, 1, 1) 
-            start_date = log_entry.last_import_date + timedelta(days=1) if log_entry.last_import_date else default_start_date
-            
-            # 结束日期通常是今天或昨天 (避免当天未收盘数据)
-            # TODO: Make end date strategy configurable (e.g., up to yesterday)
-            end_date = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=1)
-            
-            if start_date >= end_date:
-                 logger.info(f"Data is up-to-date for {symbol}.{exchange_str}[{interval_str}]. Last imported: {log_entry.last_import_date}. Skipping sync.")
-                 log_entry.status = 'success' # Mark as success if already up-to-date
-                 log_entry.message = "Data already up-to-date."
-                 db.commit()
-                 return # 无需同步
+            print(f"[DataSyncService] Import result for {symbol} from {source}: Success={success}, Msg='{message}'")
+            self._update_import_log(source, symbol, exchange_str, interval_str, success, message)
 
-            logger.info(f"Calculated sync range: {start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}")
-
-            # --- 3. 准备参数 (枚举转换) ---
-            vnpy_exchange = _get_vnpy_exchange(exchange_str)
-            vnpy_interval = _get_vnpy_interval(interval_str)
-            if not vnpy_exchange or not vnpy_interval:
-                 raise ValueError(f"Invalid exchange '{exchange_str}' or interval '{interval_str}' for VnPy.")
-
-            # --- 4. 选择并执行导入器 --- 
-            bars_to_save: List[BarData] = []
-            import_success = False
-            import_message = ""
-
-            if source == "qlib":
-                qlib_importer = QlibDataImporter()
-                 # 需要 Qlib 的特定目录, 这个逻辑需要完善，暂时用 backtest_service 的逻辑
-                qlib_base_dir = "/qlib_data"
-                qlib_specific_dir = None
-                if vnpy_exchange in [Exchange.SSE, Exchange.SZSE, Exchange.BSE]:
-                     qlib_specific_dir = os.path.join(qlib_base_dir, "cn_data")
-                elif vnpy_exchange in [Exchange.NASDAQ, Exchange.NYSE, Exchange.AMEX]:
-                     qlib_specific_dir = os.path.join(qlib_base_dir, "us_data")
-                
-                if qlib_specific_dir and os.path.exists(qlib_specific_dir):
-                     success, message, loaded_bars = qlib_importer.import_data(
-                         qlib_dir=qlib_specific_dir,
-                         symbol=symbol,
-                         exchange=vnpy_exchange,
-                         interval=vnpy_interval,
-                         start_date=start_date,
-                         end_date=end_date
-                     )
-                     if success and loaded_bars:
-                         bars_to_save = loaded_bars
-                         import_success = True
-                         import_message = message
-                     else:
-                         import_message = f"Qlib import failed: {message}"
-                else:
-                     import_message = f"Qlib specific directory not found or not configured: {qlib_specific_dir}"
-            
-            # elif source == "csv":
-            #     csv_path = target_config.get("csv_path")
-            #     if csv_path:
-            #         csv_importer = CsvImporter() # Assuming CsvImporter exists
-            #         success, message, loaded_bars = csv_importer.import_data(csv_path, symbol, exchange, interval, start_date, end_date)
-            #         # ... handle result ...
-            #     else:
-            #         import_message = "CSV path not configured."
-            
-            # elif source == "yahoo":
-            #     # ... call Yahoo importer ...
-            
-            else:
-                import_message = f"Unsupported data source: {source}"
-                logger.error(import_message)
-
-            # --- 5. 保存数据到数据库 --- 
-            if import_success and bars_to_save:
-                 logger.info(f"Attempting to save {len(bars_to_save)} bars for {symbol}.{exchange_str} to VnPy database...")
-                 try:
-                     # Get the configured database manager instance from VnPy
-                     # --- Log current VnPy DB settings before getting manager ---
-                     logger.info(f"VnPy SETTINGS before get_database(): driver={VNPY_SETTINGS.get('database.driver')}, host={VNPY_SETTINGS.get('database.host')}, db={VNPY_SETTINGS.get('database.database')}")
-                     # --- End logging ---
-
-                     database_manager = database_module.get_database()
-                     logger.info(f"Obtained database manager instance: {type(database_manager)}")
-                     
-                     # Save the bar data using the obtained manager
-                     saved_count = database_manager.save_bar_data(bars_to_save)
-                     logger.info(f"Successfully saved {saved_count} bars to VnPy database for {symbol}.{exchange_str}.")
-
-                     # --- Update log entry on successful save ---
-                     log_entry.status = 'success'
-                     # Use the calculated end_date for the last import date
-                     # Ensure end_date is a date object if last_import_date expects one
-                     log_entry.last_import_date = end_date.date() if isinstance(end_date, datetime) else end_date
-                     log_entry.message = f"Successfully imported {saved_count} bars up to {log_entry.last_import_date.strftime('%Y-%m-%d')}. {import_message or ''}".strip()
-                     db.commit()
-                     
-                 except Exception as db_save_e:
-                     logger.error(f"Failed to save bars to VnPy database: {db_save_e}\\n{traceback.format_exc()}")
-                     log_entry.status = 'failed'
-                     log_entry.message = f"DB save error: {db_save_e}"
-                     db.commit()
-            elif not import_success:
-                 # 如果导入步骤失败
-                 log_entry.status = 'failed'
-                 log_entry.message = import_message
-                 db.commit()
-            else: # Import success but no bars found in the date range
-                 logger.info(f"No new data found for {symbol}.{exchange_str} in range {start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}.")
-                 log_entry.status = 'success' # Mark as success, even if no new bars
-                 log_entry.message = f"No new data in specified range up to {end_date.strftime('%Y-%m-%d')}."
-                 # Optionally update last_import_date to end_date? Needs careful thought.
-                 db.commit()
-                 
         except Exception as e:
-            logger.error(f"Error syncing target {target_config}: {e}\\n{traceback.format_exc()}")
-            if db and log_entry: # Try to update log even if error occurred mid-process
-                 try:
-                     log_entry.status = 'failed'
-                     log_entry.message = f"Sync error: {e}"
-                     db.commit()
-                 except Exception as log_update_e:
-                      logger.error(f"Failed to update log status on error: {log_update_e}")
-                      db.rollback() # Rollback if log update fails
-        finally:
-            if db:
-                db.close()
-                logger.debug(f"Database session closed for target sync: {symbol}.{exchange_str}")
+            error_msg = f"Error syncing target {target}: {e}"
+            print(f"[DataSyncService] {error_msg}")
+            # import traceback # Already imported
+            print(traceback.format_exc())
+            self._update_import_log(source, symbol, exchange_str, interval_str, False, error_msg)
 
-# --- Function to be called on startup ---
-def run_initial_data_sync():
-    """执行初始数据同步任务"""
-    logger.info("Executing initial data synchronization...")
+    def _check_import_log(self, source: str, symbol: str, exchange_str: str, interval_str: str) -> bool:
+        """
+        Checks the DataImportLog table to see if data has been successfully imported
+        or failed within the cooldown period (e.g., 1 day).
+        Uses print for logging. Returns True if import should be skipped, False otherwise.
+        """
+        print(f"[DataSyncService] Checking import log for {source}, {symbol}, {exchange_str}, {interval_str}")
+        cooldown_period = timedelta(days=1)
+        cutoff_time = datetime.now(timezone.utc) - cooldown_period
+
+        session = None
+        try:
+            # Assuming db object has a way to get a session or perform queries
+            # This part might need adjustment based on the actual db object type
+            # For SQLAlchemy:
+            if hasattr(self.db, 'SessionLocal'): # Common pattern
+                 session = self.db.SessionLocal()
+                 log_entry = session.query(DataImportLog).filter(
+                     DataImportLog.source == source,
+                     DataImportLog.symbol == symbol,
+                     DataImportLog.exchange == exchange_str,
+                     DataImportLog.interval == interval_str,
+                     DataImportLog.last_attempted >= cutoff_time # Check if attempted recently
+                 ).order_by(DataImportLog.last_attempted.desc()).first()
+            elif hasattr(self.db, 'load_bar_data'): # Adapt if it's closer to vnpy's direct DB interface
+                 # Vnpy's database manager doesn't directly expose general querying like this.
+                 # We might need to rethink how DataImportLog is accessed if using vnpy's db manager directly.
+                 # For now, assume an SQLAlchemy-like session is available via the passed 'db' object
+                 # or handle this logic differently based on 'db' type.
+                 print("[DataSyncService] _check_import_log: Direct query via vnpy db manager not standard. Assuming SQLAlchemy session via self.db.SessionLocal for now.")
+                 # Placeholder: If not SQLAlchemy, this check might always return False or need rework.
+                 return False # Assume we should attempt import if unsure how to check log
+
+            if log_entry:
+                if log_entry.success:
+                    print(f"[DataSyncService] Found successful import log entry from {log_entry.last_attempted}. Skipping.")
+                    return True # Successfully imported recently
+                else:
+                    print(f"[DataSyncService] Found failed import log entry from {log_entry.last_attempted}. Skipping due to cooldown.")
+                    return True # Failed recently, skip due to cooldown
+            else:
+                 print(f"[DataSyncService] No recent import log entry found. Proceeding with import.")
+                 return False # No recent attempt, proceed
+        except Exception as e:
+             print(f"[DataSyncService] Error checking import log: {e}")
+             # import traceback # Already imported
+             print(traceback.format_exc())
+             return False # Proceed with import if checking failed
+        finally:
+            if session:
+                session.close()
+
+    def _update_import_log(self, source: str, symbol: str, exchange_str: str, interval_str: str, success: bool, message: str = ""):
+        """
+        Updates or creates an entry in the DataImportLog table.
+        Uses print for logging.
+        """
+        print(f"[DataSyncService] Updating import log for {source}, {symbol}, {exchange_str}, {interval_str}. Success: {success}")
+        session = None
+        try:
+             # Assuming db object has a way to get a session
+            if hasattr(self.db, 'SessionLocal'):
+                session = self.db.SessionLocal()
+                log_entry = session.query(DataImportLog).filter(
+                    DataImportLog.source == source,
+                    DataImportLog.symbol == symbol,
+                    DataImportLog.exchange == exchange_str,
+                    DataImportLog.interval == interval_str
+                ).first()
+
+                if log_entry:
+                    log_entry.success = success
+                    log_entry.message = message
+                    log_entry.last_attempted = datetime.now(timezone.utc)
+                else:
+                    log_entry = DataImportLog(
+                        source=source,
+                        symbol=symbol,
+                        exchange=exchange_str,
+                        interval=interval_str,
+                        success=success,
+                        message=message,
+                        last_attempted=datetime.now(timezone.utc)
+                    )
+                    session.add(log_entry)
+                session.commit()
+                print("[DataSyncService] Import log updated successfully.")
+            else:
+                 print("[DataSyncService] _update_import_log: Cannot update log, self.db does not have SessionLocal.")
+
+        except Exception as e:
+            print(f"[DataSyncService] Error updating import log: {e}")
+            # import traceback # Already imported
+            print(traceback.format_exc())
+            if session:
+                session.rollback()
+        finally:
+            if session:
+                session.close()
+
+    async def _import_data_from_qlib(self, symbol: str, exchange_str: str, interval_str: str, start_date: str, end_date: str) -> tuple[bool, str]:
+        """
+        Imports data from Qlib for the given parameters and saves it using the database manager.
+        Uses print for logging.
+        """
+        print(f"[DataSyncService] Importing Qlib data for: {symbol}, {exchange_str}, {interval_str}, {start_date} to {end_date}")
+        try:
+            # Ensure qlib is initialized (consider doing this once at service start)
+            # from qlib.config import REG_CN
+            # from qlib.data import D
+            # provider_uri = app_settings.QLIB_PROVIDER_URI
+            # if not provider_uri:
+            #     return False, "QLIB_PROVIDER_URI not configured"
+            # qlib.init(provider_uri=provider_uri, region=REG_CN)
+            # print("[DataSyncService] Qlib initialized for import.") # Potentially slow to init repeatedly
+
+            # This requires Qlib to be installed and configured correctly in the environment
+            # Dynamically import qlib related modules only when needed
+            try:
+                import qlib
+                from qlib.data import D
+                from qlib.config import REG_CN
+                # Assuming qlib is already initialized elsewhere (e.g., at app startup if needed frequently)
+                # If not, uncomment the init block above, but be mindful of performance.
+            except ImportError:
+                 print("[DataSyncService] Qlib not installed or found.")
+                 return False, "Qlib library not installed."
+
+            # Map interval format if necessary (e.g., '1d' for Qlib, 'd' or '1d' for VnPy)
+            # VnPy Interval enum -> Qlib frequency string
+            interval_map = {
+                Interval.MINUTE: "1m", # Qlib might need specific minute frequencies
+                Interval.HOUR: "60m", # Adjust as needed
+                Interval.DAILY: "1d",
+                # Add mappings for weekly, monthly if needed and supported by Qlib/VnPy
+            }
+            qlib_freq = interval_map.get(Interval(interval_str))
+            if not qlib_freq:
+                return False, f"Unsupported interval for Qlib import: {interval_str}"
+
+            # Format symbol for Qlib (e.g., SH600000)
+            # Assuming exchange_str is like "SSE", "SZSE" and symbol is "600000"
+            qlib_symbol = f"{exchange_str.upper()}{symbol}" # Adjust formatting based on Qlib needs
+
+            print(f"[DataSyncService] Fetching data from Qlib: Symbol={qlib_symbol}, Freq={qlib_freq}, Start={start_date}, End={end_date}")
+            # Fetch data using Qlib
+            # Note: Qlib's fields might differ ('open', 'high', 'low', 'close', 'volume', 'factor')
+            # You might need ['OPEN', 'HIGH', 'LOW', 'CLOSE', 'VOL'] depending on your Qlib data source
+            fields = ['$open', '$high', '$low', '$close', '$volume'] # Use Qlib's dynamic field names
+            data_df = D.features([qlib_symbol], fields, start_time=start_date, end_time=end_date, freq=qlib_freq)
+
+            if data_df.empty:
+                print(f"[DataSyncService] No data found in Qlib for {qlib_symbol} in the specified period.")
+                return False, "No data found in Qlib"
+
+            # Rename columns to match VnPy's BarData requirements
+            # Qlib fields: $open, $high, $low, $close, $volume
+            # VnPy fields: open_price, high_price, low_price, close_price, volume
+            rename_map = {
+                '$open': 'open_price',
+                '$high': 'high_price',
+                '$low': 'low_price',
+                '$close': 'close_price',
+                '$volume': 'volume'
+            }
+            data_df = data_df.rename(columns=rename_map)
+
+            # Reset index to get datetime and symbol
+            data_df = data_df.reset_index()
+            # Qlib index levels might be ['datetime', 'instrument']
+
+            # Convert to VnPy BarData objects
+            from vnpy.trader.object import BarData
+            from vnpy.trader.constant import Exchange, Interval # Re-import for clarity
+
+            bars = []
+            for _, row in data_df.iterrows():
+                # Ensure datetime is timezone-aware (UTC is standard for VnPy)
+                dt = row['datetime'].tz_localize(None).tz_localize(timezone.utc) # Assuming Qlib datetime is naive
+
+                bar = BarData(
+                    symbol=symbol,
+                    exchange=Exchange(exchange_str),
+                    datetime=dt,
+                    interval=Interval(interval_str),
+                    volume=row['volume'],
+                    open_price=row['open_price'],
+                    high_price=row['high_price'],
+                    low_price=row['low_price'],
+                    close_price=row['close_price'],
+                    gateway_name="DB", # Use "DB" or a specific identifier
+                    # open_interest=row.get('open_interest', 0) # Add if available in Qlib data
+                )
+                bars.append(bar)
+
+            if not bars:
+                print("[DataSyncService] No bars created from Qlib data.")
+                return False, "Failed to convert Qlib data to BarData"
+
+            # Save bars to database using the vnpy database manager
+            print(f"[DataSyncService] Saving {len(bars)} bars to database...")
+            # Assuming self.db is a valid VnPy DatabaseManager instance
+            count = self.db.save_bar_data(bars)
+            print(f"[DataSyncService] Saved {count} bars for {symbol} from Qlib.")
+            return True, f"Successfully imported {count} bars."
+
+        except Exception as e:
+            error_msg = f"Failed to import Qlib data for {symbol}: {e}"
+            print(f"[DataSyncService] {error_msg}")
+            # import traceback # Already imported
+            print(traceback.format_exc())
+            return False, error_msg
+
+# Define the function to run data synchronization
+async def run_initial_data_sync():
+    """
+    Initializes the DataSyncService and runs synchronization for all configured targets.
+    Uses print for logging due to potential issues with the logging module in early startup threads.
+    """
+    print("[Data Sync Thread] Entered run_initial_data_sync.")
     try:
-        sync_service = DataSyncService()
-        sync_service.sync_all_targets()
-        logger.info("Initial data synchronization task finished.")
+        print("[Data Sync Thread] Getting database instance...")
+        # Use the standard get_database function which relies on SETTINGS/environment variables
+        db = get_database()
+        print(f"[Data Sync Thread] Database instance obtained: {type(db)}")
+
+        if db is None:
+            print("[Data Sync Thread] Failed to get database instance. Check VNPY environment variables or vt_setting.json.")
+            return # Exit if database is not available
+
+        print("[Data Sync Thread] Creating DataSyncService instance...")
+        data_sync_service = DataSyncService(db)
+        print("[Data Sync Thread] DataSyncService instance created.")
+
+        print("[Data Sync Thread] Calling sync_all_targets...")
+        await data_sync_service.sync_all_targets()
+        print("[Data Sync Thread] sync_all_targets finished.")
+
     except Exception as e:
-        logger.error(f"Error during initial data synchronization task: {e}", exc_info=True)
+        print(f"[Data Sync Thread] Error during initial data sync: {e}")
+        # import traceback # Already imported
+        print(traceback.format_exc()) # Print full traceback
+
+    print("[Data Sync Thread] Exiting run_initial_data_sync.")
 
 # --- Example Usage (Can be called from main.py or a scheduler) ---
 # if __name__ == "__main__":

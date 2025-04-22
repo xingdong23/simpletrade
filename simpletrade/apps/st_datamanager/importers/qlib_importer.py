@@ -323,32 +323,68 @@ class QlibDataImporter:
 
             # 转换为BarData列表
             bars = []
-            for _, row in df.iterrows():
-                # 创建BarData对象 - Use original_symbol here!
-                bar = BarData(
-                    symbol=original_symbol,
-                    exchange=exchange,
-                    datetime=row['datetime'].to_pydatetime(),
-                    interval=interval,
-                    gateway_name="QLIB"
-                )
+            missing_fields_logged = set() # Log missing field names only once per import
+            required_vnpy_fields = ['open_price', 'high_price', 'low_price', 'close_price', 'volume']
+            
+            for i, row in df.iterrows(): # Use index i for logging row number
+                try: # Add try-except around BarData creation
+                    # 创建BarData对象 - Use original_symbol here!
+                    bar = BarData(
+                        symbol=original_symbol,
+                        exchange=exchange,
+                        datetime=row['datetime'].to_pydatetime(), # Convert pd.Timestamp to datetime
+                        interval=interval,
+                        gateway_name="QLIB"
+                    )
 
-                # 设置价格和成交量数据
-                for qlib_field, vnpy_field in self.qlib_fields.items():
-                    if qlib_field in row:
-                        setattr(bar, vnpy_field, float(row[qlib_field]))
-                    elif qlib_field.lower() in row:  # 尝试小写字段名
-                        setattr(bar, vnpy_field, float(row[qlib_field.lower()]))
+                    # 设置价格和成交量数据
+                    row_has_all_required = True # Flag for this row
+                    missing_in_this_row = [] # Track missing required fields for this specific row
+                    
+                    for qlib_field, vnpy_field in self.qlib_fields.items():
+                        field_value = None
+                        field_found_and_valid = False
+                        
+                        if qlib_field in row and pd.notna(row[qlib_field]): # Check primary field name and not NaN
+                            field_value = float(row[qlib_field])
+                            field_found_and_valid = True
+                        elif qlib_field.lower() in row and pd.notna(row[qlib_field.lower()]): # Check lowercase field name and not NaN
+                            field_value = float(row[qlib_field.lower()])
+                            field_found_and_valid = True
+                        # else: field not found or is NaN
+                            
+                        if field_found_and_valid:
+                            setattr(bar, vnpy_field, field_value)
+                        else:
+                            # Log missing field only once per import run
+                            if qlib_field not in missing_fields_logged:
+                                logger.warning(f"Missing or NaN field '{qlib_field}' (or lowercase) in Qlib source data. BarData field '{vnpy_field}' may be affected.")
+                                missing_fields_logged.add(qlib_field)
+                                
+                            # If the missing field is required for VnPy BarData, mark row as invalid
+                            if vnpy_field in required_vnpy_fields:
+                                row_has_all_required = False
+                                missing_in_this_row.append(vnpy_field)
 
-                # 确保必要字段都有值
-                required_fields = ['open_price', 'high_price', 'low_price', 'close_price', 'volume']
-                if all(hasattr(bar, field) and getattr(bar, field) is not None for field in required_fields):
-                    bars.append(bar)
+                    # 检查此行是否包含所有必需的VnPy字段
+                    # Check based on the flag set during iteration
+                    if row_has_all_required:
+                        bars.append(bar)
+                    else:
+                        # Log skipped row more clearly, only once per import if desired, or for every row
+                        # For debugging, let's log the first few skipped rows
+                        if i < 5 : # Log details for the first 5 skipped rows
+                             logger.debug(f"Skipped creating BarData for row index {i} (datetime: {row['datetime']}) due to missing required VnPy fields: {missing_in_this_row}")
+                        elif i == 5:
+                             logger.warning("Further skipped row logs will be suppressed.")
+
+                except Exception as bar_creation_e:
+                    logger.error(f"Error creating BarData for row index {i}: {bar_creation_e}. Row data sample: {row.head().to_dict() if isinstance(row, pd.Series) else row}", exc_info=True)
 
             # 检查是否成功导入数据
             if not bars:
-                 # Consider if df was not empty but no valid bars were created
-                 return False, f"未能将Qlib数据转换为有效BarData: {original_symbol}", []
+                 logger.warning(f"Failed to convert any DataFrame rows to valid BarData for {original_symbol}. Check previous warnings/debug logs about missing fields.")
+                 return False, f"未能将Qlib数据转换为有效BarData: {original_symbol}.检查Qlib源文件字段是否完整(open,high,low,close,volume).", []
 
             logger.info(f"Successfully imported {len(bars)} bars for {original_symbol} from Qlib.")
             return True, f"成功导入 {len(bars)} 条数据", bars
