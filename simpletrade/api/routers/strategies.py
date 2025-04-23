@@ -14,7 +14,7 @@ import traceback
 from pathlib import Path
 
 # TODO: Update imports after moving files
-from simpletrade.config.database import get_db # Will be moved to deps
+from simpletrade.api.deps import get_db # Correct path for dependency injection
 from simpletrade.models.database import Strategy, UserStrategy, BacktestRecord
 from simpletrade.services.strategy_service import StrategyService
 from simpletrade.services.backtest_service import BacktestService
@@ -25,6 +25,7 @@ from simpletrade.services.monitor_service import MonitorService
 # from simpletrade.main import main_engine as global_main_engine 
 from simpletrade.core.engine import STMainEngine # For type hinting
 from simpletrade.strategies import get_strategy_class_names
+from simpletrade.models.user import User
 
 # 获取 logger 实例
 logger = logging.getLogger(__name__)

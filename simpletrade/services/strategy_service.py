@@ -9,9 +9,9 @@ from typing import Dict, List, Optional, Any, Union
 from sqlalchemy.orm import Session, joinedload
 
 from simpletrade.core.engine import STMainEngine
-from simpletrade.config.database import get_db
+from simpletrade.api.deps import get_db
 from simpletrade.models.database import Strategy, UserStrategy
-from simpletrade.strategies import get_strategy_class, get_strategy_class_names, get_strategy_class_details
+from simpletrade.strategies import get_strategy_class, get_strategy_class_names, get_strategy_class_details, BaseStrategy
 
 logger = logging.getLogger("simpletrade.services.strategy_service")
 

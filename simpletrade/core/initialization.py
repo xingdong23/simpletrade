@@ -4,6 +4,7 @@ from pathlib import Path
 
 from vnpy.event import EventEngine
 from vnpy.trader.setting import SETTINGS # Needed for reading config for connect
+from vnpy.trader.gateway import BaseGateway
 
 # Import Core Engine
 from simpletrade.core.engine import STMainEngine
@@ -40,9 +41,8 @@ except ImportError as e:
 
 # Import VnPy built-in Apps (might require vnpy installation)
 try:
-    # CTA Strategy App is typically added by string name
-    # from vnpy_ctastrategy import CtaStrategyApp # Import if adding by class instance
-    pass
+    from vnpy_ctastrategy import CtaStrategyApp # Import CtaStrategyApp
+    logger.info("CtaStrategyApp imported successfully.")
 except ImportError:
     logger.warning("Could not import CtaStrategyApp (might be intended to load by name).")
 
@@ -119,9 +119,9 @@ def initialize_core_components():
         main_engine.add_app(DataManagerApp)
         logger.info("Original VnPy DataManager App added.")
 
-    # Add VnPy CTA Strategy App (using string name)
+    # Add VnPy CTA Strategy App (using the class)
     try:
-        main_engine.add_app("CtaStrategy") # Use string name
+        main_engine.add_app(CtaStrategyApp) # 使用类名而不是字符串
         logger.info("VnPy CTA Strategy App added.")
     except Exception as e:
         # Catch potential errors if the app isn't found or fails to load

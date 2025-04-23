@@ -104,12 +104,12 @@ def configure_server(main_engine=None, event_engine=None):
         print(error_msg)
         pass # Avoid stopping config
 
-    # 分析API (稍后更新导入)
+    # 分析API (更新导入路径)
     try:
-        # TODO: Update import path to routers/analysis.py
-        from simpletrade.api.analysis import router as analysis_router # Old path
+        # 更新导入路径到 apps/st_analysis/api/router.py (假设路由变量是 router)
+        from simpletrade.apps.st_analysis.api import router as analysis_router # Updated path
         app.include_router(analysis_router)
-        logger.debug("Analysis API routes added (placeholder import).")
+        logger.debug("Analysis API routes added.") # 移除 placeholder
     except Exception as e:
         import traceback
         error_msg = f"Failed to add Analysis API routes: {e}\n{traceback.format_exc()}"
@@ -117,12 +117,12 @@ def configure_server(main_engine=None, event_engine=None):
         print(error_msg)
         pass # Avoid stopping config
 
-    # 策略API (稍后更新导入)
+    # 策略API (更新导入路径)
     try:
-        # TODO: Update import path to routers/strategies.py
-        from simpletrade.api.strategies import router as strategies_router # Old path
+        # 更新导入路径到 api/routers/strategies.py (假设路由变量是 router)
+        from simpletrade.api.routers.strategies import router as strategies_router # Updated path
         app.include_router(strategies_router)
-        logger.debug("Strategies API routes added (placeholder import).")
+        logger.debug("Strategies API routes added.") # 移除 placeholder
     except Exception as e:
         import traceback
         error_msg = f"Failed to add Strategies API routes: {e}\n{traceback.format_exc()}"

@@ -4,10 +4,11 @@ SimpleTrade主引擎模块
 本模块扩展了vnpy的MainEngine，添加了SimpleTrade特有的功能。
 """
 
-from vnpy.trader.engine import MainEngine
+from vnpy.trader.engine import MainEngine, BaseEngine
 from vnpy.event import EventEngine, Event
 from vnpy.trader.app import BaseApp
 from vnpy_ctastrategy import CtaStrategyApp
+import inspect  # 需要导入 inspect 模块
 
 class STMainEngine(MainEngine):
     """
@@ -99,6 +100,67 @@ class STMainEngine(MainEngine):
             print(f"Failed to connect to {gateway_name}.")
 
         return result
+
+    def add_app(self, app_class: type[BaseApp]) -> BaseEngine:
+        """
+        覆盖 VnPy 的 add_app 方法，并智能处理引擎初始化参数。
+        Add app, handling different engine __init__ signatures.
+        """
+        app: BaseApp = app_class()
+        self.apps[app.app_name] = app
+
+        if hasattr(app, "init_engine"):
+            app.init_engine(self, self.event_engine)
+
+        if not hasattr(app, "engine_class") or not app.engine_class:
+            self.write_log(f"App {app.app_name} does not have an associated engine_class.", source="STMainEngine")
+            return None
+
+        engine_class = app.engine_class
+        engine_name = app.app_name
+
+        # === 智能参数处理 ===
+        try:
+            # Inspect the engine's __init__ method signature
+            sig = inspect.signature(engine_class.__init__)
+            params = sig.parameters
+            num_params = len(params) # 获取参数总数 (包括 self)
+
+            # 根据 __init__ 的参数数量调用构造函数
+            if num_params == 4:  # 期望 __init__(self, main_engine, event_engine, engine_name)
+                engine: BaseEngine = engine_class(self, self.event_engine, engine_name)
+            elif num_params == 3:  # 期望 __init__(self, main_engine, event_engine)，例如 CtaEngine
+                engine: BaseEngine = engine_class(self, self.event_engine)
+                # 由于 BaseEngine.__init__ 需要 engine_name，而这里没有传递
+                # 尝试在实例化后手动设置 engine_name (如果引擎实例允许)
+                if hasattr(engine, 'engine_name') and not engine.engine_name:
+                     try:
+                         engine.engine_name = engine_name
+                     except AttributeError:
+                         self.write_log(f"Warning: Could not set engine_name on {engine_class.__name__} instance after initialization.", source="STMainEngine")
+
+            else: # 处理非预期的参数数量
+                raise TypeError(f"Engine class {engine_class.__name__}.__init__ has an unexpected signature with {num_params} parameters.")
+
+        except Exception as e:
+            self.write_log(f"Failed to inspect or initialize engine {engine_name} for app {app.app_name}. Error: {e}", source="STMainEngine")
+            raise e
+
+        # 确保 engine_name 被设置 (如果可能)
+        if not hasattr(engine, 'engine_name') or not engine.engine_name:
+            self.write_log(f"Warning: Engine {engine.__class__.__name__} instance created but 'engine_name' attribute might be missing or incorrect.", source="STMainEngine")
+            try:
+                if not getattr(engine, 'engine_name', None):
+                    engine.engine_name = engine_name
+            except AttributeError:
+                pass
+
+        self.engines[engine_name] = engine # 使用 app_name 作为 key 存储
+
+        if hasattr(app, "init_app"):
+            app.init_app()
+
+        return engine
 
     def get_cta_engine(self):
         """
