@@ -4,46 +4,33 @@ SimpleTrade API服务
 提供RESTful API服务，用于访问SimpleTrade的功能。
 """
 
-import os  # 添加这行导入
+import os
 import sys
 from pathlib import Path
 from fastapi import FastAPI, APIRouter
-import uvicorn
+# import uvicorn # No longer needed here
 from fastapi.middleware.cors import CORSMiddleware
-from simpletrade.services.data_sync_service import run_initial_data_sync # Import the sync function
-# Import database engine and Base
+# from simpletrade.services.data_sync_service import run_initial_data_sync # Not used directly here
 from simpletrade.config.database import engine, Base
-import logging # Re-add missing import
-from fastapi import FastAPI # Ensure FastAPI is imported
-import asyncio # Re-import asyncio
-# APIServer 类不再需要，因为 app 是外部传入的
-# class APIServer:
-#     ...
+import logging
+# from fastapi import FastAPI # Already imported
+import asyncio
 
-# 创建一个简单的测试路由
-test_router = APIRouter(prefix="/api/test", tags=["test"])
+# +++ 在模块顶部创建 FastAPI 实例 +++
+app = FastAPI(title="SimpleTrade API", version="0.1.0")
+# +++ 结束 FastAPI 实例创建 +++
 
-@test_router.get("/hello")
-async def hello():
-    return {"message": "Hello from SimpleTrade API!"}
-
-@test_router.get("/info")
-async def info():
-    return {
-        "status": "ok",
-        "version": "0.1.0",
-        "api": "SimpleTrade API",
-        "time": "2024-04-17"
-    }
+# --- test_router definition removed ---
 
 # --- Lifespan Function Removed (using background thread in run_api.py) ---
 
-# 修改函数签名，接收 FastAPI app 实例
-def configure_server(app: FastAPI, main_engine=None, event_engine=None):
-    """配置现有的 FastAPI 应用实例"""
+# --- 修改函数签名，不再接收 app 参数 --- 
+# 它将配置在上面定义的全局 app 实例
+def configure_server(main_engine=None, event_engine=None):
+    """配置全局 FastAPI 应用实例 (app)"""
     logger = logging.getLogger("simpletrade.api.server")
     logger.setLevel(logging.DEBUG) # 保持日志级别
-    logger.debug("Configuring FastAPI app instance...")
+    logger.debug("Configuring global FastAPI app instance (app)...")
 
     # --- Create Database Tables (if they don't exist) ---
     try:
@@ -55,7 +42,7 @@ def configure_server(app: FastAPI, main_engine=None, event_engine=None):
         # Decide if you want to proceed or raise the error depending on severity
     # --- End Create Database Tables ---
 
-    # 添加CORS中间件 (移到这里配置)
+    # --- 添加CORS中间件 (现在配置全局 app) ---
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],  # 允许所有来源
@@ -63,92 +50,88 @@ def configure_server(app: FastAPI, main_engine=None, event_engine=None):
         allow_methods=["*"],  # 允许所有方法
         allow_headers=["*"],  # 允许所有头
     )
-    logger.debug("CORS middleware added.")
+    logger.debug("CORS middleware added to global app.")
 
-    # 添加测试路由
-    app.include_router(test_router)
-    print("Test API routes added successfully.")
+    # --- 添加路由 (稍后统一更新导入和注册) ---
+    # app.include_router(test_router) # Removed definition
+    logger.debug("Test API routes will be added later.")
 
-    # 添加健康检查路由
-    health_router = APIRouter(prefix="/api/health", tags=["health"])
+    # --- health_router definition removed ---
 
-    @health_router.get("/")
-    async def health_check():
-        return {"status": "ok", "message": "API服务正常运行"}
+    # app.include_router(health_router) # Removed definition
+    logger.debug("Health check API route will be added later.")
 
-    app.include_router(health_router)
-    print("Health check API route added.")
-
-    # 检查main_engine是否已初始化
+    # --- 检查和存储 main_engine 到 app.state (保持不变) ---
     if main_engine:
         logger.debug(f"Using provided main_engine: {main_engine}")
+        app.state.main_engine = main_engine # 存储到全局 app 的 state
+        logger.debug("Main engine stored in global app state.")
+        # 检查可用网关 (保持不变)
+        try:
+            all_gateways = main_engine.get_all_gateway_names()
+            logger.debug(f"Available gateways: {all_gateways}")
+        except Exception as e:
+            logger.warning(f"Could not get gateway names: {e}")
     else:
-        # 如果没有 main_engine，可能需要引发错误或有默认行为
         logger.warning("No main_engine provided during configuration!") 
+        app.state.main_engine = None # 明确设置为空
 
-    # 将 main_engine 存储到 app state 中，供依赖注入使用
-    # app = server.app # app 是传入的
-    app.state.main_engine = main_engine
-    logger.debug("Main engine stored in app state.")
-
-    # 检查可用的网关
+    # --- 添加其他 API 路由 (现在配置全局 app) ---
+    # 数据管理API (稍后更新导入)
     try:
-        if main_engine:
-             all_gateways = main_engine.get_all_gateway_names()
-             logger.debug(f"Available gateways: {all_gateways}")
-        else:
-             logger.warning("Cannot get gateway names without main_engine.")
-    except Exception as e:
-        logger.warning(f"Could not get gateway names (might be harmless): {e}")
-
-    # 添加数据管理API路由
-    try:
+        # TODO: Update import path if data router is moved/proxied
         from simpletrade.apps.st_datamanager.api import router as data_router
         app.include_router(data_router)
-        logger.debug("Data management API routes added.")
+        logger.debug("Data management API routes added (placeholder import).")
     except Exception as e:
         import traceback
         error_msg = f"Failed to add data management API routes: {e}\n{traceback.format_exc()}"
         logger.error(error_msg)
         print(error_msg)
+        pass # Avoid stopping config due to import error during refactor
 
-    # 添加微信小程序API路由
+    # 微信小程序API (稍后更新导入)
     try:
+        # TODO: Update import path if wechat router is moved
         from simpletrade.api.wechat import auth_router, data_router as wechat_data_router
         app.include_router(auth_router)
         app.include_router(wechat_data_router)
-        print("WeChat Mini Program API routes added.")
+        logger.debug("WeChat Mini Program API routes added (placeholder import).")
     except Exception as e:
         import traceback
         error_msg = f"Failed to add WeChat Mini Program API routes: {e}\n{traceback.format_exc()}"
         logger.error(error_msg)
         print(error_msg)
+        pass # Avoid stopping config
 
-    # 添加分析API路由
+    # 分析API (稍后更新导入)
     try:
-        from simpletrade.api.analysis import router as analysis_router
+        # TODO: Update import path to routers/analysis.py
+        from simpletrade.api.analysis import router as analysis_router # Old path
         app.include_router(analysis_router)
-        print("Analysis API routes added.")
+        logger.debug("Analysis API routes added (placeholder import).")
     except Exception as e:
         import traceback
         error_msg = f"Failed to add Analysis API routes: {e}\n{traceback.format_exc()}"
         logger.error(error_msg)
         print(error_msg)
+        pass # Avoid stopping config
 
-    # 添加策略API路由
+    # 策略API (稍后更新导入)
     try:
-        from simpletrade.api.strategies import router as strategies_router
+        # TODO: Update import path to routers/strategies.py
+        from simpletrade.api.strategies import router as strategies_router # Old path
         app.include_router(strategies_router)
-        print("Strategies API routes added.")
+        logger.debug("Strategies API routes added (placeholder import).")
     except Exception as e:
         import traceback
         error_msg = f"Failed to add Strategies API routes: {e}\n{traceback.format_exc()}"
         logger.error(error_msg)
         print(error_msg)
+        pass # Avoid stopping config
 
-    # 不再需要返回 server 对象
-    # return server
+    # --- 结束路由添加 --- 
 
-# 移除全局服务器和 app 创建
-# server = create_server()
-# app = server.app
+    logger.info("Global FastAPI app configuration complete (router includes pending update).")
+
+# --- 不再需要 create_server 函数和全局 server 变量 ---

@@ -1,7 +1,7 @@
 """
-SimpleTrade消息处理器
+SimpleTrade消息处理基础接口
 
-处理消息指令，并将其分发到相应的处理器。
+定义消息处理的基础接口，包括命令处理器和消息处理器的基类。
 """
 
 from typing import Dict, Any, Optional, List, Callable

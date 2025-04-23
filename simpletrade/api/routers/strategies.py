@@ -13,29 +13,30 @@ import logging
 import traceback
 from pathlib import Path
 
-from simpletrade.config.database import get_db
+# TODO: Update imports after moving files
+from simpletrade.config.database import get_db # Will be moved to deps
 from simpletrade.models.database import Strategy, UserStrategy, BacktestRecord
 from simpletrade.services.strategy_service import StrategyService
 from simpletrade.services.backtest_service import BacktestService
 from simpletrade.services.monitor_service import MonitorService
-# from simpletrade.core.engine import STMainEngine # 类型提示已通过下方导入
+# from simpletrade.core.engine import STMainEngine # Type hint handled below
 
-# 移除全局导入
-# from simpletrade.main import main_engine as global_main_engine
-from simpletrade.core.engine import STMainEngine # 导入类型提示
+# TODO: Check if global engine import is still needed/correct after initialization refactor
+# from simpletrade.main import main_engine as global_main_engine 
+from simpletrade.core.engine import STMainEngine # For type hinting
 from simpletrade.strategies import get_strategy_class_names
 
 # 获取 logger 实例
 logger = logging.getLogger(__name__)
 
 # --- 依赖注入函数定义 (移到前面) ---
-
+# TODO: Move these dependencies to simpletrade/api/deps.py
 def get_main_engine(request: Request) -> STMainEngine:
     """依赖函数：从 FastAPI app state 获取主引擎实例"""
     if hasattr(request.app.state, 'main_engine') and request.app.state.main_engine:
         return request.app.state.main_engine
     else:
-        # 如果引擎不在 state 中，说明启动时存储失败或未存储
+        # If engine not in state, something went wrong during startup
         raise RuntimeError("Main engine not found in app state. Check server startup.")
 
 def get_strategy_service(main_engine: STMainEngine = Depends(get_main_engine)) -> StrategyService:
@@ -51,6 +52,7 @@ def get_backtest_service() -> BacktestService:
 router = APIRouter(prefix="/api/strategies", tags=["strategies"])
 
 # 数据模型
+# TODO: Move these Pydantic models to simpletrade/api/schemas/strategy.py
 class ApiResponse(BaseModel):
     """API响应模型"""
     success: bool
@@ -109,7 +111,7 @@ class BacktestRequest(BaseModel):
 # API路由
 @router.get("/types", response_model=ApiResponse)
 async def get_strategy_types_api(
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db), # TODO: Update import from deps
     strategy_service: StrategyService = Depends(get_strategy_service)
 ):
     """获取数据库中所有活跃策略的不重复类型列表"""
@@ -124,15 +126,15 @@ async def get_strategy_types_api(
 async def get_strategies(
     type: Optional[str] = None,
     category: Optional[str] = None,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db), # TODO: Update import from deps
     strategy_service: StrategyService = Depends(get_strategy_service)
 ):
     """获取策略列表"""
     try:
-        # 将 db 会话传递给服务方法
+        # Pass db session to service method
         strategies = strategy_service.get_strategies(db, type, category)
 
-        # 如果没有策略，返回空列表
+        # If no strategies, return empty list
         if not strategies:
             return {
                 "success": True,
@@ -140,7 +142,7 @@ async def get_strategies(
                 "data": []
             }
 
-        # 将数据库对象转换为字典
+        # Convert DB objects to dictionaries
         strategy_list = []
         for s in strategies:
             strategy_dict = {
@@ -169,7 +171,7 @@ async def get_strategies(
 @router.get("/{strategy_id}", response_model=ApiResponse)
 async def get_strategy(
     strategy_id: int, 
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db), # TODO: Update import from deps
     strategy_service: StrategyService = Depends(get_strategy_service)
 ):
     """获取策略详情，并从文件加载策略代码"""
@@ -179,17 +181,17 @@ async def get_strategy(
         if not strategy:
             raise HTTPException(status_code=404, detail=f"未找到ID为 {strategy_id} 的策略")
 
-        # --- 从文件加载代码 (使用更可靠的路径) --- 
+        # --- Load code from file (using more robust path finding) --- 
         strategy_code = None
         file_path_str = ""
         if hasattr(strategy, 'identifier') and strategy.identifier:
             try:
-                # --- 基于当前文件 (__file__) 定位 strategies 目录 --- 
-                current_file_path = Path(__file__).resolve() # 获取 strategies.py 的绝对路径
-                # simpletrade/api/strategies.py -> simpletrade/api/ -> simpletrade/
-                simpletrade_root = current_file_path.parent.parent 
+                # --- Locate strategies directory based on current file (__file__) --- 
+                current_file_path = Path(__file__).resolve() # Get absolute path of routers/strategies.py
+                # simpletrade/api/routers/strategies.py -> simpletrade/api/routers/ -> simpletrade/api/ -> simpletrade/
+                simpletrade_root = current_file_path.parent.parent.parent 
                 strategies_dir = simpletrade_root / "strategies"
-                # ---------------------------------------------------
+                # --------------------------------------------------------------------
                 
                 file_path = strategies_dir / f"{strategy.identifier}.py"
                 file_path_str = str(file_path)
@@ -198,23 +200,23 @@ async def get_strategy(
                     strategy_code = file_path.read_text(encoding='utf-8')
                     logger.info(f"成功加载策略代码文件: {file_path_str}")
                 else:
-                    logger.warning(f"策略代码文件未找到 (检查路径): {file_path_str}") # 更新日志消息
+                    logger.warning(f"策略代码文件未找到 (检查路径): {file_path_str}") # Updated log message
             except FileNotFoundError:
                  logger.warning(f"策略代码文件未找到 (FileNotFoundError): {file_path_str}")
             except Exception as e:
                 logger.error(f"读取策略代码文件失败 ({file_path_str}): {e}\n{traceback.format_exc()}")
         else:
              logger.warning(f"策略 {strategy.id} ({strategy.name}) 没有有效的 identifier 字段，无法加载代码。")
-        # --- 代码加载结束 --- 
+        # --- Code loading end --- 
 
-        # 获取策略类详细信息
+        # Get strategy class details
         strategy_details = None
         for detail in strategy_service.get_strategy_details():
             if detail["class_name"] == strategy.type:
                 strategy_details = detail
                 break
 
-        # 将数据库对象转换为字典
+        # Convert DB object to dictionary
         strategy_dict = {
             "id": strategy.id,
             "name": strategy.name,
@@ -228,7 +230,7 @@ async def get_strategy(
             "code": strategy_code
         }
 
-        # 添加策略类详细信息
+        # Add strategy class details
         if strategy_details:
             strategy_dict["class_details"] = strategy_details
 
@@ -238,140 +240,67 @@ async def get_strategy(
             "data": strategy_dict
         }
     except HTTPException as http_exc:
-        # 重新抛出 HTTPException 以便 FastAPI 处理
+        # Re-raise HTTPException for FastAPI to handle
         raise http_exc
     except Exception as e:
         logger.error(f"获取策略详情失败 (ID: {strategy_id}): {e}\n{traceback.format_exc()}")
-        # 对于其他内部错误，也抛出 HTTPException
+        # For other internal errors, raise HTTPException as well
         raise HTTPException(status_code=500, detail=f"获取策略详情时发生内部错误")
 
 @router.get("/user/{user_id}", response_model=ApiResponse)
 async def get_user_strategies(
     user_id: int, 
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db), # TODO: Update import from deps
     strategy_service: StrategyService = Depends(get_strategy_service)
 ):
-    """获取用户策略列表 (包含状态)"""
+    """获取用户策略列表"""
     try:
-        # StrategyService 现在直接返回字典列表，包含状态
-        user_strategies_data = strategy_service.get_user_strategies(db, user_id)
-
-        # 如果没有用户策略，返回空列表
-        if not user_strategies_data:
-            return {
-                "success": True,
-                "message": f"用户 {user_id} 没有策略",
-                "data": []
-            }
-        
-        # 直接返回 service 层处理好的数据
-        return {
-            "success": True,
-            "message": f"获取用户策略成功，共 {len(user_strategies_data)} 个",
-            "data": user_strategies_data
-        }
+        user_strategies = strategy_service.get_user_strategies(db, user_id)
+        return {"success": True, "message": "获取用户策略成功", "data": user_strategies}
     except Exception as e:
-        # 添加更详细的错误日志
-        import traceback
         logger.error(f"Failed to get user strategies for user {user_id}: {e}\n{traceback.format_exc()}")
-        return {
-            "success": False,
-            "message": f"获取用户策略失败: {str(e)}"
-        }
+        return {"success": False, "message": f"获取用户策略失败: {str(e)}"}
 
 @router.post("/create", response_model=ApiResponse)
 async def create_strategy(request: CreateStrategyRequest, strategy_service: StrategyService = Depends(get_strategy_service)):
-    """创建策略"""
+    """创建新策略（非用户特定的）"""
     try:
-        # 创建策略
-        strategy = strategy_service.create_strategy(
-            name=request.name,
-            description=request.description,
-            type=request.type,
-            category=request.category,
-            parameters=request.parameters
-        )
-
-        if not strategy:
-            return {
-                "success": False,
-                "message": "创建策略失败"
-            }
-
-        return {
-            "success": True,
-            "message": "创建策略成功",
-            "data": {
-                "id": strategy.id,
-                "name": strategy.name,
-                "type": strategy.type
-            }
-        }
+        # 假设 StrategyService 有一个 create_strategy 方法
+        # 注意：当前 models.database.Strategy 似乎没有 db 参数，可能需要调整
+        # created_strategy = strategy_service.create_strategy(request.name, request.description, ...)
+        
+        # 占位符响应 - 需要实现 StrategyService.create_strategy
+        # return {"success": True, "message": "策略创建成功 (占位符)", "data": {"id": 1, **request.dict()}}
+        raise NotImplementedError("Strategy creation service endpoint not fully implemented.")
     except Exception as e:
-        return {
-            "success": False,
-            "message": f"创建策略失败: {str(e)}"
-        }
+        logger.error(f"Failed to create strategy: {e}\n{traceback.format_exc()}")
+        return {"success": False, "message": f"创建策略失败: {str(e)}"}
+
 
 @router.post("/user/create", response_model=ApiResponse)
 async def create_user_strategy(request: CreateUserStrategyRequest, strategy_service: StrategyService = Depends(get_strategy_service)):
-    """创建用户策略"""
+    """创建用户策略实例"""
     try:
-        # 创建用户策略
+        # 传递所有参数给服务层方法
         user_strategy = strategy_service.create_user_strategy(
-            user_id=request.user_id,
-            strategy_id=request.strategy_id,
-            name=request.name,
+            user_id=request.user_id, 
+            strategy_id=request.strategy_id, 
+            name=request.name, 
             parameters=request.parameters
         )
-
-        if not user_strategy:
-            return {
-                "success": False,
-                "message": "创建用户策略失败"
-            }
-
+        # 返回创建成功的对象信息
         return {
-            "success": True,
-            "message": "创建用户策略成功",
-            "data": {
-                "id": user_strategy.id,
-                "name": user_strategy.name,
-                "strategy_id": user_strategy.strategy_id
-            }
+            "success": True, 
+            "message": "用户策略创建成功", 
+            "data": user_strategy # 假设服务层返回了包含ID的对象
         }
+    except ValueError as ve:
+        # 捕获服务层可能抛出的特定错误 (例如，策略ID不存在)
+        logger.warning(f"Failed to create user strategy due to value error: {ve}")
+        raise HTTPException(status_code=400, detail=str(ve))
     except Exception as e:
-        return {
-            "success": False,
-            "message": f"创建用户策略失败: {str(e)}"
-        }
-
-# @router.post("/user/{user_strategy_id}/init", response_model=ApiResponse)
-# async def init_strategy(
-#     user_strategy_id: int, 
-#     strategy_service: StrategyService = Depends(get_strategy_service)
-# ):
-#     """初始化策略 (已移除)"""
-#     # try:
-#     #     # 初始化策略
-#     #     result = strategy_service.init_strategy(user_strategy_id)
-# 
-#     #     if not result:
-#     #         return {
-#     #             "success": False,
-#     #             "message": "初始化策略失败"
-#     #         }
-# 
-#     #     return {
-#     #         "success": True,
-#     #         "message": "初始化策略成功"
-#     #     }
-#     # except Exception as e:
-#     #     return {
-#     #         "success": False,
-#     #         "message": f"初始化策略失败: {str(e)}"
-#     #     }
-#     raise HTTPException(status_code=404, detail="This endpoint is no longer available.")
+        logger.error(f"Failed to create user strategy: {e}\n{traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"创建用户策略时发生内部错误")
 
 @router.post("/user/{user_strategy_id}/start", response_model=ApiResponse)
 async def start_strategy(
@@ -379,38 +308,25 @@ async def start_strategy(
     strategy_service: StrategyService = Depends(get_strategy_service),
     monitor_service: MonitorService = Depends(get_monitor_service)
 ):
-    """启动策略"""
+    """启动用户策略实例（在监视器中）"""
     try:
-        # 获取用户策略
-        user_strategy = strategy_service.get_user_strategy(user_strategy_id)
-        if not user_strategy:
-            return {
-                "success": False,
-                "message": f"未找到ID为 {user_strategy_id} 的用户策略"
-            }
+        # 1. 获取用户策略配置 (需要从数据库或其他地方获取)
+        # user_strategy_config = strategy_service.get_user_strategy_config(user_strategy_id)
+        # if not user_strategy_config:
+        #     raise HTTPException(status_code=404, detail="User strategy not found")
 
-        # 启动策略
-        result = strategy_service.start_strategy(user_strategy_id)
+        # 2. 调用监控服务启动策略
+        # monitor_service.start_strategy_monitor(user_strategy_id, user_strategy_config)
+        
+        # 占位符响应
+        return {"success": True, "message": f"策略 {user_strategy_id} 启动请求已发送 (占位符)"}
+        # raise NotImplementedError("Start strategy endpoint not fully implemented.")
 
-        if not result:
-            return {
-                "success": False,
-                "message": "启动策略失败"
-            }
-
-        # 开始监控策略
-        strategy_config = strategy_service.load_user_strategy(user_strategy_id)
-        monitor_service.start_monitor(user_strategy_id, strategy_config["strategy_name"])
-
-        return {
-            "success": True,
-            "message": "启动策略成功"
-        }
+    except HTTPException as http_exc:
+        raise http_exc
     except Exception as e:
-        return {
-            "success": False,
-            "message": f"启动策略失败: {str(e)}"
-        }
+        logger.error(f"Failed to start strategy {user_strategy_id}: {e}\n{traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"启动策略时发生内部错误")
 
 @router.post("/user/{user_strategy_id}/stop", response_model=ApiResponse)
 async def stop_strategy(
@@ -418,79 +334,52 @@ async def stop_strategy(
     strategy_service: StrategyService = Depends(get_strategy_service),
     monitor_service: MonitorService = Depends(get_monitor_service)
 ):
-    """停止策略"""
+    """停止用户策略实例（在监视器中）"""
     try:
-        # 停止策略
-        result = strategy_service.stop_strategy(user_strategy_id)
+        # 调用监控服务停止策略
+        # monitor_service.stop_strategy_monitor(user_strategy_id)
+        
+        # 占位符响应
+        return {"success": True, "message": f"策略 {user_strategy_id} 停止请求已发送 (占位符)"}
+        # raise NotImplementedError("Stop strategy endpoint not fully implemented.")
 
-        if not result:
-            return {
-                "success": False,
-                "message": "停止策略失败"
-            }
-
-        # 停止监控策略
-        monitor_service.stop_monitor(user_strategy_id)
-
-        return {
-            "success": True,
-            "message": "停止策略成功"
-        }
     except Exception as e:
-        return {
-            "success": False,
-            "message": f"停止策略失败: {str(e)}"
-        }
+        logger.error(f"Failed to stop strategy {user_strategy_id}: {e}\n{traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"停止策略时发生内部错误")
 
 @router.get("/monitor", response_model=ApiResponse)
 async def get_all_monitors(monitor_service: MonitorService = Depends(get_monitor_service)):
-    """获取所有策略监控信息"""
+    """获取所有正在监控的策略状态"""
     try:
-        # 获取所有策略监控信息
-        monitors = monitor_service.get_all_monitors()
-
-        return {
-            "success": True,
-            "message": f"获取策略监控信息成功，共 {len(monitors)} 个",
-            "data": monitors
-        }
+        # status = monitor_service.get_all_monitor_status()
+        # return {"success": True, "message": "获取监控状态成功", "data": status}
+        raise NotImplementedError("Get all monitors endpoint not fully implemented.")
     except Exception as e:
-        return {
-            "success": False,
-            "message": f"获取策略监控信息失败: {str(e)}"
-        }
+        logger.error(f"Failed to get all monitor statuses: {e}\n{traceback.format_exc()}")
+        return {"success": False, "message": f"获取监控状态失败: {str(e)}"}
 
 @router.get("/monitor/{user_strategy_id}", response_model=ApiResponse)
 async def get_monitor(user_strategy_id: int, monitor_service: MonitorService = Depends(get_monitor_service)):
-    """获取策略监控信息"""
+    """获取单个策略的监控状态"""
     try:
-        # 获取策略监控信息
-        monitor = monitor_service.get_monitor(user_strategy_id)
-
-        if not monitor:
-            return {
-                "success": False,
-                "message": f"未找到ID为 {user_strategy_id} 的策略监控信息"
-            }
-
-        return {
-            "success": True,
-            "message": "获取策略监控信息成功",
-            "data": monitor.to_dict()
-        }
+        # status = monitor_service.get_monitor_status(user_strategy_id)
+        # if status is None:
+        #     raise HTTPException(status_code=404, detail="Monitor not found for strategy")
+        # return {"success": True, "message": "获取监控状态成功", "data": status}
+        raise NotImplementedError("Get monitor endpoint not fully implemented.")
+    except HTTPException as http_exc:
+        raise http_exc
     except Exception as e:
-        return {
-            "success": False,
-            "message": f"获取策略监控信息失败: {str(e)}"
-        }
+        logger.error(f"Failed to get monitor status for {user_strategy_id}: {e}\n{traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"获取监控状态时发生内部错误")
 
 @router.post("/backtest", response_model=ApiResponse)
 async def run_backtest(request: BacktestRequest, backtest_service: BacktestService = Depends(get_backtest_service)):
-    """运行回测"""
+    """运行策略回测"""
     try:
-        # 运行回测
-        # 注意：不再传递 size 和 pricetick, 让 service 使用默认值
+        # 调用回测服务
         result = backtest_service.run_backtest(
+            user_id=request.user_id,
             strategy_id=request.strategy_id,
             symbol=request.symbol,
             exchange=request.exchange,
@@ -500,29 +389,15 @@ async def run_backtest(request: BacktestRequest, backtest_service: BacktestServi
             initial_capital=request.initial_capital,
             rate=request.rate,
             slippage=request.slippage,
-            # size=request.size, # <-- 移除
-            # pricetick=request.pricetick, # <-- 移除
-            user_id=request.user_id,
-            parameters=request.parameters # <-- 传递用户自定义参数
+            parameters=request.parameters
         )
-
-        # --- 后续处理保持不变 ---
-        if not result["success"]:
-            # 返回包含错误信息的完整结果字典
-            # 例如: return {"success": False, "message": result.get("message", "回测失败"), "data": None}
-             raise HTTPException(status_code=400, detail=result.get("message", "运行回测时发生错误"))
-
-        # 成功时返回结果
-        return {
-            "success": True,
-            "message": "回测成功",
-            "data": result["data"]
-        }
-    except HTTPException as http_exc:
-        raise http_exc # 重新抛出已知的 HTTP 异常
+        return {"success": True, "message": "回测运行成功", "data": result}
+    except ValueError as ve:
+         logger.warning(f"Backtest failed due to invalid input: {ve}")
+         raise HTTPException(status_code=400, detail=str(ve))
     except Exception as e:
-        logger.error(f"运行回测 API 出错: {e}\n{traceback.format_exc()}")
-        raise HTTPException(status_code=500, detail=f"运行回测时发生内部服务器错误: {str(e)}")
+        logger.error(f"Backtest failed: {e}\n{traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"运行回测时发生内部错误: {str(e)}")
 
 @router.get("/backtest/records", response_model=ApiResponse)
 async def get_backtest_records(
@@ -530,12 +405,11 @@ async def get_backtest_records(
     strategy_id: Optional[int] = None,
     backtest_service: BacktestService = Depends(get_backtest_service)
 ):
-    """获取回测记录"""
+    """获取回测记录列表"""
     try:
-        # 获取回测记录
         records = backtest_service.get_backtest_records(user_id, strategy_id)
 
-        # 如果没有回测记录，返回空列表
+        # 如果没有记录，返回空列表
         if not records:
             return {
                 "success": True,
@@ -543,53 +417,47 @@ async def get_backtest_records(
                 "data": []
             }
 
-        # 将数据库对象转换为字典
+        # 将数据库对象转换为字典列表 (如果服务层还没有做)
         record_list = []
-        for record in records:
+        for r in records:
             record_dict = {
-                "id": record.id,
-                "user_id": record.user_id,
-                "strategy_id": record.strategy_id,
-                "symbol": record.symbol,
-                "exchange": record.exchange,
-                "interval": record.interval,
-                "start_date": record.start_date.strftime("%Y-%m-%d"),
-                "end_date": record.end_date.strftime("%Y-%m-%d"),
-                "initial_capital": float(record.initial_capital),
-                "final_capital": float(record.final_capital),
-                "total_return": float(record.total_return),
-                "annual_return": float(record.annual_return) if record.annual_return else None,
-                "max_drawdown": float(record.max_drawdown) if record.max_drawdown else None,
-                "sharpe_ratio": float(record.sharpe_ratio) if record.sharpe_ratio else None,
-                "created_at": record.created_at.strftime("%Y-%m-%d %H:%M:%S")
+                "id": r.id,
+                "user_id": r.user_id,
+                "strategy_id": r.strategy_id,
+                "symbol": r.symbol,
+                "exchange": r.exchange,
+                "interval": r.interval,
+                "start_date": r.start_date.isoformat() if r.start_date else None,
+                "end_date": r.end_date.isoformat() if r.end_date else None,
+                "initial_capital": float(r.initial_capital) if r.initial_capital is not None else None,
+                "final_capital": float(r.final_capital) if r.final_capital is not None else None,
+                "total_return": float(r.total_return) if r.total_return is not None else None,
+                "annual_return": float(r.annual_return) if r.annual_return is not None else None,
+                "max_drawdown": float(r.max_drawdown) if r.max_drawdown is not None else None,
+                "sharpe_ratio": float(r.sharpe_ratio) if r.sharpe_ratio is not None else None,
+                "results": r.results, # 假设 results 已经是可序列化的 (e.g., dict)
+                "created_at": r.created_at.isoformat() if r.created_at else None
             }
             record_list.append(record_dict)
 
         return {
             "success": True,
-            "message": f"获取回测记录成功，共 {len(record_list)} 个",
+            "message": f"获取回测记录成功，共 {len(record_list)} 条",
             "data": record_list
         }
     except Exception as e:
-        return {
-            "success": False,
-            "message": f"获取回测记录失败: {str(e)}"
-        }
+        logger.error(f"获取回测记录失败: {e}\n{traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail="获取回测记录时发生内部错误")
 
 @router.get("/backtest/records/{record_id}", response_model=ApiResponse)
 async def get_backtest_record(record_id: int, backtest_service: BacktestService = Depends(get_backtest_service)):
-    """获取回测记录详情"""
+    """获取单个回测记录详情"""
     try:
-        # 获取回测记录
         record = backtest_service.get_backtest_record(record_id)
-
         if not record:
-            return {
-                "success": False,
-                "message": f"未找到ID为 {record_id} 的回测记录"
-            }
-
-        # 将数据库对象转换为字典
+            raise HTTPException(status_code=404, detail="未找到指定的回测记录")
+        
+        # 将数据库对象转换为字典 (如果服务层还没有做)
         record_dict = {
             "id": record.id,
             "user_id": record.user_id,
@@ -597,25 +465,21 @@ async def get_backtest_record(record_id: int, backtest_service: BacktestService 
             "symbol": record.symbol,
             "exchange": record.exchange,
             "interval": record.interval,
-            "start_date": record.start_date.strftime("%Y-%m-%d"),
-            "end_date": record.end_date.strftime("%Y-%m-%d"),
-            "initial_capital": float(record.initial_capital),
-            "final_capital": float(record.final_capital),
-            "total_return": float(record.total_return),
-            "annual_return": float(record.annual_return) if record.annual_return else None,
-            "max_drawdown": float(record.max_drawdown) if record.max_drawdown else None,
-            "sharpe_ratio": float(record.sharpe_ratio) if record.sharpe_ratio else None,
-            "created_at": record.created_at.strftime("%Y-%m-%d %H:%M:%S"),
-            "results": record.results
+            "start_date": record.start_date.isoformat() if record.start_date else None,
+            "end_date": record.end_date.isoformat() if record.end_date else None,
+            "initial_capital": float(record.initial_capital) if record.initial_capital is not None else None,
+            "final_capital": float(record.final_capital) if record.final_capital is not None else None,
+            "total_return": float(record.total_return) if record.total_return is not None else None,
+            "annual_return": float(record.annual_return) if record.annual_return is not None else None,
+            "max_drawdown": float(record.max_drawdown) if record.max_drawdown is not None else None,
+            "sharpe_ratio": float(record.sharpe_ratio) if record.sharpe_ratio is not None else None,
+            "results": record.results, # 假设 results 已经是可序列化的 (e.g., dict)
+            "created_at": record.created_at.isoformat() if record.created_at else None
         }
 
-        return {
-            "success": True,
-            "message": "获取回测记录详情成功",
-            "data": record_dict
-        }
+        return {"success": True, "message": "获取回测记录详情成功", "data": record_dict}
+    except HTTPException as http_exc:
+        raise http_exc
     except Exception as e:
-        return {
-            "success": False,
-            "message": f"获取回测记录详情失败: {str(e)}"
-        }
+        logger.error(f"获取回测记录 {record_id} 失败: {e}\n{traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail="获取回测记录详情时发生内部错误") 

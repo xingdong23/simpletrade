@@ -50,14 +50,6 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 # 创建Base类，用于创建模型类
 Base = declarative_base()
 
-def get_db():
-    """FastAPI 依赖项：获取数据库会话"""
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
 def init_db():
     """初始化数据库，创建所有表"""
     Base.metadata.create_all(bind=engine)
