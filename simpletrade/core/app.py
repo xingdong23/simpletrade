@@ -40,7 +40,10 @@ class STBaseApp(BaseApp):
             main_engine (MainEngine): 主引擎
             event_engine (EventEngine): 事件引擎
         """
-        super().__init__(main_engine, event_engine)
+        # 不调用 super().__init__，因为 BaseApp 可能不接受这些参数
+        # 而是直接设置属性
+        self.main_engine = main_engine
+        self.event_engine = event_engine
 
         # 创建应用引擎实例
         if self.engine_class:

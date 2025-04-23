@@ -104,18 +104,19 @@ def initialize_core_components():
     # 3. Add Apps
     logger.debug("Adding applications...")
     # Add SimpleTrade Apps first (MessageApp often needs to be early)
-    main_engine.add_app(STMessageApp(main_engine, event_engine))
+    # 直接传递应用类，而不是应用实例
+    main_engine.add_app(STMessageApp)
     logger.info("ST Message App added.")
-    main_engine.add_app(STTraderApp(main_engine, event_engine))
+    main_engine.add_app(STTraderApp)
     logger.info("ST Trader App added.")
-    main_engine.add_app(STDataManagerApp(main_engine, event_engine))
+    main_engine.add_app(STDataManagerApp)
     logger.info("ST Data Manager App added.")
-    main_engine.add_app(STAnalysisApp(main_engine, event_engine))
+    main_engine.add_app(STAnalysisApp)
     logger.info("ST Analysis App added.")
 
     # Add original VnPy DataManager App if available
     if DataManagerApp:
-        main_engine.add_app(DataManagerApp(main_engine, event_engine))
+        main_engine.add_app(DataManagerApp)
         logger.info("Original VnPy DataManager App added.")
 
     # Add VnPy CTA Strategy App (using string name)
