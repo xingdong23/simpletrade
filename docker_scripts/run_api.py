@@ -1,17 +1,18 @@
 #!/usr/bin/env python
 import os
 # Set environment variables for VnPy database settings BEFORE importing vnpy
-os.environ['VNPY_DATABASE_DRIVER'] = 'mysql'
-os.environ['VNPY_DATABASE_HOST'] = 'mysql'
-os.environ['VNPY_DATABASE_PORT'] = '3306'
-os.environ['VNPY_DATABASE_USER'] = 'simpletrade'
-os.environ['VNPY_DATABASE_PASSWORD'] = 'password'
-os.environ['VNPY_DATABASE_DATABASE'] = 'simpletrade'
+# Use the VNPY_SETTING_{SECTION}__{KEY} format
+os.environ['VNPY_SETTING_DATABASE__DRIVER'] = 'mysql' # VnPy typically uses 'driver' internally
+os.environ['VNPY_SETTING_DATABASE__HOST'] = 'mysql'
+os.environ['VNPY_SETTING_DATABASE__PORT'] = '3306'
+os.environ['VNPY_SETTING_DATABASE__USER'] = 'simpletrade' # Use appropriate user
+os.environ['VNPY_SETTING_DATABASE__PASSWORD'] = 'password'  # Use appropriate password
+os.environ['VNPY_SETTING_DATABASE__DATABASE'] = 'simpletrade'
 
 # Print a confirmation that variables are set (for debugging)
-print("Database environment variables set for VnPy.")
-print(f"VNPY_DATABASE_DRIVER={os.environ.get('VNPY_DATABASE_DRIVER')}")
-print(f"VNPY_DATABASE_HOST={os.environ.get('VNPY_DATABASE_HOST')}")
+print("Database environment variables set for VnPy (using VNPY_SETTING__...).")
+print(f"VNPY_SETTING_DATABASE__DRIVER={os.environ.get('VNPY_SETTING_DATABASE__DRIVER')}")
+print(f"VNPY_SETTING_DATABASE__HOST={os.environ.get('VNPY_SETTING_DATABASE__HOST')}")
 
 import uvicorn
 import logging
@@ -20,7 +21,8 @@ from pathlib import Path
 import argparse
 from fastapi import FastAPI # 导入 FastAPI
 import threading # Import threading
-from simpletrade.services.data_sync_service import run_initial_data_sync # Import sync function
+import asyncio # Import asyncio
+from simpletrade.services.data_sync_service import run_initial_data_sync # Import async sync function
 
 print("====== [run_api.py] Script Started ======") # DEBUG
 
@@ -35,29 +37,35 @@ print("====== [run_api.py] Global logging configured. ======")
 
 # +++ Configure VnPy Database Settings +++
 try:
-    from simpletrade.config.settings import DB_CONFIG
+    # from simpletrade.config.settings import DB_CONFIG # Not needed if using env vars primarily
     from vnpy.trader.setting import SETTINGS
     import vnpy.trader.database as database_module # Keep import for get_database() usage later
 
-    # --- Use the correct key 'database.name' --- 
-    SETTINGS["database.name"] = "mysql"  # Set database.name instead of database.driver
-    # --- Keep other necessary settings for mysql driver ---
-    SETTINGS["database.host"] = DB_CONFIG["DB_HOST"]
-    SETTINGS["database.port"] = int(DB_CONFIG["DB_PORT"]) # VnPy 需要 int 类型
-    SETTINGS["database.database"] = DB_CONFIG["DB_NAME"]
-    SETTINGS["database.user"] = DB_CONFIG["DB_USER"]
-    SETTINGS["database.password"] = DB_CONFIG["DB_PASSWORD"]
+    # --- Force Override VnPy Settings IMMEDIATELY after importing SETTINGS --- 
+    print("====== [run_api.py] Manually overriding VnPy SETTINGS for database (early)... ======")
+    SETTINGS["database.driver"] = "mysql"
+    SETTINGS["database.host"] = "mysql"
+    SETTINGS["database.port"] = 3306
+    SETTINGS["database.user"] = "simpletrade"  # Use appropriate user
+    SETTINGS["database.password"] = "password"   # Use appropriate password
+    SETTINGS["database.database"] = "simpletrade"
+    print(f"====== [run_api.py] SETTINGS manually overridden (early): driver={SETTINGS.get('database.driver')}, host={SETTINGS.get('database.host')}, port={SETTINGS.get('database.port')}, db={SETTINGS.get('database.database')} ======")
+    # --- End Force Override --- 
 
-    # Updated logging to reflect the change
-    logging.info(f"VnPy database SETTINGS updated: name=mysql, host={SETTINGS['database.host']}, port={SETTINGS['database.port']}, database={SETTINGS['database.database']}, user={SETTINGS['database.user']}")
-    print(f"====== [run_api.py] VnPy database SETTINGS updated: name=mysql, host={SETTINGS['database.host']}, port={SETTINGS['database.port']}, database={SETTINGS['database.database']}, user={SETTINGS['database.user']} ======")
+    # --- Attempt to re-initialize database module AFTER override --- 
+    print("====== [run_api.py] Attempting to call database_module.init() to apply overridden settings... ======")
+    try:
+        database_module.init() # Try calling init without args, assuming it reads global SETTINGS
+        print("====== [run_api.py] database_module.init() called successfully. ======")
+    except Exception as init_exc:
+        print(f"====== [run_api.py] WARNING: database_module.init() failed: {init_exc} ======")
+        import traceback
+        print(traceback.format_exc())
+    # --- End Re-initialize Attempt --- 
 
-    # --- Ensure the incorrect init() call is removed --- 
-    # logging.info("Attempting to explicitly initialize VnPy database manager...")
-    # print("====== [run_api.py] Attempting to explicitly initialize VnPy database manager... ======")
-    # database_module.init(settings=SETTINGS) # REMOVED/COMMENTED
-    # logging.info("Explicit VnPy database manager initialization call finished.")
-    # print("====== [run_api.py] Explicit VnPy database manager initialization call finished. ======")
+    # Log the settings that were hopefully picked up from environment variables or manual override
+    logging.info(f"VnPy database SETTINGS check after override and init attempt: driver={SETTINGS.get('database.driver', 'N/A')}, host={SETTINGS.get('database.host', 'N/A')}, port={SETTINGS.get('database.port', 0)}, database={SETTINGS.get('database.database', 'N/A')}, user={SETTINGS.get('database.user', 'N/A')}")
+    print(f"====== [run_api.py] VnPy database SETTINGS check after override and init attempt: driver={SETTINGS.get('database.driver', 'N/A')}, host={SETTINGS.get('database.host', 'N/A')}, port={SETTINGS.get('database.port', 0)}, database={SETTINGS.get('database.database', 'N/A')}, user={SETTINGS.get('database.user', 'N/A')} ======")
 
 except ImportError as e:
     logging.error(f"Failed to import DB_CONFIG, SETTINGS or database_module: {e}. VnPy database might default to SQLite.")
@@ -72,20 +80,12 @@ project_root = Path(__file__).parent.parent # 因为脚本现在在 docker_scrip
 sys.path.insert(0, str(project_root))
 print(f"====== [run_api.py] Project root added to sys.path: {project_root} ======") # DEBUG
 
-# --- Define Lifespan directly in this script (REMOVED) ---
-
 # --- 创建 FastAPI 应用实例 (不再使用 lifespan) ---
-print("====== [run_api.py] Creating FastAPI instance with lifespan... ======") # DEBUG
+print("====== [run_api.py] Creating FastAPI instance... ======") # DEBUG
 app = FastAPI(title="SimpleTrade API", version="0.1.0") # Removed lifespan
 print("====== [run_api.py] FastAPI instance CREATED. ======") # DEBUG check if this prints
-print("====== [run_api.py] Top-level FastAPI app instance created ======") # DEBUG
 
-# Configure logging (可以保留或移除) - Keep this commented out as we added global config above
-# logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-# logger = logging.getLogger(__name__)
-# print("====== [run_api.py] Logging configured ======")
-
-# --- 尝试导入和初始化引擎 --- 
+# --- 尝试导入和初始化引擎 & 配置服务器 --- 
 try:
     print("====== [run_api.py] Importing vnpy.event.EventEngine... ======") # DEBUG
     from vnpy.event import EventEngine
@@ -118,52 +118,51 @@ except Exception as e:
     print(traceback.format_exc())
     sys.exit(1)
 
-# --- 移除命令行参数解析 (保持移除) ---
-# parser = argparse.ArgumentParser(description="Run SimpleTrade API Server")
-# parser.add_argument("--reload", action="store_true", help="Enable auto-reload for development")
-# parser.add_argument("--reload-dir", type=str, default=None, help="Directory to watch for changes") 
-# args = parser.parse_args()
-# print(f"====== [run_api.py] Reload mode: {args.reload} ======") # DEBUG - REMOVED
-# print(f"====== [run_api.py] Reload directory: {args.reload_dir} ======") # DEBUG - REMOVED
+# --- Define a wrapper function to run the async task in the thread --- 
+def start_background_sync():
+    """Creates a new event loop and runs the async data sync function."""
+    print("====== [run_api.py] Background thread started. Creating new event loop... ======") # DEBUG
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    print("====== [run_api.py] New event loop created and set. Running run_initial_data_sync... ======") # DEBUG
+    try:
+        # Run the coroutine within the new loop
+        loop.run_until_complete(run_initial_data_sync())
+        print("====== [run_api.py] run_initial_data_sync completed. ======") # DEBUG
+    except Exception as e:
+        print(f"====== [run_api.py] EXCEPTION in background sync thread: {e} ======")
+        import traceback
+        print(traceback.format_exc())
+    finally:
+        print("====== [run_api.py] Closing background thread event loop. ======") # DEBUG
+        loop.close()
+        print("====== [run_api.py] Background thread event loop closed. ======") # DEBUG
 
-# --- 启动后台数据同步线程 (在配置服务器后, 启动 Uvicorn 前) ---
-print("====== [run_api.py] Creating and starting background data sync thread... ======") # DEBUG
+# --- 启动后台数据同步线程 (使用新的同步包装函数) --- 
+print("====== [run_api.py] Creating and starting background data sync thread (using wrapper)... ======") # DEBUG
 try:
-    sync_thread = threading.Thread(target=run_initial_data_sync, daemon=True)
+    # Change the target to the new synchronous wrapper function
+    sync_thread = threading.Thread(target=start_background_sync, daemon=True)
     sync_thread.start()
-    print("====== [run_api.py] Background data sync thread started. ======") # DEBUG
+    print("====== [run_api.py] Background data sync thread started (using wrapper). ======") # DEBUG
 except Exception as thread_e:
     print(f"====== [run_api.py] FAILED to start background data sync thread: {thread_e} ======")
 
-# --- 启动 Uvicorn (现在应该在 try 块外部) ---
-# 只有 setup 成功才会执行到这里
+# --- 启动 Uvicorn --- 
 if __name__ == "__main__": # 添加 main guard
     print("====== [run_api.py] Starting Uvicorn server... ======") # DEBUG
     
-    # 构建 uvicorn 参数字典 (强制 reload=False)
+    # 构建 uvicorn 参数字典 (强制 reload=False, for stability first)
     uvicorn_params = {
         "host": "0.0.0.0",
         "port": 8003,
         "log_level": "info",
-        "reload": True # Restore reload to True for development
+        "reload": False # Set reload to False initially for stability check
     }
-    
-    # --- 移除 reload_dirs 配置 (不再需要) ---
-    # if args.reload_dir:
-    #     uvicorn_params["reload_dirs"] = [args.reload_dir]
          
     uvicorn.run(
         "docker_scripts.run_api:app", # <--- 确保导入字符串正确!
         **uvicorn_params # 使用解包传递参数
     )
     # Code below uvicorn.run() will likely not execute until server stops
-    print("====== [run_api.py] Uvicorn finished (should not happen if running normally) ======") # DEBUG
-
-# --- (旧的启动逻辑已移除或整合到上面) ---
-# if main_engine:
-#     try:
-#         ...
-#     except Exception as e:
-#         ...
-# else:
-#     ... 
+    print("====== [run_api.py] Uvicorn finished (should not happen if running normally) ======") # DEBUG 

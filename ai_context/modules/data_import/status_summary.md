@@ -1,4 +1,34 @@
-# 数据导入功能状态摘要 (截至 2025-04-22)
+# Data Import Module Status Summary
+
+## 2024-07-28
+
+**Goal:** Implement automatic historical data synchronization (from Qlib initially) at API startup using a background thread, **ultimately saving the data to the MySQL database via VnPy's database manager.**
+
+**Problem Encountered:** The core issue is the **inability to successfully save synchronized data to the MySQL database.** This is manifesting as the background thread (`run_initial_data_sync` in `data_sync_service.py`), responsible for the synchronization and saving process, failing silently after starting. While the thread entry point is reached, subsequent operations, crucially including the database initialization (`get_database()`) and the data saving step (`save_bar_data`), do not complete or log any output (even with `print` statements), preventing data persistence.
+
+**Troubleshooting Steps & Findings:**
+
+1.  **Logging Issues:** Suspected and partially mitigated issues with logging in the startup thread by replacing `logger` with `print`.
+2.  **Database Initialization/Configuration:** Focused on ensuring `vnpy.trader.database.get_database()` could initialize the MySQL connection correctly within the background thread.
+    *   **Method 1 (`vt_setting.json`):** Failed due to container filesystem permissions.
+    *   **Method 2 (Environment Variables):** Implemented setting `VNPY_DATABASE_*` environment variables in `run_api.py` *before* VnPy imports, as the current likely working configuration method.
+3.  **Code Adjustments:**
+    *   Modified `run_api.py` to set environment variables.
+    *   Modified `data_sync_service.py` to use `get_database()` (expecting it to read env vars) and kept `print` for debugging.
+
+**Current Status:**
+
+*   Code modifications to use environment variables for database configuration and `get_database()` are complete.
+*   The immediate next step is to verify if this configuration method allows the background thread to **successfully initialize the MySQL database connection** via `get_database()`.
+*   **Crucially, even if `get_database()` succeeds, the subsequent step of calling `self.db.save_bar_data(bars)` within `_import_data_from_qlib` needs to be verified.** It's possible that even with a successful connection, the save operation itself might fail for other reasons (data format issues, table schema mismatches, transaction problems, etc.) which haven't been observable yet due to the earlier initialization failures.
+*   Awaiting service restart and log analysis to check:
+    *   Confirmation that environment variables are set.
+    *   Successful return of a `MysqlDatabase` instance from `get_database()` in the thread.
+    *   Progress of the `sync_target` and specifically the `_import_data_from_qlib` function, looking for `print` statements around the `save_bar_data` call.
+
+**Next Step:** Restart the service and meticulously analyze the startup logs provided by the `print` statements, focusing on database initialization and the data saving attempt.
+
+## 数据导入功能状态摘要 (截至 2025-04-22)
 
 ## 当前状态
 
