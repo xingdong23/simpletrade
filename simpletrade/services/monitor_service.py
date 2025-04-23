@@ -7,12 +7,14 @@
 import logging
 import time
 from datetime import datetime
-from typing import Dict, List, Optional, Any, Union
+from typing import Dict, List, Optional, Any, Union, Tuple
 from threading import Thread
-
-from simpletrade.config.database import get_db
-from simpletrade.models.database import Strategy, UserStrategy
+from sqlalchemy.orm import Session
+# from simpletrade.config.database import get_db # Old incorrect path
+from simpletrade.api.deps import get_db # Correct path for dependency injection
 from simpletrade.core.engine import STMainEngine
+# from simpletrade.models.database import Strategy, UserStrategy, StrategyRun, TradeRecord # Old import with missing models
+from simpletrade.models.database import Strategy, UserStrategy # Corrected import
 
 logger = logging.getLogger("simpletrade.services.monitor_service")
 

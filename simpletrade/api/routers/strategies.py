@@ -25,7 +25,7 @@ from simpletrade.services.monitor_service import MonitorService
 # from simpletrade.main import main_engine as global_main_engine 
 from simpletrade.core.engine import STMainEngine # For type hinting
 from simpletrade.strategies import get_strategy_class_names
-from simpletrade.models.user import User
+# from simpletrade.models.user import User # Commenting out as model doesn't exist
 
 # 获取 logger 实例
 logger = logging.getLogger(__name__)

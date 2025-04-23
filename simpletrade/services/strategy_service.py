@@ -11,7 +11,8 @@ from sqlalchemy.orm import Session, joinedload
 from simpletrade.core.engine import STMainEngine
 from simpletrade.api.deps import get_db
 from simpletrade.models.database import Strategy, UserStrategy
-from simpletrade.strategies import get_strategy_class, get_strategy_class_names, get_strategy_class_details, BaseStrategy
+from simpletrade.strategies import get_strategy_class, get_strategy_class_names, get_strategy_class_details
+from vnpy_ctastrategy.template import CtaTemplate
 
 logger = logging.getLogger("simpletrade.services.strategy_service")
 
