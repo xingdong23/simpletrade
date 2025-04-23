@@ -36,15 +36,15 @@ from .backtest_service import _get_vnpy_exchange, _get_vnpy_interval # Reuse hel
 # NOTE: The exact path might vary based on VnPy version
 try:
     from vnpy.database.mysql import MysqlDatabaseManager
-    print("[Data Sync Service] Successfully imported MysqlDatabaseManager")
+    # print("[Data Sync Service] Successfully imported MysqlDatabaseManager") # REMOVE DEBUG
 except ImportError:
-    print("[Data Sync Service] ERROR: Failed to import MysqlDatabaseManager from vnpy.database.mysql. Trying vnpy_mysql driver...")
+    # print("[Data Sync Service] ERROR: Failed to import ... Trying vnpy_mysql driver...") # REMOVE DEBUG
     try:
         # Older versions might use vnpy_mysql
         from vnpy_mysql import MysqlDatabaseManager
-        print("[Data Sync Service] Successfully imported MysqlDatabaseManager from vnpy_mysql")
+        # print("[Data Sync Service] Successfully imported MysqlDatabaseManager from vnpy_mysql") # REMOVE DEBUG
     except ImportError:
-        print("[Data Sync Service] ERROR: Failed to import MysqlDatabaseManager from both locations. Cannot proceed with direct MySQL instantiation.")
+        # print("[Data Sync Service] ERROR: Failed to import ... Cannot proceed...") # REMOVE DEBUG
         MysqlDatabaseManager = None # Set to None to handle error below
 
 logger = logging.getLogger("simpletrade.services.data_sync_service") # Restore logger usage
@@ -55,38 +55,35 @@ class DataSyncService:
     def __init__(self, db):
         """
         Initializes the DataSyncService.
-        Uses print for logging.
         """
-        print("[DataSyncService] Initializing...")
+        # print("[DataSyncService] Initializing...") # REMOVE DEBUG
         if db is None:
-             print("[DataSyncService] Error: Received None for database instance.")
+             # print("[DataSyncService] Error: Received None for database instance.") # REMOVE DEBUG
              raise ValueError("Database instance is None.")
         self.db = db
         self.targets = DATA_SYNC_TARGETS
-        print(f"[DataSyncService] Initialization complete. DB Type: {type(self.db)}, Targets: {self.targets}")
+        # print(f"[DataSyncService] Initialization complete. DB Type: {type(self.db)}, Targets: {self.targets}") # REMOVE DEBUG
 
     async def sync_all_targets(self):
         """
         Synchronizes data for all targets specified in the configuration.
-        Uses print for logging.
         """
-        print("[DataSyncService] Starting sync_all_targets...")
+        # print("[DataSyncService] Starting sync_all_targets...") # REMOVE DEBUG
         if not self.targets:
-            print("[DataSyncService] No data synchronization targets configured.")
+            # print("[DataSyncService] No data synchronization targets configured.") # REMOVE DEBUG
             return
 
         if not self.db:
-            print("[DataSyncService] Error: Database manager not available in sync_all_targets.")
+            # print("[DataSyncService] Error: Database manager not available in sync_all_targets.") # REMOVE DEBUG
             return
 
         tasks = [self.sync_target(target) for target in self.targets]
         await asyncio.gather(*tasks)
-        print("[DataSyncService] Finished sync_all_targets.")
+        # print("[DataSyncService] Finished sync_all_targets.") # REMOVE DEBUG
 
     async def sync_target(self, target: dict):
         """
         Synchronizes data for a single target.
-        Uses print for logging.
         """
         source = target.get("source")
         symbol = target.get("symbol")
@@ -95,30 +92,27 @@ class DataSyncService:
         start_date_str = target.get("start_date", "2020-01-01") # Default start date
         end_date_str = datetime.now(timezone.utc).strftime('%Y-%m-%d') # Default to today
 
-        print(f"[DataSyncService] Processing target: {target}")
+        # print(f"[DataSyncService] Processing target: {target}") # REMOVE DEBUG
 
         if not all([source, symbol, exchange_str, interval_str]):
-            print(f"[DataSyncService] Skipping invalid target: {target}")
+            # print(f"[DataSyncService] Skipping invalid target: {target}") # REMOVE DEBUG
             return
 
         try:
-            # Convert string representations to Enum members
             exchange = Exchange(exchange_str)
             interval = Interval(interval_str)
         except ValueError as e:
-            print(f"[DataSyncService] Invalid exchange or interval in target {target}: {e}")
+            # print(f"[DataSyncService] Invalid exchange or interval in target {target}: {e}") # REMOVE DEBUG
+            # Consider logging this error properly later
             return
 
-        # Temporarily comment out log checking to isolate DB connection issue
-        # if self._check_import_log(source, symbol, exchange_str, interval_str):
-        #     print(f"[DataSyncService] Data for {symbol} ({exchange_str}, {interval_str}) from {source} already imported or failed recently. Skipping (Log check temporarily disabled).")
-        #     return
-        print(f"[DataSyncService] Skipping log check for {symbol} (temporarily disabled).")
+        # Log checking is still commented out
+        # print(f"[DataSyncService] Skipping log check for {symbol} (temporarily disabled).") # REMOVE DEBUG
 
         success = False
         message = ""
         try:
-            print(f"[DataSyncService] Starting data import for {symbol} from {source}...")
+            # print(f"[DataSyncService] Starting data import for {symbol} from {source}...") # REMOVE DEBUG
             if source.lower() == "qlib":
                 success, message = await self._import_data_from_qlib(symbol, exchange_str, interval_str, start_date_str, end_date_str)
             # Add other sources here (e.g., "tushare", "baostock")
@@ -126,21 +120,19 @@ class DataSyncService:
             #     success, message = await self._import_data_from_tushare(...)
             else:
                 message = f"Unsupported data source: {source}"
-                print(f"[DataSyncService] {message}")
+                # print(f"[DataSyncService] {message}") # REMOVE DEBUG
 
-            print(f"[DataSyncService] Import result for {symbol} from {source}: Success={success}, Msg='{message}'")
-            # Temporarily comment out log updating
-            # self._update_import_log(source, symbol, exchange_str, interval_str, success, message)
-            print(f"[DataSyncService] Skipping log update for {symbol} (temporarily disabled).")
+            # print(f"[DataSyncService] Import result for {symbol} from {source}: Success={success}, Msg='{message}'") # REMOVE DEBUG
+            # Log updating is still commented out
+            # print(f"[DataSyncService] Skipping log update for {symbol} (temporarily disabled).") # REMOVE DEBUG
 
         except Exception as e:
             error_msg = f"Error syncing target {target}: {e}"
-            print(f"[DataSyncService] {error_msg}")
-            # import traceback # Already imported
-            print(traceback.format_exc())
-            # Temporarily comment out log updating on error
-            # self._update_import_log(source, symbol, exchange_str, interval_str, False, error_msg)
-            print(f"[DataSyncService] Skipping log update on error for {symbol} (temporarily disabled).")
+            # print(f"[DataSyncService] {error_msg}") # REMOVE DEBUG
+            # Consider logging this error properly later
+            print(traceback.format_exc()) # Keep traceback for errors
+            # Log updating on error is still commented out
+            # print(f"[DataSyncService] Skipping log update on error for {symbol} (temporarily disabled).") # REMOVE DEBUG
 
     def _check_import_log(self, source: str, symbol: str, exchange_str: str, interval_str: str) -> bool:
         """
@@ -245,9 +237,8 @@ class DataSyncService:
     async def _import_data_from_qlib(self, symbol: str, exchange_str: str, interval_str: str, start_date: str, end_date: str) -> tuple[bool, str]:
         """
         Imports data from Qlib for the given parameters and saves it using the database manager.
-        Uses print for logging.
         """
-        print(f"[DataSyncService] Importing Qlib data for: {symbol}, {exchange_str}, {interval_str}, {start_date} to {end_date}")
+        # print(f"[DataSyncService] Importing Qlib data for: {symbol}, {exchange_str}, {interval_str}, {start_date} to {end_date}") # REMOVE DEBUG
         try:
             # Ensure qlib is initialized (consider doing this once at service start)
             # from qlib.config import REG_CN
@@ -270,10 +261,8 @@ class DataSyncService:
                 import qlib
                 from qlib.data import D
                 from qlib.config import REG_CN
-                # Assuming qlib is already initialized elsewhere (e.g., at app startup if needed frequently)
-                # If not, uncomment the init block above, but be mindful of performance.
             except ImportError:
-                 print("[DataSyncService] Qlib not installed or found.")
+                 # print("[DataSyncService] Qlib not installed or found.") # REMOVE DEBUG
                  return False, "Qlib library not installed."
 
             # Map interval format if necessary (e.g., '1d' for Qlib, 'd' or '1d' for VnPy)
@@ -292,7 +281,7 @@ class DataSyncService:
             # Assuming exchange_str is like "SSE", "SZSE" and symbol is "600000"
             qlib_symbol = f"{exchange_str.upper()}{symbol}" # Adjust formatting based on Qlib needs
 
-            print(f"[DataSyncService] Fetching data from Qlib: Symbol={qlib_symbol}, Freq={qlib_freq}, Start={start_date}, End={end_date}")
+            # print(f"[DataSyncService] Fetching data from Qlib: Symbol={qlib_symbol}, Freq={qlib_freq}, Start={start_date}, End={end_date}") # REMOVE DEBUG
             # Fetch data using Qlib
             # Note: Qlib's fields might differ ('open', 'high', 'low', 'close', 'volume', 'factor')
             # You might need ['OPEN', 'HIGH', 'LOW', 'CLOSE', 'VOL'] depending on your Qlib data source
@@ -300,7 +289,7 @@ class DataSyncService:
             data_df = D.features([qlib_symbol], fields, start_time=start_date, end_time=end_date, freq=qlib_freq)
 
             if data_df.empty:
-                print(f"[DataSyncService] No data found in Qlib for {qlib_symbol} in the specified period.")
+                # print(f"[DataSyncService] No data found in Qlib for {qlib_symbol} in the specified period.") # REMOVE DEBUG
                 return False, "No data found in Qlib"
 
             # Rename columns to match VnPy's BarData requirements
@@ -344,21 +333,19 @@ class DataSyncService:
                 bars.append(bar)
 
             if not bars:
-                print("[DataSyncService] No bars created from Qlib data.")
+                # print("[DataSyncService] No bars created from Qlib data.") # REMOVE DEBUG
                 return False, "Failed to convert Qlib data to BarData"
 
             # Save bars to database using the vnpy database manager
-            print(f"[DataSyncService] Saving {len(bars)} bars to database...")
-            # Assuming self.db is a valid VnPy DatabaseManager instance
+            # print(f"[DataSyncService] Saving {len(bars)} bars to database...") # REMOVE DEBUG
             count = self.db.save_bar_data(bars)
-            print(f"[DataSyncService] Saved {count} bars for {symbol} from Qlib.")
+            # print(f"[DataSyncService] Saved {count} bars for {symbol} from Qlib.") # REMOVE DEBUG
             return True, f"Successfully imported {count} bars."
 
         except Exception as e:
             error_msg = f"Failed to import Qlib data for {symbol}: {e}"
-            print(f"[DataSyncService] {error_msg}")
-            # import traceback # Already imported
-            print(traceback.format_exc())
+            # print(f"[DataSyncService] {error_msg}") # REMOVE DEBUG
+            print(traceback.format_exc()) # Keep traceback for errors
             return False, error_msg
 
 # Define the function to run data synchronization
@@ -366,45 +353,43 @@ async def run_initial_data_sync():
     """
     Initializes the DataSyncService and runs synchronization for all configured targets.
     Directly instantiates the MysqlDatabaseManager, bypassing get_database().
-    Uses print for logging.
     """
-    print("[Data Sync Thread] Entered run_initial_data_sync.")
-    db = None # Initialize db to None
+    # print("[Data Sync Thread] Entered run_initial_data_sync.") # REMOVE DEBUG
+    db = None
     try:
-        # Explicitly import SETTINGS *inside* the function scope right before use
         from vnpy.trader.setting import SETTINGS
-        print(f"[Data Sync Thread] Imported SETTINGS inside function scope.") # DEBUG
+        # print(f"[Data Sync Thread] Imported SETTINGS inside function scope.") # REMOVE DEBUG
+        # print(f"[Data Sync Thread] SETTINGS check before direct instantiation: ...") # REMOVE DEBUG
 
-        # Check the SETTINGS visible to this thread (should be correct)
-        print(f"[Data Sync Thread] SETTINGS check before direct instantiation: driver={SETTINGS.get('database.driver')}, host={SETTINGS.get('database.host')}, port={SETTINGS.get('database.port')}, db={SETTINGS.get('database.database')}")
+        from vnpy.trader.database import get_database # Keep this import for now, although bypassed below
+        # print(f"[Data Sync Thread] Imported get_database inside function scope.") # REMOVE DEBUG
 
-        # Directly instantiate the MySQL database manager
-        print("[Data Sync Thread] Directly instantiating MysqlDatabaseManager...")
+        # print("[Data Sync Thread] Directly instantiating MysqlDatabaseManager...") # REMOVE DEBUG
         if MysqlDatabaseManager:
-            db = MysqlDatabaseManager() # Constructor usually reads from SETTINGS
-            print(f"[Data Sync Thread] Database instance directly instantiated: {type(db)}")
+            db = MysqlDatabaseManager()
+            # print(f"[Data Sync Thread] Database instance directly instantiated: {type(db)}") # REMOVE DEBUG
         else:
-            print("[Data Sync Thread] ERROR: MysqlDatabaseManager class not available due to import error.")
-            return # Cannot proceed
+            # print("[Data Sync Thread] ERROR: MysqlDatabaseManager class not available...") # REMOVE DEBUG
+            return
 
         if db is None:
-            print("[Data Sync Thread] Failed to directly instantiate database instance. Check SETTINGS and MysqlDatabaseManager constructor.")
-            return # Exit if database is not available
+            # print("[Data Sync Thread] Failed to directly instantiate database instance...") # REMOVE DEBUG
+            return
 
-        print("[Data Sync Thread] Creating DataSyncService instance...")
+        # print("[Data Sync Thread] Creating DataSyncService instance...") # REMOVE DEBUG
         data_sync_service = DataSyncService(db)
-        print("[Data Sync Thread] DataSyncService instance created.")
+        # print("[Data Sync Thread] DataSyncService instance created.") # REMOVE DEBUG
 
-        print("[Data Sync Thread] Calling sync_all_targets...")
+        # print("[Data Sync Thread] Calling sync_all_targets...") # REMOVE DEBUG
         await data_sync_service.sync_all_targets()
-        print("[Data Sync Thread] sync_all_targets finished.")
+        # print("[Data Sync Thread] sync_all_targets finished.") # REMOVE DEBUG
 
     except Exception as e:
-        print(f"[Data Sync Thread] Error during initial data sync: {e}")
-        import traceback
+        # print(f"[Data Sync Thread] Error during initial data sync: {e}") # REMOVE DEBUG
+        # Keep traceback for errors
         print(traceback.format_exc())
 
-    print("[Data Sync Thread] Exiting run_initial_data_sync.")
+    # print("[Data Sync Thread] Exiting run_initial_data_sync.") # REMOVE DEBUG
 
 # --- Example Usage (Can be called from main.py or a scheduler) ---
 # if __name__ == "__main__":
