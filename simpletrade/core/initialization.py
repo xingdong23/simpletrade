@@ -6,6 +6,9 @@ from vnpy.event import EventEngine
 from vnpy.trader.setting import SETTINGS # Needed for reading config for connect
 from vnpy.trader.gateway import BaseGateway
 
+# --- Import project specific config ---
+from simpletrade.config.settings import DB_CONFIG, API_CONFIG, LOG_CONFIG # Import needed configs
+
 # Import Core Engine
 from simpletrade.core.engine import STMainEngine
 
@@ -46,15 +49,74 @@ try:
 except ImportError:
     logger.warning("Could not import CtaStrategyApp (might be intended to load by name).")
 
+def _configure_vnpy_settings():
+    """Helper function to configure VnPy global SETTINGS."""
+    logger.info("Configuring VnPy global SETTINGS...")
+    try:
+        # Database Configuration
+        logger.debug("Applying database settings...")
+        SETTINGS["database.name"] = "mysql"
+        SETTINGS["database.host"] = DB_CONFIG["DB_HOST"]
+        SETTINGS["database.port"] = int(DB_CONFIG["DB_PORT"])
+        SETTINGS["database.database"] = DB_CONFIG["DB_NAME"]
+        SETTINGS["database.user"] = DB_CONFIG["DB_USER"]
+        SETTINGS["database.password"] = DB_CONFIG["DB_PASSWORD"]
+        logger.info("Database settings applied (using mysql).")
+        logger.debug(f"  DB Name: {SETTINGS.get('database.name')}")
+        logger.debug(f"  DB Host: {SETTINGS.get('database.host')}")
+        # Add more debug logs if needed, avoid logging password
+
+        # Datafeed Placeholder Configuration (to suppress warning)
+        logger.debug("Applying dummy datafeed settings...")
+        SETTINGS["datafeed.name"] = "dummy"
+        SETTINGS["datafeed.username"] = ""
+        SETTINGS["datafeed.password"] = ""
+        logger.info("Dummy datafeed settings applied.")
+
+        # You could potentially configure other SETTINGS here if needed
+        # e.g., SETTINGS["log.active"] = True
+        #       SETTINGS["log.level"] = LOG_CONFIG["LEVEL"]
+
+        logger.info("VnPy global SETTINGS configuration complete.")
+
+    except KeyError as e:
+        logger.error(f"FATAL: Missing key in DB_CONFIG during SETTINGS configuration: {e}. Exiting.")
+        # Depending on desired behavior, you might exit or raise the error
+        raise e # Re-raise to be caught by the caller
+    except Exception as e:
+        logger.error(f"FATAL: Error during VnPy SETTINGS configuration: {e}. Exiting.", exc_info=True)
+        raise e # Re-raise
 
 def initialize_core_components():
     """
     Initializes the core components of SimpleTrade: EventEngine, STMainEngine,
     loads standard Apps and Gateways.
+    Applies necessary configurations to VnPy SETTINGS.
+    Returns main_engine, event_engine, and the configured database instance.
     """
     logger.info("Initializing core components...")
+    db_instance = None # Initialize db_instance
 
-    # 1. Create Engines
+    # +++ Configure VnPy SETTINGS first +++
+    try:
+        _configure_vnpy_settings()
+        # +++ Get database instance AFTER configuration +++
+        from vnpy.trader.database import get_database
+        logger.info("Getting database instance after configuration...")
+        db_instance = get_database()
+        logger.info(f"Successfully obtained database instance: {type(db_instance)}")
+        # +++ End getting database instance +++
+    except Exception as config_e:
+        logger.critical(f"Core component initialization failed due to SETTINGS configuration or DB init error: {config_e}")
+        raise RuntimeError(f"Failed to configure VnPy settings or init DB: {config_e}") from config_e
+    
+    # Ensure db_instance is valid before proceeding (optional but recommended)
+    if not db_instance:
+         logger.critical("Database instance could not be obtained after configuration. Exiting.")
+         # Decide how to handle - perhaps raise the RuntimeError again or a specific DB error
+         raise RuntimeError("Failed to obtain database instance after configuration.")
+
+    # 1. Create Engines (Now done after settings are configured)
     logger.debug("Creating EventEngine...")
     event_engine = EventEngine()
     logger.debug("Creating STMainEngine...")
@@ -129,4 +191,5 @@ def initialize_core_components():
     logger.debug("Applications added.")
 
     logger.info("Core components initialization complete.")
-    return main_engine, event_engine
+    # +++ Return db_instance along with engines +++
+    return main_engine, event_engine, db_instance

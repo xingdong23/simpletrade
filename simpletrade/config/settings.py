@@ -39,22 +39,44 @@ LOG_CONFIG = {
     "FORMAT": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 }
 
+# +++ Qlib 数据路径配置 +++
+# 从环境变量读取，如果未设置，则使用默认路径
+_default_qlib_path = "/Users/chengzheng/.qlib/qlib_data" # <<< 设置默认路径
+QLIB_DATA_PATH = os.environ.get("SIMPLETRADE_QLIB_DATA_PATH", _default_qlib_path)
+
+if QLIB_DATA_PATH == _default_qlib_path and not os.environ.get("SIMPLETRADE_QLIB_DATA_PATH"):
+    print(f"[Config] Using default Qlib data path: {QLIB_DATA_PATH}")
+    print(f"[Config] (Set SIMPLETRADE_QLIB_DATA_PATH environment variable to override)")
+elif QLIB_DATA_PATH != _default_qlib_path:
+    print(f"[Config] Qlib data path configured via environment variable: {QLIB_DATA_PATH}")
+else: # Path matches default, but was set explicitly by env var
+    print(f"[Config] Qlib data path explicitly set to default via environment variable: {QLIB_DATA_PATH}")
+    
+# 可以在这里添加路径存在性检查（可选）
+# if not os.path.exists(QLIB_DATA_PATH):
+#     print(f"[Config Warning] Qlib data path does not exist: {QLIB_DATA_PATH}")
+
+# +++ 结束 Qlib 配置 +++
+
 # 数据同步目标配置
 # 列表中的每个字典定义一个同步目标
 # source: 数据源标识符 (需要与 DataSyncService 中的导入器逻辑对应)
 # symbol, exchange, interval: VnPy 标准格式
+# market: (可选, qlib需要) 数据所在市场子目录 ('cn', 'us')
 DATA_SYNC_TARGETS = [
     {
         "source": "qlib",        # 数据源为 qlib
         "symbol": "AAPL",       # 品种代码
         "exchange": "NASDAQ",   # 交易所 (使用 VnPy 枚举值对应的字符串)
-        "interval": "d"         # K线周期 (日线)
+        "interval": "d",         # K线周期 (日线)
+        "market": "us"          # +++ 添加市场标识 +++
     },
     # {
     #     "source": "qlib",      
     #     "symbol": "600036",    # 招商银行
     #     "exchange": "SSE",      # 上海证券交易所
-    #     "interval": "d"
+    #     "interval": "d",
+    #     "market": "cn"          # +++ 示例: 为 A 股添加市场标识 +++
     # },
     # 添加更多目标...
     # {
