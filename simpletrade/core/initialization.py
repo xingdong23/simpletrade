@@ -100,24 +100,24 @@ def initialize_core_components():
     # +++ Configure VnPy SETTINGS first +++
     try:
         _configure_vnpy_settings()
-        # --- Remove get_database() call ---
-        # from vnpy.trader.database import get_database
-        # logger.info("Getting database instance after configuration...")
-        # db_instance = get_database()
-        # logger.info(f"Successfully obtained database instance in initialize_core_components: {type(db_instance)}")
+        # 使用get_database()而不是直接实例化MysqlDatabase
+        logger.info("Getting database instance after configuration...")
+        from vnpy.trader.database import get_database
+        db_instance = get_database()
+        logger.info(f"Successfully obtained database instance: {type(db_instance)}")
 
-        # +++ Explicitly import and instantiate MysqlDatabase +++
-        logger.info("Attempting to import and instantiate vnpy_mysql.MysqlDatabase...")
-        try:
-            from vnpy_mysql.mysql_database import MysqlDatabase
-            db_instance = MysqlDatabase()
-            logger.info(f"Successfully instantiated MysqlDatabase: {type(db_instance)}")
-        except ImportError as import_err:
-            logger.critical(f"Failed to import vnpy_mysql: {import_err}. MySQL database cannot be used.")
-            db_instance = None
-        except Exception as init_err:
-            logger.critical(f"Failed to instantiate MysqlDatabase: {init_err}", exc_info=True)
-            db_instance = None
+        # 注释掉直接实例化MysqlDatabase的代码
+        # logger.info("Attempting to import and instantiate vnpy_mysql.MysqlDatabase...")
+        # try:
+        #     from vnpy_mysql.mysql_database import MysqlDatabase
+        #     db_instance = MysqlDatabase()
+        #     logger.info(f"Successfully instantiated MysqlDatabase: {type(db_instance)}")
+        # except ImportError as import_err:
+        #     logger.critical(f"Failed to import vnpy_mysql: {import_err}. MySQL database cannot be used.")
+        #     db_instance = None
+        # except Exception as init_err:
+        #     logger.critical(f"Failed to instantiate MysqlDatabase: {init_err}", exc_info=True)
+        #     db_instance = None
         # +++ End explicit instantiation +++
 
     except Exception as config_e:

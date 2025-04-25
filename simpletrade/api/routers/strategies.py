@@ -396,7 +396,6 @@ async def run_backtest(request: BacktestRequest, backtest_service: BacktestServi
     try:
         # 调用回测服务
         result = backtest_service.run_backtest(
-            user_id=request.user_id,
             strategy_id=request.strategy_id,
             symbol=request.symbol,
             exchange=request.exchange,
@@ -406,7 +405,8 @@ async def run_backtest(request: BacktestRequest, backtest_service: BacktestServi
             initial_capital=request.initial_capital,
             rate=request.rate,
             slippage=request.slippage,
-            parameters=request.parameters
+            parameters=request.parameters,
+            user_id=request.user_id
         )
         return {"success": True, "message": "回测运行成功", "data": result}
     except ValueError as ve:

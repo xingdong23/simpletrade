@@ -60,6 +60,7 @@ class Strategy(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     identifier = Column(String(100), index=True, nullable=True)
+    strategy_type = Column(String(10), index=True, nullable=True)
 
     user_strategies = relationship("UserStrategy", back_populates="strategy")
     backtest_records = relationship("BacktestRecord", back_populates="strategy")

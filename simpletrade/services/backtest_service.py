@@ -6,17 +6,23 @@
 
 import logging
 import traceback
+import json
 from datetime import datetime, date
-from typing import Dict, List, Optional, Any
-
+from typing import List, Optional, Any, Dict, Union
 import numpy as np
 import pandas as pd
+
 from vnpy.trader.constant import Interval, Exchange
-from vnpy_ctastrategy.backtesting import BacktestingEngine
+from vnpy.trader.database import get_database
+from vnpy.trader.setting import SETTINGS
+from vnpy_ctastrategy.backtesting import BacktestingMode
+
 
 from simpletrade.config.database import SessionLocal
 from simpletrade.models.database import Strategy, BacktestRecord
 from simpletrade.strategies import get_strategy_class
+from simpletrade.config import settings
+from simpletrade.services.backtest_engines import BacktestEngineFactory
 
 logger = logging.getLogger("simpletrade.services.backtest_service")
 
@@ -44,266 +50,337 @@ def _get_vnpy_exchange(exchange_str: str) -> Optional[Exchange]:
         logger.warning(f"Could not directly convert '{exchange_str}' to Exchange enum. Returning None.")
         return None
 
+def ensure_mysql_database():
+    """确保VnPy使用MySQL数据库"""
+    # 检查全局设置中的数据库类型
+    if SETTINGS.get("database.driver", None) != "mysql":
+        logger.info("Setting VnPy database to MySQL")
+        # 配置MySQL连接
+        mysql_settings = {
+            "database.driver": "mysql",
+            "database.host": settings.MYSQL_SERVER,
+            "database.port": settings.MYSQL_PORT,
+            "database.database": settings.MYSQL_DATABASE,
+            "database.user": settings.MYSQL_USERNAME,
+            "database.password": settings.MYSQL_PASSWORD,
+        }
+        # 更新VnPy全局设置
+        SETTINGS.update(mysql_settings)
+        
+    # 获取并返回数据库实例
+    return get_database()
+
 class BacktestService:
     """回测服务"""
     
     def __init__(self):
         """初始化"""
-        pass
+        self.db_session = SessionLocal()
     
-    def run_backtest(self, 
-                    strategy_id: int, 
-                    symbol: str, 
-                    exchange: str, 
-                    interval: str, 
-                    start_date: date,
-                    end_date: date,
-                    initial_capital: float,
-                    rate: float, 
-                    slippage: float,
-                    parameters: Optional[Dict[str, Any]] = None,
-                    user_id: int = 1,
-                    size: float = 1.0, 
-                    pricetick: float = 0.01) -> Dict[str, Any]:
-        """
-        运行回测 (现在直接使用VnPy数据库数据)
+    def run_backtest(self, strategy_id, symbol, exchange, interval, start_date, end_date, initial_capital, rate, slippage, parameters=None, user_id=None):
+        """运行回测并返回结果
         
-        参数:
+        Args:
             strategy_id (int): 策略ID
-            symbol (str): 交易品种
+            symbol (str): 交易品种符号
             exchange (str): 交易所
-            interval (str): K线周期 (例如 '1m', '1h', 'd')
+            interval (str): 时间间隔
             start_date (date): 开始日期
             end_date (date): 结束日期
             initial_capital (float): 初始资金
             rate (float): 手续费率
-            slippage (float): 滑点
-            parameters (Dict[str, Any], optional): 用户自定义策略参数
+            slippage (float): 滑点大小
+            parameters (dict, optional): 策略参数
             user_id (int, optional): 用户ID
-            size (float, optional): 合约乘数
-            pricetick (float, optional): 价格跳动
             
-        返回:
-            Dict[str, Any]: 回测结果 {success: bool, message: str, data: Optional[Dict]} 
-                             data 包含 statistics 和可能的 trades
+        Returns:
+            dict: 回测结果
         """
-        engine = BacktestingEngine()
-        db = SessionLocal() # Session for reading strategy/writing record, NOT for bar data anymore
-
+        logger.info(f"开始回测策略 ID {strategy_id}: {start_date} 至 {end_date}")
+        if parameters:
+            logger.info(f"使用参数: {parameters}")
+        
         try:
-            # --- Convert string inputs to VnPy enums (Still needed for engine) ---
-            vnpy_interval: Optional[Interval] = _get_vnpy_interval(interval)
-            if not vnpy_interval:
-                logger.error(f"Backtest failed: Invalid interval string '{interval}'")
-                return {"success": False, "message": f"Invalid interval: {interval}", "data": None}
+            # 获取策略
+            with SessionLocal() as db:
+                db_strategy = db.query(Strategy).filter(Strategy.id == strategy_id).first()
+                if not db_strategy:
+                    raise ValueError(f"数据库中找不到策略 ID {strategy_id}")
 
-            vnpy_exchange: Optional[Exchange] = _get_vnpy_exchange(exchange)
-            if not vnpy_exchange:
-                 logger.error(f"Backtest failed: Invalid exchange string '{exchange}'")
-                 return {"success": False, "message": f"Invalid exchange: {exchange}", "data": None}
-
-            start_dt = datetime.combine(start_date, datetime.min.time())
-            end_dt = datetime.combine(end_date, datetime.max.time())
-
-            # --- Get Strategy Class and Parameters (from DB) ---
-            strategy = db.query(Strategy).filter(
-                Strategy.id == strategy_id,
-                Strategy.is_active == True
-            ).first()
-            
-            if not strategy:
-                logger.error(f"Backtest failed: Strategy {strategy_id} not found")
-                return {"success": False, "message": f"Strategy {strategy_id} not found", "data": None}
-
-            if not hasattr(strategy, 'identifier') or not strategy.identifier:
-                 logger.error(f"Backtest failed: Strategy {strategy.id} ({strategy.name}) is missing a valid identifier.")
-                 return {"success": False, "message": f"Strategy {strategy.id} is missing identifier", "data": None}
-                 
-            strategy_class = get_strategy_class(strategy.identifier)
+            # 获取策略类
+            strategy_class = get_strategy_class(db_strategy.identifier)
             if not strategy_class:
-                logger.error(f"Backtest failed: Strategy class for identifier '{strategy.identifier}' not found")
-                return {"success": False, "message": f"Strategy class '{strategy.identifier}' not found", "data": None}
+                raise ValueError(f"找不到策略类 {db_strategy.type}")
             
-            # 改进的参数处理逻辑
-            default_params = {}
-            if strategy.parameters:
-                # 检查是否是嵌套的参数描述结构，如果是，提取默认值
-                for param_name, param_value in strategy.parameters.items():
-                    if isinstance(param_value, dict) and 'default' in param_value:
-                        default_params[param_name] = param_value['default']
-                    else:
-                        default_params[param_name] = param_value
+            # 如果start_date和end_date是日期对象，转换为字符串
+            if hasattr(start_date, 'isoformat'):
+                start_date_str = start_date.isoformat()
+            else:
+                start_date_str = str(start_date)
+                
+            if hasattr(end_date, 'isoformat'):
+                end_date_str = end_date.isoformat()
+            else:
+                end_date_str = str(end_date)
             
-            # 同样处理用户参数
-            user_params = {}
+            # 转换日期字符串为datetime对象
+            start = datetime.strptime(start_date_str, "%Y-%m-%d")
+            end = datetime.strptime(end_date_str, "%Y-%m-%d")
+            
+            # 获取策略默认参数
+            default_params = db_strategy.parameters
+            
+            # 获取策略类型
+            strategy_type = db_strategy.strategy_type
+            
+            # 使用工厂创建合适的回测引擎
+            engine = BacktestEngineFactory.create_engine(strategy_type)
+            
+            # 合并默认参数和用户传入的参数
+            final_params = {**default_params}
             if parameters:
-                for param_name, param_value in parameters.items():
-                    if isinstance(param_value, dict) and 'default' in param_value:
-                        user_params[param_name] = param_value['default']
-                    else:
-                        user_params[param_name] = param_value
+                final_params.update(parameters)
+                
+            # 设置回测引擎参数
+            interval_obj = _get_vnpy_interval(interval)
+            if not interval_obj:
+                raise ValueError(f"无效的时间间隔: {interval}")
             
-            final_params = default_params.copy()
-            try:
-                final_params.update(user_params)
-            except TypeError as e:
-                 logger.error(f"Backtest failed: Error merging parameters. Default: {default_params}, User: {user_params}. Error: {e}")
-                 return {"success": False, "message": f"Invalid user parameters format: {e}", "data": None}
-            logger.info(f"Using strategy {strategy.identifier} with final parameters: {final_params}")
+            # 解析交易对
+            exchange_obj = _get_vnpy_exchange(exchange)
+            if not exchange_obj:
+                raise ValueError(f"无效的交易所: {exchange}")
             
-            # --- Set Backtesting Engine Parameters ---
-            if size <= 0 or pricetick <= 0:
-                 logger.warning(f"Backtest for {symbol}.{vnpy_exchange.value}: size or pricetick is zero or negative (size={size}, pricetick={pricetick}). Using defaults 1.0 and 0.01.")
-                 size = 1.0
-                 pricetick = 0.01
-
-            try:
-                engine.set_parameters(
-                    vt_symbol=f"{symbol}.{vnpy_exchange.value}",
-                    interval=vnpy_interval,
-                    start=start_dt,
-                    end=end_dt,
-                    rate=rate,
-                    slippage=slippage,
-                    size=size,
-                    pricetick=pricetick,
-                    capital=initial_capital
-                )
-            except ValueError as e:
-                 logger.error(f"Backtest failed: Invalid parameter for BacktestingEngine.set_parameters: {e}")
-                 return {"success": False, "message": f"Invalid backtest parameter: {e}", "data": None}
+            vt_symbol = f"{symbol}.{exchange_obj.value}"
             
-            engine.add_strategy(
-                strategy_class,
-                final_params
+            # 设置回测引擎参数
+            engine.set_parameters(
+                vt_symbol=vt_symbol,
+                interval=interval_obj,
+                start=start,
+                end=end,
+                rate=float(rate),
+                slippage=float(slippage),
+                size=float(default_params.get("size", 1.0)),
+                pricetick=float(default_params.get("pricetick", 0.0)),
+                capital=float(initial_capital),
+                mode=BacktestingMode.BAR
             )
             
-            # --- Remove the conditional engine.load_data block --- 
-            logger.info("Proceeding to run_backtesting. Engine will load data from its configured source (database_manager pointed to MySQL).")
-
-            # --- Run Backtesting ---
-            try:
-                logger.info(f"Starting backtest run for {strategy.identifier} ({symbol}.{vnpy_exchange.value}) from {start_date} to {end_date}")
-                engine.run_backtesting() 
-                logger.info(f"Backtest run finished for {strategy.identifier}")
-                
-                logger.info(f"Calculating backtest results...")
-                
-                # 处理无交易情况
-                try:
-                    df = engine.calculate_result()
-                    statistics = engine.calculate_statistics(output=False)
-                except KeyError as e:
-                    if "None of ['date'] are in the columns" in str(e):
-                        logger.warning(f"No trading results generated for {strategy.identifier} - strategy did not make any trades with current parameters")
-                        # 创建一个空结果
-                        df = None
-                        statistics = {
-                            "start_date": start_dt.strftime("%Y-%m-%d"),
-                            "end_date": end_dt.strftime("%Y-%m-%d"),
-                            "total_days": (end_dt - start_dt).days + 1,
-                            "profit_days": 0,
-                            "loss_days": 0,
-                            "end_balance": initial_capital,
-                            "max_drawdown": 0.0,
-                            "total_return": 0.0,
-                            "annual_return": 0.0,
-                            "daily_return": 0.0,
-                            "sharpe_ratio": 0.0,
-                            "return_drawdown_ratio": 0.0,
-                            "total_trade_count": 0,
-                            "daily_trade_count": 0,
-                            "win_rate": 0.0,
-                            "total_turnover": 0.0,
-                            "daily_turnover": 0.0,
-                            "total_commission": 0.0,
-                            "daily_commission": 0.0,
-                            "total_slippage": 0.0,
-                            "daily_slippage": 0.0,
-                            "total_net_pnl": 0.0,
-                            "daily_net_pnl": 0.0,
-                            "total_gross_pnl": 0.0,
-                            "daily_gross_pnl": 0.0,
-                            "start_balance": initial_capital,
-                            "average_win_pnl": 0.0,
-                            "average_loss_pnl": 0.0,
-                            "profit_factor": 0.0,
-                        }
-                    else:
-                        # 其他未知错误，继续抛出
-                        raise e
-                
-                trades = engine.get_all_trades()
-                logger.info(f"Backtest statistics calculated. Total trades: {len(trades)}")
-                
-                cleaned_statistics = {}
-                for key, value in statistics.items():
-                    if isinstance(value, (float, int)) and not np.isfinite(value):
-                        cleaned_statistics[key] = None
-                    elif isinstance(value, (pd.Timestamp, datetime)): # Handle datetime/timestamp if needed
-                        cleaned_statistics[key] = value.isoformat() # Or str(value)
-                    else:
-                        cleaned_statistics[key] = value
-
-                record = BacktestRecord(
-                    user_id=user_id,
-                    strategy_id=strategy_id,
-                    symbol=symbol,
-                    exchange=exchange, # Use original string exchange
-                    interval=interval, # Use original string interval
-                    start_date=start_date,
-                    end_date=end_date,
-                    initial_capital=initial_capital,
-                    final_capital=cleaned_statistics.get("end_balance"),
-                    total_return=cleaned_statistics.get("total_return"),
-                    annual_return=cleaned_statistics.get("annual_return"),
-                    max_drawdown=cleaned_statistics.get("max_drawdown"),
-                    sharpe_ratio=cleaned_statistics.get("sharpe_ratio"),
-                    results={
-                        k: cleaned_statistics.get(k) for k in [
-                            "total_days", "profit_days", "loss_days",
-                            "total_net_pnl", "total_commission", "total_slippage",
-                            "total_turnover", "total_trade_count",
-                            "win_rate", "average_win_pnl", "average_loss_pnl",
-                            "profit_factor", "return_drawdown_ratio"
-                        ]
-                    }
-                )
-                db.add(record)
-                db.commit()
-                db.refresh(record)
-                logger.info(f"Backtest record {record.id} saved successfully for strategy {strategy.identifier}")
-                
-                api_return_data = {
-                     "record_id": record.id,
-                     "statistics": cleaned_statistics,
-                }
-
+            # 添加策略
+            engine.add_strategy(strategy_class, final_params)
+            
+            # 加载历史数据
+            engine.load_data()
+            
+            # 检查是否成功加载了数据
+            if not engine.history_data:
+                logger.warning(f"未加载到数据: {vt_symbol}, {interval}, {start_date} 至 {end_date}")
                 return {
-                    "success": True,
-                    "message": "Backtest completed successfully",
-                    "data": api_return_data
+                    "success": False,
+                    "message": f"未加载到数据: {vt_symbol}, {interval}, {start_date} 至 {end_date}"
                 }
-
+            
+            logger.info(f"成功加载 {len(engine.history_data)} 条历史数据")
+            
+            # 运行回测
+            engine.run_backtesting()
+            
+            # 计算回测结果
+            engine.calculate_result()
+            
+            # 计算统计指标
+            stats = engine.calculate_statistics()
+            
+            # 获取每日结果
+            try:
+                # 首先尝试调用get_daily_results()方法
+                daily_df = engine.get_daily_results()
+                
+                # 如果daily_df不是DataFrame类型，尝试转换
+                if not isinstance(daily_df, pd.DataFrame):
+                    daily_df = pd.DataFrame(daily_df) if daily_df else pd.DataFrame()
+                
+                # 如果daily_df不为空，转换数据类型
+                if not daily_df.empty:
+                    for col in daily_df.columns:
+                        if col != "date":
+                            try:
+                                daily_df[col] = pd.to_numeric(daily_df[col], errors='coerce')
+                            except Exception as e:
+                                logger.warning(f"转换列 {col} 为数字类型时出错: {str(e)}")
+                                # 如果转换失败，使用空值填充
+                                daily_df[col] = None
+            except AttributeError:
+                # 如果方法不存在，尝试直接访问daily_df属性
+                if hasattr(engine, 'daily_df'):
+                    daily_df = engine.daily_df
+                    # 确保是DataFrame
+                    if not isinstance(daily_df, pd.DataFrame):
+                        daily_df = pd.DataFrame(daily_df) if daily_df else pd.DataFrame()
+                elif hasattr(engine.engine, 'daily_df'):
+                    # 如果是wrapper类，尝试访问内部engine的属性
+                    daily_df = engine.engine.daily_df
+                    # 确保是DataFrame
+                    if not isinstance(daily_df, pd.DataFrame):
+                        daily_df = pd.DataFrame(daily_df) if daily_df else pd.DataFrame()
+                else:
+                    # 如果都不存在，创建一个空的DataFrame
+                    logger.warning("回测引擎没有get_daily_results()方法或daily_df属性，使用空DataFrame")
+                    daily_df = pd.DataFrame()
             except Exception as e:
-                 logger.error(f"Failed during backtest run or result processing: {e}\\n{traceback.format_exc()}")
-                 db.rollback()
-                 message = f"Error during backtest execution: {e}" 
-                 # Can add more specific error checks if needed
-                 if "No history data found for" in str(e): # Check if engine failed loading
-                     message = f"Backtest failed: No history data found in the database for {symbol}.{exchange} [{interval}] in the specified range. Please ensure data synchronization is complete."
-                 return {"success": False, "message": message, "data": None}
-
-        except Exception as outer_e:
-            logger.error(f"Failed during backtest preparation: {outer_e}\\n{traceback.format_exc()}")
-            if 'db' in locals() and db.is_active:
-                 db.rollback()
-            return {"success": False, "message": f"Error during backtest preparation: {outer_e}", "data": None}
-
-        finally:
-            if 'db' in locals() and db:
-                db.close()
-                logger.debug("Database session closed in BacktestService.run_backtest")
+                logger.warning(f"获取每日结果时发生错误: {str(e)}")
+                # 创建一个空的DataFrame
+                daily_df = pd.DataFrame()
+            
+            # 获取交易记录
+            trades = []
+            try:
+                # 尝试调用get_all_trades方法
+                for trade in engine.get_all_trades():
+                    trade_dict = {
+                        "datetime": trade.datetime.strftime("%Y-%m-%d %H:%M:%S"),
+                        "symbol": trade.symbol,
+                        "exchange": trade.exchange.value,
+                        "direction": trade.direction.value,
+                        "offset": trade.offset.value,
+                        "price": float(trade.price),
+                        "volume": float(trade.volume),
+                        "vt_tradeid": trade.vt_tradeid,
+                    }
+                    trades.append(trade_dict)
+            except AttributeError:
+                # 如果方法不存在，尝试直接访问trades属性
+                if hasattr(engine, 'trades'):
+                    for trade_id, trade in engine.trades.items():
+                        trade_dict = {
+                            "datetime": trade.datetime.strftime("%Y-%m-%d %H:%M:%S") if hasattr(trade, 'datetime') else '',
+                            "symbol": trade.symbol if hasattr(trade, 'symbol') else '',
+                            "exchange": trade.exchange.value if hasattr(trade, 'exchange') else '',
+                            "direction": trade.direction.value if hasattr(trade, 'direction') else '',
+                            "offset": trade.offset.value if hasattr(trade, 'offset') else '',
+                            "price": float(trade.price) if hasattr(trade, 'price') else 0.0,
+                            "volume": float(trade.volume) if hasattr(trade, 'volume') else 0.0,
+                            "vt_tradeid": trade.vt_tradeid if hasattr(trade, 'vt_tradeid') else '',
+                        }
+                        trades.append(trade_dict)
+                elif hasattr(engine.engine, 'trades'):
+                    # 如果是wrapper类，尝试访问内部engine的属性
+                    for trade_id, trade in engine.engine.trades.items():
+                        trade_dict = {
+                            "datetime": trade.datetime.strftime("%Y-%m-%d %H:%M:%S") if hasattr(trade, 'datetime') else '',
+                            "symbol": trade.symbol if hasattr(trade, 'symbol') else '',
+                            "exchange": trade.exchange.value if hasattr(trade, 'exchange') else '',
+                            "direction": trade.direction.value if hasattr(trade, 'direction') else '',
+                            "offset": trade.offset.value if hasattr(trade, 'offset') else '',
+                            "price": float(trade.price) if hasattr(trade, 'price') else 0.0,
+                            "volume": float(trade.volume) if hasattr(trade, 'volume') else 0.0,
+                            "vt_tradeid": trade.vt_tradeid if hasattr(trade, 'vt_tradeid') else '',
+                        }
+                        trades.append(trade_dict)
+                else:
+                    logger.warning("回测引擎没有get_all_trades()方法或trades属性")
+            
+            # 构建最终结果
+            result = {
+                "success": True,
+                "statistics": {}
+            }
+            
+            # 安全处理统计指标
+            for key, value in stats.items():
+                try:
+                    # 处理特殊类型
+                    if isinstance(value, (np.float32, np.float64, np.int32, np.int64)):
+                        value = float(value)
+                    elif isinstance(value, (list, tuple, np.ndarray)):
+                        # 对于数组类型，转换为列表
+                        value = value.tolist() if hasattr(value, 'tolist') else list(value)
+                    result["statistics"][key] = value
+                except Exception as e:
+                    logger.warning(f"处理统计指标 {key} 时出错: {str(e)}")
+                    result["statistics"][key] = None
+            
+            # 安全处理日线结果
+            try:
+                if isinstance(daily_df, pd.DataFrame) and not daily_df.empty:
+                    result["daily_results"] = daily_df.to_dict(orient="records")
+                else:
+                    result["daily_results"] = []
+            except Exception as e:
+                logger.warning(f"处理日线结果时出错: {str(e)}")
+                result["daily_results"] = []
+            
+            # 安全处理交易记录
+            result["trades"] = trades
+            
+            logger.info(f"回测完成，收益率: {stats.get('total_return', 0.0) * 100:.2f}%, 夏普比率: {stats.get('sharpe_ratio', 0.0):.2f}")
+            
+            # 如果提供了user_id则保存回测记录到数据库
+            if user_id is not None:
+                try:
+                    with SessionLocal() as db:
+                        # 转换日期和NumPy类型为JSON可序列化的格式
+                        def json_serialize(obj: Any) -> Any:
+                            """转换特殊类型为JSON可序列化的格式"""
+                            if isinstance(obj, (datetime, date)):
+                                return obj.isoformat()
+                            elif isinstance(obj, (np.int_, np.intc, np.intp, np.int8, np.int16, np.int32, np.int64, 
+                                                np.uint8, np.uint16, np.uint32, np.uint64)):
+                                return int(obj)
+                            elif isinstance(obj, (np.float16, np.float32, np.float64)):
+                                return float(obj)
+                            elif isinstance(obj, (np.ndarray,)):
+                                return obj.tolist()
+                            elif isinstance(obj, Dict):
+                                return {k: json_serialize(v) for k, v in obj.items()}
+                            elif isinstance(obj, list):
+                                return [json_serialize(item) for item in obj]
+                            return obj
+                            
+                        # 转换统计数据和参数
+                        serialized_stats = json_serialize(result["statistics"])
+                        serialized_params = json_serialize(final_params)
+                        
+                        backtest_record = BacktestRecord(
+                            user_id=user_id,
+                            strategy_id=strategy_id,
+                            symbol=symbol,
+                            exchange=exchange,
+                            interval=interval,
+                            start_date=start,
+                            end_date=end,
+                            initial_capital=float(initial_capital),
+                            final_capital=float(stats.get("end_balance", 0.0)),
+                            total_return=float(stats.get("total_return", 0.0)),
+                            annual_return=float(stats.get("annual_return", 0.0)),
+                            max_drawdown=float(stats.get("max_ddpercent", 0.0)),
+                            sharpe_ratio=float(stats.get("sharpe_ratio", 0.0)),
+                            results={
+                                "statistics": serialized_stats,
+                                "parameters": serialized_params
+                            },
+                            created_at=datetime.now()
+                        )
+                        db.add(backtest_record)
+                        db.commit()
+                        logger.info(f"回测记录已保存至数据库，记录ID: {backtest_record.id}")
+                        # 添加记录ID到结果中
+                        result["record_id"] = backtest_record.id
+                except Exception as db_error:
+                    logger.error(f"保存回测记录到数据库失败: {str(db_error)}")
+                    logger.debug(traceback.format_exc())
+                    # 不要因为保存记录失败而影响回测结果的返回
+            
+            return result
+            
+        except Exception as e:
+            logger.error(f"回测过程中发生错误: {str(e)}")
+            logger.debug(traceback.format_exc())
+            return {
+                "success": False,
+                "message": f"回测失败: {str(e)}"
+            }
     
     def get_backtest_records(self, user_id: Optional[int] = None, 
                            strategy_id: Optional[int] = None) -> List[BacktestRecord]:
