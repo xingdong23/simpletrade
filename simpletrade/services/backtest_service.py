@@ -5,22 +5,18 @@
 """
 
 import logging
-from typing import Dict, List, Optional, Any, Union
-from datetime import datetime, date
 import traceback
-import numpy as np
-import os
-import pandas as pd
-import inspect # Import inspect module
+from datetime import datetime, date
+from typing import Dict, List, Optional, Any
 
-from vnpy_ctastrategy.backtesting import BacktestingEngine
+import numpy as np
+import pandas as pd
 from vnpy.trader.constant import Interval, Exchange
-import vnpy.trader.database as database_module # Import the module itself
+from vnpy_ctastrategy.backtesting import BacktestingEngine
 
 from simpletrade.config.database import SessionLocal
 from simpletrade.models.database import Strategy, BacktestRecord
 from simpletrade.strategies import get_strategy_class
-# from simpletrade.apps.st_datamanager.importers.qlib_importer import QlibDataImporter
 
 logger = logging.getLogger("simpletrade.services.backtest_service")
 
@@ -128,8 +124,25 @@ class BacktestService:
                 logger.error(f"Backtest failed: Strategy class for identifier '{strategy.identifier}' not found")
                 return {"success": False, "message": f"Strategy class '{strategy.identifier}' not found", "data": None}
             
-            default_params = strategy.parameters if strategy.parameters else {}
-            user_params = parameters if parameters else {}
+            # 改进的参数处理逻辑
+            default_params = {}
+            if strategy.parameters:
+                # 检查是否是嵌套的参数描述结构，如果是，提取默认值
+                for param_name, param_value in strategy.parameters.items():
+                    if isinstance(param_value, dict) and 'default' in param_value:
+                        default_params[param_name] = param_value['default']
+                    else:
+                        default_params[param_name] = param_value
+            
+            # 同样处理用户参数
+            user_params = {}
+            if parameters:
+                for param_name, param_value in parameters.items():
+                    if isinstance(param_value, dict) and 'default' in param_value:
+                        user_params[param_name] = param_value['default']
+                    else:
+                        user_params[param_name] = param_value
+            
             final_params = default_params.copy()
             try:
                 final_params.update(user_params)
@@ -175,10 +188,53 @@ class BacktestService:
                 logger.info(f"Backtest run finished for {strategy.identifier}")
                 
                 logger.info(f"Calculating backtest results...")
-                df = engine.calculate_result()
-                statistics = engine.calculate_statistics(output=False)
+                
+                # 处理无交易情况
+                try:
+                    df = engine.calculate_result()
+                    statistics = engine.calculate_statistics(output=False)
+                except KeyError as e:
+                    if "None of ['date'] are in the columns" in str(e):
+                        logger.warning(f"No trading results generated for {strategy.identifier} - strategy did not make any trades with current parameters")
+                        # 创建一个空结果
+                        df = None
+                        statistics = {
+                            "start_date": start_dt.strftime("%Y-%m-%d"),
+                            "end_date": end_dt.strftime("%Y-%m-%d"),
+                            "total_days": (end_dt - start_dt).days + 1,
+                            "profit_days": 0,
+                            "loss_days": 0,
+                            "end_balance": initial_capital,
+                            "max_drawdown": 0.0,
+                            "total_return": 0.0,
+                            "annual_return": 0.0,
+                            "daily_return": 0.0,
+                            "sharpe_ratio": 0.0,
+                            "return_drawdown_ratio": 0.0,
+                            "total_trade_count": 0,
+                            "daily_trade_count": 0,
+                            "win_rate": 0.0,
+                            "total_turnover": 0.0,
+                            "daily_turnover": 0.0,
+                            "total_commission": 0.0,
+                            "daily_commission": 0.0,
+                            "total_slippage": 0.0,
+                            "daily_slippage": 0.0,
+                            "total_net_pnl": 0.0,
+                            "daily_net_pnl": 0.0,
+                            "total_gross_pnl": 0.0,
+                            "daily_gross_pnl": 0.0,
+                            "start_balance": initial_capital,
+                            "average_win_pnl": 0.0,
+                            "average_loss_pnl": 0.0,
+                            "profit_factor": 0.0,
+                        }
+                    else:
+                        # 其他未知错误，继续抛出
+                        raise e
+                
                 trades = engine.get_all_trades()
-                logger.info(f"Backtest statistics calculated.")
+                logger.info(f"Backtest statistics calculated. Total trades: {len(trades)}")
                 
                 cleaned_statistics = {}
                 for key, value in statistics.items():

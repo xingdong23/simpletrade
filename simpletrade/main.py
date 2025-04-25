@@ -59,14 +59,15 @@ def run_api_server(host: str, port: int, app_instance):
     logger.info("API server stopped.")
 
 
-def start_data_sync(db_instance):
+def start_data_sync(db_instance, periodic=False):
     """启动数据同步服务
     
     Args:
         db_instance: 数据库实例
+        periodic: 是否周期性运行
     """
     try:
-        from simpletrade.services.data_sync_service import run_initial_data_sync
+        from simpletrade.services.data_sync_service import run_initial_data_sync, run_periodic_data_sync
     except ImportError as e:
         logger.error(f"Failed to import data sync components: {e}")
         return
@@ -78,9 +79,13 @@ def start_data_sync(db_instance):
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     try:
-        logger.info("Running data synchronization...")
-        loop.run_until_complete(run_initial_data_sync(db_instance=db_instance))
-        logger.info("Data synchronization completed.")
+        if periodic:
+            logger.info("Starting periodic data synchronization...")
+            loop.run_until_complete(run_periodic_data_sync(db_instance=db_instance))
+        else:
+            logger.info("Running one-time data synchronization...")
+            loop.run_until_complete(run_initial_data_sync(db_instance=db_instance))
+            logger.info("Data synchronization completed.")
     except Exception as e:
         logger.error(f"Error in data sync thread: {e}", exc_info=True)
     finally:
@@ -146,15 +151,31 @@ def start_data_sync_service(db_instance):
         return None
         
     try:
-        # 创建并启动数据同步线程
-        sync_thread = threading.Thread(
-            target=start_data_sync,
-            args=(db_instance,),
-            daemon=True
-        )
-        sync_thread.start()
-        logger.info("Data synchronization service thread started.")
-        return sync_thread
+        # 检查是否启用同步周期
+        run_periodic = DATA_SYNC_CONFIG.get("PERIODIC_SYNC", False)
+        
+        # 是否在启动时同步
+        sync_on_startup = DATA_SYNC_CONFIG.get("SYNC_ON_STARTUP", True)
+        
+        if sync_on_startup or run_periodic:
+            # 创建并启动数据同步线程
+            sync_thread = threading.Thread(
+                target=start_data_sync,
+                args=(db_instance, run_periodic),  # 传递周期性运行标志
+                daemon=True
+            )
+            sync_thread.start()
+            
+            if run_periodic:
+                logger.info("Periodic data synchronization service thread started.")
+            else:
+                logger.info("One-time data synchronization service thread started.")
+                
+            return sync_thread
+        else:
+            logger.info("Data synchronization on startup disabled. Skipping initial sync.")
+            return None
+            
     except Exception as e:
         logger.error(f"Error starting data sync service: {e}", exc_info=True)
         return None
@@ -179,10 +200,10 @@ def main():
         logger.info("Core components initialized successfully.")
 
         # 2. 启动API服务器（如果配置启用）
-        api_thread = start_api_server(main_engine, event_engine)
+        start_api_server(main_engine, event_engine)
         
         # 3. 启动数据同步服务（如果配置启用）
-        sync_thread = start_data_sync_service(db_instance)
+        start_data_sync_service(db_instance)
         
         # 4. 主循环保持程序运行
         logger.info("SimpleTrade is running. Press Ctrl+C to shut down.")

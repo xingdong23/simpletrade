@@ -15,7 +15,7 @@ DB_CONFIG = {
     # 数据库连接参数
     "DB_USER": os.environ.get("SIMPLETRADE_DB_USER", "root"),
     "DB_PASSWORD": os.environ.get("SIMPLETRADE_DB_PASSWORD", "Cz159csa"),
-    "DB_HOST": os.environ.get("SIMPLETRADE_DB_HOST", "localhost"),
+    "DB_HOST": os.environ.get("SIMPLETRADE_DB_HOST", "127.0.0.1"),
     "DB_PORT": os.environ.get("SIMPLETRADE_DB_PORT", "3306"),
     "DB_NAME": os.environ.get("SIMPLETRADE_DB_NAME", "simpletrade"),
     
@@ -61,10 +61,11 @@ else: # Path matches default, but was set explicitly by env var
 
 # 数据同步服务配置
 DATA_SYNC_CONFIG = {
-    "ENABLED": os.environ.get("SIMPLETRADE_DATA_SYNC_ENABLED", "True").lower() == "true",
+    "ENABLED": os.environ.get("SIMPLETRADE_DATA_SYNC_ENABLED", "False").lower() == "true",
     "SYNC_ON_STARTUP": os.environ.get("SIMPLETRADE_SYNC_ON_STARTUP", "True").lower() == "true",
     "SYNC_INTERVAL": int(os.environ.get("SIMPLETRADE_SYNC_INTERVAL", "86400")),  # 默认每天同步一次（单位：秒）
     "MAX_RETRIES": int(os.environ.get("SIMPLETRADE_SYNC_MAX_RETRIES", "3")),  # 同步失败最大重试次数
+    "PERIODIC_SYNC": os.environ.get("SIMPLETRADE_PERIODIC_SYNC", "False").lower() == "true",  # 是否启用周期性同步
 }
 
 # 数据同步目标配置

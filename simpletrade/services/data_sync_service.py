@@ -698,3 +698,33 @@ async def run_initial_data_sync(db_instance: BaseDatabase):
 
     except Exception as e:
         logger.error(f"Error during initial data sync execution: {e}", exc_info=True) 
+
+
+async def run_periodic_data_sync(db_instance: BaseDatabase):
+    """周期性运行数据同步
+    
+    Args:
+        db_instance: 数据库实例
+    """
+    logger.info("Starting periodic data sync service...")
+    
+    # 从配置中获取同步间隔时间（秒）
+    sync_interval = DATA_SYNC_CONFIG.get("SYNC_INTERVAL", 86400)  # 默认每天同步一次
+    
+    try:
+        data_sync_service = DataSyncService(db_instance=db_instance)
+        
+        # 无限循环，定期执行同步
+        while True:
+            try:
+                logger.info(f"Running scheduled data synchronization...")
+                await data_sync_service.sync_all_targets()
+                logger.info(f"Scheduled data synchronization completed. Next sync in {sync_interval} seconds.")
+            except Exception as sync_error:
+                logger.error(f"Error during scheduled data sync: {sync_error}", exc_info=True)
+            
+            # 等待下一次同步
+            await asyncio.sleep(sync_interval)
+            
+    except Exception as e:
+        logger.error(f"Fatal error in periodic data sync service: {e}", exc_info=True) 
