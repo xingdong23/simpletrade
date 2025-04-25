@@ -17,7 +17,7 @@ from pathlib import Path
 from simpletrade.api.deps import get_db # Correct path for dependency injection
 from simpletrade.models.database import Strategy, UserStrategy, BacktestRecord
 from simpletrade.services.strategy_service import StrategyService
-from simpletrade.services.backtest_service import BacktestService
+from simpletrade.apps.st_backtest.service import BacktestService
 from simpletrade.services.monitor_service import MonitorService
 # from simpletrade.core.engine import STMainEngine # Type hint handled below
 
@@ -40,17 +40,36 @@ def get_main_engine(request: Request) -> STMainEngine:
         # If engine not in state, something went wrong during startup
         raise RuntimeError("Main engine not found in app state. Check server startup.")
 
-def get_strategy_service(main_engine: STMainEngine = Depends(get_main_engine)) -> StrategyService:
-    return StrategyService(main_engine=main_engine)
+def get_strategy_service():
+    """获取策略服务"""
+    try:
+        service = StrategyService()
+        yield service
+    finally:
+        pass
 
 def get_monitor_service(main_engine: STMainEngine = Depends(get_main_engine)) -> MonitorService:
     return MonitorService(main_engine=main_engine)
 
-def get_backtest_service() -> BacktestService:
-    return BacktestService()
+def get_backtest_service(main_engine = Depends(get_main_engine)):
+    """获取回测服务"""
+    try:
+        # 尝试通过主引擎获取回测引擎
+        backtest_engine = main_engine.engines.get("st_backtest")
+        service = BacktestService(backtest_engine)
+        yield service
+    except Exception as e:
+        # 如果无法获取，回退到创建独立的服务实例
+        logger.warning(f"Unable to get backtest engine from main_engine: {e}, creating standalone service")
+        service = BacktestService()
+        yield service
 
 # --- 创建路由器 --- 
-router = APIRouter(prefix="/api/strategies", tags=["strategies"])
+router = APIRouter(
+    prefix="/strategies",
+    tags=["strategies"],
+    dependencies=[Depends(get_main_engine)],
+)
 
 # 数据模型
 # TODO: Move these Pydantic models to simpletrade/api/schemas/strategy.py

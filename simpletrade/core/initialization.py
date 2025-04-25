@@ -17,6 +17,7 @@ from simpletrade.apps.st_message import STMessageApp
 from simpletrade.apps.st_trader import STTraderApp
 from simpletrade.apps.st_datamanager import STDataManagerApp
 from simpletrade.apps.st_analysis import STAnalysisApp
+from simpletrade.apps.st_backtest import STBacktestApp
 
 # Import Optional External/VnPy Apps & Gateways with Error Handling
 logger = logging.getLogger(__name__)
@@ -193,6 +194,8 @@ def initialize_core_components():
     logger.info("ST Data Manager App added.")
     main_engine.add_app(STAnalysisApp)
     logger.info("ST Analysis App added.")
+    main_engine.add_app(STBacktestApp)
+    logger.info("ST Backtest App added.")
 
     # Add original VnPy DataManager App if available
     if DataManagerApp:
