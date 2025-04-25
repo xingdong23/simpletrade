@@ -1,0 +1,22 @@
+{
+    "servers": [
+        {
+            "name": "Brave Search",
+            "type": "stdio",
+            "command": "env BRAVE_API_KEY=your-api-key-here npx -y @modelcontextprotocol/server-brave-search",
+            "enabled": true
+        },
+        {
+            "name": "Sequential Thinking",
+            "type": "stdio",
+            "command": "npx -y @modelcontextprotocol/server-sequential-thinking",
+            "enabled": true
+        },
+        {
+            "name": "Puppeteer",
+            "type": "stdio",
+            "command": "npx -y @modelcontextprotocol/server-puppeteer",
+            "enabled": true
+        }
+    ]
+}

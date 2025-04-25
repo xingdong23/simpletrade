@@ -100,21 +100,39 @@ def initialize_core_components():
     # +++ Configure VnPy SETTINGS first +++
     try:
         _configure_vnpy_settings()
-        # +++ Get database instance AFTER configuration +++
-        from vnpy.trader.database import get_database
-        logger.info("Getting database instance after configuration...")
-        db_instance = get_database()
-        logger.info(f"Successfully obtained database instance: {type(db_instance)}")
-        # +++ End getting database instance +++
+        # --- Remove get_database() call ---
+        # from vnpy.trader.database import get_database
+        # logger.info("Getting database instance after configuration...")
+        # db_instance = get_database()
+        # logger.info(f"Successfully obtained database instance in initialize_core_components: {type(db_instance)}")
+
+        # +++ Explicitly import and instantiate MysqlDatabase +++
+        logger.info("Attempting to import and instantiate vnpy_mysql.MysqlDatabase...")
+        try:
+            from vnpy_mysql.mysql_database import MysqlDatabase
+            db_instance = MysqlDatabase()
+            logger.info(f"Successfully instantiated MysqlDatabase: {type(db_instance)}")
+        except ImportError as import_err:
+            logger.critical(f"Failed to import vnpy_mysql: {import_err}. MySQL database cannot be used.")
+            db_instance = None
+        except Exception as init_err:
+            logger.critical(f"Failed to instantiate MysqlDatabase: {init_err}", exc_info=True)
+            db_instance = None
+        # +++ End explicit instantiation +++
+
     except Exception as config_e:
-        logger.critical(f"Core component initialization failed due to SETTINGS configuration or DB init error: {config_e}")
-        raise RuntimeError(f"Failed to configure VnPy settings or init DB: {config_e}") from config_e
-    
-    # Ensure db_instance is valid before proceeding (optional but recommended)
+        logger.critical(f"Core component initialization failed due to SETTINGS configuration error: {config_e}")
+        # Ensure db_instance is None if settings config itself failed
+        db_instance = None
+        raise RuntimeError(f"Failed to configure VnPy settings: {config_e}") from config_e
+
+    # Ensure db_instance is valid before proceeding
     if not db_instance:
-         logger.critical("Database instance could not be obtained after configuration. Exiting.")
+         logger.critical("Database instance (MySQL) could not be obtained/instantiated. Exiting.")
          # Decide how to handle - perhaps raise the RuntimeError again or a specific DB error
-         raise RuntimeError("Failed to obtain database instance after configuration.")
+         raise RuntimeError("Failed to obtain/instantiate necessary MySQL database instance.")
+
+    # 1. Create Engines (Now done after settings are configured)
 
     # 1. Create Engines (Now done after settings are configured)
     logger.debug("Creating EventEngine...")

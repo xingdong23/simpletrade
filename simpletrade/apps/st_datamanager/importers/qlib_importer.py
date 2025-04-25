@@ -23,9 +23,12 @@ sys.path.append(vendors_path)
 from vnpy.trader.object import BarData
 from vnpy.trader.constant import Exchange, Interval
 
+# 导入基类
+from .base_importer import BaseDataImporter
+
 logger = logging.getLogger(__name__) # Setup logger for the importer module
 
-class QlibDataImporter:
+class QlibDataImporter(BaseDataImporter):
     """Qlib数据格式导入器"""
 
     def __init__(self):
@@ -46,6 +49,49 @@ class QlibDataImporter:
             Interval.DAILY: 'day',
             Interval.MINUTE: 'min'
         }
+
+    def extract_and_validate_params(self, target_config: Dict[str, Any]) -> Dict[str, Any]:
+        """从目标配置中提取并验证Qlib导入器参数
+        
+        Args:
+            target_config: 完整的目标配置字典
+            
+        Returns:
+            处理后的参数字典，可直接用于import_data方法
+            
+        Raises:
+            ValueError: 当必要参数缺失或无效时
+        """
+        # 首先获取基类提取的基本参数
+        params = super().extract_and_validate_params(target_config)
+        
+        # 提取并验证Qlib特有参数：market
+        market = target_config.get("market")
+        if not market:
+            raise ValueError("Missing required parameter for Qlib: market ('cn' or 'us')")
+        
+        if market not in ["cn", "us"]:
+            raise ValueError(f"Invalid market identifier for Qlib: '{market}'. Expected 'cn' or 'us'.")
+        
+        params["market"] = market
+        
+        # 处理qlib_dir参数
+        qlib_dir = target_config.get("qlib_dir")
+        if not qlib_dir:
+            # 从配置中获取默认路径
+            from simpletrade.config.settings import QLIB_DATA_PATH
+            if not QLIB_DATA_PATH:
+                raise ValueError("QLIB_DATA_PATH not configured. Set SIMPLETRADE_QLIB_DATA_PATH environment variable.")
+            
+            if not os.path.exists(QLIB_DATA_PATH):
+                raise ValueError(f"QLIB_DATA_PATH ('{QLIB_DATA_PATH}') does not exist.")
+                
+            qlib_dir = QLIB_DATA_PATH
+            logger.debug(f"Using default Qlib data path from config: {QLIB_DATA_PATH}")
+        
+        params["qlib_dir"] = qlib_dir
+        
+        return params
 
     def _get_market_subdir(self, market: str) -> str:
         """根据市场标识获取子目录名"""
@@ -266,28 +312,38 @@ class QlibDataImporter:
 
     def import_data(
         self,
-        qlib_dir: str,
-        market: str, # <<< 添加 market 参数
         symbol: str,
         exchange: Exchange,
         interval: Interval,
         start_date: Optional[datetime] = None,
         end_date: Optional[datetime] = None,
+        **kwargs
     ) -> Tuple[bool, str, List[BarData]]:
         """导入指定品种、周期的数据
-
+        
         Args:
-            qlib_dir (str): Qlib数据根目录
-            market (str): 市场标识 ('cn' 或 'us')
-            symbol (str): 品种代码 (例如 'AAPL' 或 '600036')
-            exchange (Exchange): 交易所
-            interval (Interval): K线周期 (目前主要支持日线)
-            start_date (datetime, optional): 开始日期. Defaults to None.
-            end_date (datetime, optional): 结束日期. Defaults to None.
-
+            symbol: 品种代码
+            exchange: 交易所
+            interval: K线周期
+            start_date: 开始日期
+            end_date: 结束日期
+            **kwargs: 额外参数，包括：
+                qlib_dir: Qlib数据根目录
+                market: 市场标识 ('cn' 或 'us')
+                
         Returns:
             Tuple[bool, str, List[BarData]]: (是否成功, 消息, BarData列表)
         """
+        # 从 kwargs 中获取 qlib 特有参数
+        qlib_dir = kwargs.get("qlib_dir")
+        market = kwargs.get("market")
+        
+        if not qlib_dir:
+            return False, "Missing required parameter: qlib_dir", []
+            
+        if not market:
+            return False, "Missing required parameter: market ('cn' or 'us')", []
+            
         # 检查 interval 是否支持 (当前实现主要针对日线 .day.bin)
         if interval != Interval.DAILY:
              msg = f"Unsupported interval for Qlib importer: {interval}. Currently only supports Daily."
@@ -340,7 +396,7 @@ class QlibDataImporter:
                 # 之前已经本地化到市场时区，现在转换为 UTC
                 try:
                      dt_utc = dt.tz_convert('UTC')
-                     # +++ Convert to Python datetime +++
+                     # Convert to Python datetime
                      dt_py = dt_utc.to_pydatetime()
                 except Exception as utc_convert_e:
                      logger.error(f"Failed to convert datetime {dt} to UTC or Python datetime: {utc_convert_e}")
@@ -349,7 +405,7 @@ class QlibDataImporter:
                 bar = BarData(
                     symbol=symbol,
                     exchange=exchange,
-                    datetime=dt_py, # <<< Use Python datetime object
+                    datetime=dt_py,
                     interval=interval,
                     volume=volume,
                     open_price=open_price,

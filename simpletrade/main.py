@@ -9,212 +9,189 @@ import os
 import logging
 from pathlib import Path
 import time
-import json # Keep json import if needed elsewhere, but Tiger connect logic moved
-import threading  # 导入 threading
-import uvicorn    # 导入 uvicorn
-import asyncio  # 导入 asyncio
+import threading
+import uvicorn
+import asyncio
 
-# --- Add vendors directory to sys.path ---
-# This allows importing modules like vnpy_tiger located in the vendors directory.
+# 添加 vendors 目录到 Python 路径
 project_root = Path(__file__).parent.parent.absolute()
 vendors_path = project_root / "vendors"
 if vendors_path.exists() and str(vendors_path) not in sys.path:
     sys.path.insert(0, str(vendors_path))
     print(f"[INFO] Added vendors path to sys.path: {vendors_path}")
-# --- End sys.path modification ---
 
-# --- Import Shared Configs (Still needed for API thread) ---
-# Although SETTINGS are configured elsewhere, API thread needs API_CONFIG directly
-from simpletrade.config.settings import API_CONFIG
+# 导入配置
+from simpletrade.config.settings import API_CONFIG, DATA_SYNC_CONFIG
 
-# --- 导入核心初始化函数 ---
+# 导入核心初始化函数
 from simpletrade.core.initialization import initialize_core_components
 
-# --- Optional App/Gateway Imports ---
-# We still need these imports here to check for module existence
-# and potentially pass them later if needed, or just log warnings.
-logger = logging.getLogger(__name__) # Define logger early for imports
-try:
-    from vnpy_datamanager import DataManagerApp
-    logger.info("Optional app 'vnpy_datamanager' imported successfully.")
-except ImportError:
-    logger.warning("Optional app 'vnpy_datamanager' not found. Install if needed.")
-    DataManagerApp = None
-try:
-    from vnpy_ib import IbGateway
-    logger.info("Optional gateway 'vnpy_ib' imported successfully.")
-except ImportError:
-    logger.warning("Optional gateway 'vnpy_ib' not found. Install if needed.")
-    IbGateway = None
-try:
-    from vnpy_tiger import TigerGateway
-    logger.info("Optional gateway 'vnpy_tiger' imported successfully.")
-except ImportError as e:
-    # Reduced severity, just a warning if not found
-    logger.warning(f"Optional gateway 'vnpy_tiger' not found. Error: {e}")
-    TigerGateway = None
-# --- End Optional Imports ---
-
-
-# --- Configure Logging (Keep this early) ---
-# Read log level from config BEFORE setting up handler
+# 配置日志
 log_level_str = os.environ.get("SIMPLETRADE_LOG_LEVEL", "INFO").upper()
 log_level = getattr(logging, log_level_str, logging.INFO)
 
 logging.basicConfig(
     level=log_level, 
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[logging.StreamHandler()] # Output to console
+    handlers=[logging.StreamHandler()]
 )
-# Re-get logger after basicConfig
 logger = logging.getLogger("simpletrade.main")
 logger.info(f"Logging configured with level: {log_level_str}")
-# --- End Logging Configuration ---
 
-# --- Remove VnPy Settings Logging Block --- 
-# This logging is now redundant or better placed within initialization
-# logger.info("Applied MySQL database settings...") 
-# ...
-# --- End Removed Block ---
-
-# --- 导入 FastAPI 应用实例和配置函数 ---
-# 假设 FastAPI 实例在 simpletrade/api/server.py 中名为 app
-# 假设配置函数名为 configure_server
-try:
-    from simpletrade.api.server import app as fastapi_app, configure_server # 添加 configure_server
-    logger.info("FastAPI app and configure_server imported successfully.")
-except ImportError as e:
-    logger.error(f"Failed to import FastAPI app/configure_server from simpletrade.api.server: {e}")
-    fastapi_app = None
-    configure_server = None # 确保 configure_server 也为 None
-
-# --- 导入后台数据同步函数 ---
-try:
-    from simpletrade.services.data_sync_service import run_initial_data_sync
-    logger.info("Background data sync function imported successfully.")
-except ImportError as e:
-    logger.warning(f"Could not import run_initial_data_sync: {e}. Background sync disabled.")
-    run_initial_data_sync = None
 
 def run_api_server(host: str, port: int, app_instance):
-    """在一个单独的线程中运行 Uvicorn 服务器"""
+    """运行 API 服务器
+    
+    Args:
+        host: 主机地址
+        port: 端口号
+        app_instance: FastAPI应用实例
+    """
     if not app_instance:
         logger.error("Cannot start API server: FastAPI app instance not found.")
         return
-    logger.info(f"Starting Uvicorn API server on http://{host}:{port}")
+        
+    logger.info(f"Starting API server on http://{host}:{port}")
     try:
         uvicorn.run(app_instance, host=host, port=port, log_level="info")
     except Exception as e:
-        logger.error(f"Uvicorn server failed: {e}", exc_info=True)
-    logger.info("Uvicorn API server stopped.")
+        logger.error(f"API server failed: {e}", exc_info=True)
+    logger.info("API server stopped.")
 
-def start_background_sync(db_instance):
-    if not run_initial_data_sync:
-        logger.warning("run_initial_data_sync not available, skipping background sync.")
+
+def start_data_sync(db_instance):
+    """启动数据同步服务
+    
+    Args:
+        db_instance: 数据库实例
+    """
+    try:
+        from simpletrade.services.data_sync_service import run_initial_data_sync
+    except ImportError as e:
+        logger.error(f"Failed to import data sync components: {e}")
         return
         
     if not db_instance:
-        logger.error("No database instance provided to background sync thread. Skipping sync.")
+        logger.error("Cannot start data sync: database instance not available.")
         return
         
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     try:
-        logger.info("Background thread: Running run_initial_data_sync...")
+        logger.info("Running data synchronization...")
         loop.run_until_complete(run_initial_data_sync(db_instance=db_instance))
-        logger.info("Background thread: run_initial_data_sync completed.")
+        logger.info("Data synchronization completed.")
     except Exception as e:
-        logger.error(f"EXCEPTION in background sync thread: {e}", exc_info=True)
+        logger.error(f"Error in data sync thread: {e}", exc_info=True)
     finally:
-        logger.info("Background thread: Closing event loop.")
+        logger.info("Closing data sync event loop.")
         loop.close()
 
-def main():
-    """SimpleTrade主程序入口 (现在同时启动核心引擎, API服务器和后台同步)"""
-    logger.info("Starting SimpleTrade main function (Core + API + Sync mode)...")
 
-    # --- 调用核心初始化函数来获取引擎实例 (Now handles SETTINGS config) ---
-    logger.info("Initializing core components via initialize_core_components...")
-    main_engine = None # Initialize to None
-    event_engine = None
-    db_instance = None # Initialize to None
+def start_api_server(main_engine, event_engine):
+    """启动API服务器
+    
+    Args:
+        main_engine: 主引擎实例
+        event_engine: 事件引擎实例
+    """
+    if not API_CONFIG.get("ENABLED", True):
+        logger.info("API server disabled in configuration. Skipping start.")
+        return
+
     try:
-        # +++ 接收 db_instance +++
-        main_engine, event_engine, db_instance = initialize_core_components()
-        logger.info("Core components initialized successfully for main function.")
-
-        # +++ 配置 API 服务器，注入引擎 +++
-        logger.info("Configuring API server with core engines...")
-        if fastapi_app and configure_server:
-            try:
-                # 确保 main_engine 和 event_engine 有效
-                if main_engine and event_engine:
-                     configure_server(main_engine=main_engine, event_engine=event_engine)
-                     logger.info("API server configured successfully.")
-                else:
-                     logger.error("Cannot configure API server: Core engines not properly initialized.")
-            except Exception as config_e:
-                logger.error(f"Error configuring API server: {config_e}", exc_info=True)
-        elif not fastapi_app:
-            logger.warning("FastAPI app not imported, skipping API configuration.")
-        else: # fastapi_app 存在但 configure_server 不存在
-            logger.warning("configure_server function not found, skipping API configuration.")
-        # +++ 结束 API 服务器配置 +++
-
-    except Exception as e:
-        logger.critical(f"FATAL ERROR during core initialization or API config in main: {e}", exc_info=True)
-        sys.exit(1)
-    # --- 结束核心初始化调用 ---
-
-    # --- 启动 API 服务器线程 ---
-    if fastapi_app and configure_server and main_engine and event_engine: # Add checks for engines
-        api_host = API_CONFIG.get("HOST", "0.0.0.0") 
-        api_port = int(API_CONFIG.get("PORT", 8003))
+        # 导入API相关模块
+        from simpletrade.api.server import app as fastapi_app, configure_server
         
-        api_thread = threading.Thread(
-            target=run_api_server, 
-            args=(api_host, api_port, fastapi_app), 
-            daemon=True
-        )
-        api_thread.start()
-        logger.info(f"API server thread started. Access API docs at http://{api_host}:{api_port}/docs")
-    else:
-        logger.warning("Skipping API server start due to import/configuration issues or failed core initialization.")
-    # --- 结束 API 服务器启动 ---
-
-    # --- 启动后台数据同步线程 ---
-    # +++ 检查 db_instance 是否有效 +++
-    if run_initial_data_sync and db_instance:
-        logger.info("Creating and starting background data sync thread...")
-        try:
-            # +++ 将 db_instance 传递给线程目标函数 +++
-            sync_thread = threading.Thread(
-                target=start_background_sync, 
-                args=(db_instance,), # Pass db_instance as argument
+        # 配置API服务器
+        if main_engine and event_engine and fastapi_app and configure_server:
+            configure_server(main_engine=main_engine, event_engine=event_engine)
+            logger.info("API server configured successfully.")
+            
+            # 启动API服务器线程
+            api_host = API_CONFIG.get("HOST", "0.0.0.0")
+            api_port = int(API_CONFIG.get("PORT", 8003))
+            
+            api_thread = threading.Thread(
+                target=run_api_server,
+                args=(api_host, api_port, fastapi_app),
                 daemon=True
             )
-            sync_thread.start()
-            logger.info("Background data sync thread started.")
-        except Exception as thread_e:
-            logger.error(f"FAILED to start background data sync thread: {thread_e}", exc_info=True)
-    elif not run_initial_data_sync:
-        logger.info("Skipping background data sync because function was not imported.")
-    else: # run_initial_data_sync exists, but db_instance is None
-        logger.error("Skipping background data sync because database instance was not obtained during initialization.")
-    # --- 结束后台数据同步启动 ---
+            api_thread.start()
+            logger.info(f"API server thread started at http://{api_host}:{api_port}")
+            return api_thread
+        else:
+            logger.warning("Skipping API server start due to missing components.")
+            return None
+    except ImportError as e:
+        logger.error(f"Failed to import API components: {e}")
+        return None
+    except Exception as e:
+        logger.error(f"Error starting API server: {e}", exc_info=True)
+        return None
 
-    logger.info("SimpleTrade Core Engine is running. API server and Sync task are running in separate threads (if started).")
-    logger.info("Press Ctrl+C to shut down.")
 
-    # 保持主程序运行
+def start_data_sync_service(db_instance):
+    """启动数据同步服务
+    
+    Args:
+        db_instance: 数据库实例
+    """
+    if not DATA_SYNC_CONFIG.get("ENABLED", True):
+        logger.info("Data sync service disabled in configuration. Skipping start.")
+        return None
+        
+    if not db_instance:
+        logger.error("Cannot start data sync service: database instance not available.")
+        return None
+        
+    try:
+        # 创建并启动数据同步线程
+        sync_thread = threading.Thread(
+            target=start_data_sync,
+            args=(db_instance,),
+            daemon=True
+        )
+        sync_thread.start()
+        logger.info("Data synchronization service thread started.")
+        return sync_thread
+    except Exception as e:
+        logger.error(f"Error starting data sync service: {e}", exc_info=True)
+        return None
+
+
+def keep_running():
+    """保持主程序运行，直到收到终止信号"""
     try:
         while True:
             time.sleep(1)
     except KeyboardInterrupt:
         logger.info("Shutting down SimpleTrade...")
-        if main_engine:
-            main_engine.close()
-        logger.info("SimpleTrade shutdown completed.")
+
+
+def main():
+    """SimpleTrade主程序入口点"""
+    logger.info("Starting SimpleTrade...")
+
+    try:
+        # 1. 初始化核心组件
+        main_engine, event_engine, db_instance = initialize_core_components()
+        logger.info("Core components initialized successfully.")
+
+        # 2. 启动API服务器（如果配置启用）
+        api_thread = start_api_server(main_engine, event_engine)
+        
+        # 3. 启动数据同步服务（如果配置启用）
+        sync_thread = start_data_sync_service(db_instance)
+        
+        # 4. 主循环保持程序运行
+        logger.info("SimpleTrade is running. Press Ctrl+C to shut down.")
+        keep_running()
+        
+    except Exception as e:
+        logger.critical(f"FATAL ERROR during SimpleTrade startup: {e}", exc_info=True)
+        sys.exit(1)
+
 
 if __name__ == "__main__":
     main()
