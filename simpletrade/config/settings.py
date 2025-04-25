@@ -75,7 +75,7 @@ DATA_SYNC_TARGETS = [
         "symbol": "AAPL",        # 品种代码
         "exchange": "NASDAQ",    # 交易所 (使用 VnPy 枚举值对应的字符串)
         "interval": "d",         # K线周期 (日线)
-        "start_date": "2020-01-01",  # 开始日期 (可选，默认为 "2020-01-01")
+        "start_date": "1970-01-01",  # 开始日期 (可选，默认为 "2020-01-01")
         # "end_date": "2022-12-31",  # 结束日期 (可选，默认为当前日期)
         "market": "us",          # 市场标识 (qlib 特有参数)
         "enabled": True          # 是否启用 (可选，默认为 True)

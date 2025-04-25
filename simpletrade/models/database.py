@@ -123,8 +123,10 @@ class DataImportLog(Base):
     symbol = Column(String(50), nullable=False, index=True)
     exchange = Column(String(50), nullable=False, index=True)
     interval = Column(String(10), nullable=False, index=True)
-    # 记录从源导入到VnPy数据库的最新数据的日期
-    last_import_date = Column(DateTime, nullable=True, comment="导入数据的最新日期")
+    # 记录从源导入到VnPy数据库的数据开始日期
+    last_begin_date = Column(DateTime, nullable=True, comment="导入数据的开始日期")
+    # 记录从源导入到VnPy数据库的数据结束日期
+    last_end_date = Column(DateTime, nullable=True, comment="导入数据的结束日期")
     # 记录上次尝试同步的时间
     last_attempt_time = Column(DateTime, server_default=func.now(), onupdate=func.now(), comment="上次尝试同步时间")
     # 记录同步状态 (e.g., 'idle', 'syncing', 'success', 'failed')
@@ -139,6 +141,6 @@ class DataImportLog(Base):
     )
 
     def __repr__(self):
-        return f"<DataImportLog(source='{self.source}', symbol='{self.symbol}', exchange='{self.exchange}', interval='{self.interval}', last_date='{self.last_import_date}', status='{self.status}')>"
+        return f"<DataImportLog(source='{self.source}', symbol='{self.symbol}', exchange='{self.exchange}', interval='{self.interval}', range='{self.last_begin_date} to {self.last_end_date}', status='{self.status}')>"
 
 # 注意: 添加新模型后, 可能需要数据库迁移 (如果使用 Alembic) 或手动创建表。

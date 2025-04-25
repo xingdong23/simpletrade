@@ -43,7 +43,8 @@ class DataSyncService:
         logger.info(f"Found {len(self.targets)} enabled data sync targets")
 
     def _update_import_log(self, source: str, symbol: str, exchange: Exchange, interval: Interval, 
-                           success: bool, message: str, last_date: Optional[datetime] = None):
+                           success: bool, message: str, last_begin_date: Optional[datetime] = None, 
+                           last_end_date: Optional[datetime] = None):
         """更新数据导入日志
         
         Args:
@@ -53,7 +54,8 @@ class DataSyncService:
             interval: K线周期
             success: 是否导入成功
             message: 导入消息
-            last_date: 导入的最新数据日期
+            last_begin_date: 导入的数据开始日期
+            last_end_date: 导入的数据结束日期
         """
         try:
             from sqlalchemy.orm import Session
@@ -79,8 +81,10 @@ class DataSyncService:
                     log_entry.last_attempt_time = current_time
                     log_entry.status = 'success' if success else 'failed'
                     log_entry.message = message
-                    if last_date and success:
-                        log_entry.last_import_date = last_date
+                    if last_begin_date and success:
+                        log_entry.last_begin_date = last_begin_date
+                    if last_end_date and success:
+                        log_entry.last_end_date = last_end_date
                 else:
                     log_entry = DataImportLog(
                         source=source,
@@ -90,7 +94,8 @@ class DataSyncService:
                         last_attempt_time=current_time,
                         status='success' if success else 'failed',
                         message=message,
-                        last_import_date=last_date if success else None
+                        last_begin_date=last_begin_date if success else None,
+                        last_end_date=last_end_date if success else None
                     )
                     session.add(log_entry)
                 
@@ -100,7 +105,7 @@ class DataSyncService:
             logger.error(f"Error updating import log: {e}", exc_info=True)
 
     def _get_last_import_date(self, source: str, symbol: str, exchange: str, interval: str) -> Optional[datetime]:
-        """获取上次导入的最新日期
+        """获取上次导入的结束日期
         
         Args:
             source: 数据源名称
@@ -109,7 +114,7 @@ class DataSyncService:
             interval: K线周期
             
         Returns:
-            上次导入的最新日期，如果没有记录则返回None
+            上次导入的结束日期，如果没有记录则返回None
         """
         try:
             from sqlalchemy.orm import Session
@@ -129,15 +134,56 @@ class DataSyncService:
                     interval=interval
                 ).first()
                 
-                if log_entry and log_entry.last_import_date:
-                    logger.info(f"Found previous import record for {symbol} ({source}): last date {log_entry.last_import_date}")
-                    return log_entry.last_import_date
+                if log_entry and log_entry.last_end_date:
+                    logger.info(f"Found previous import record for {symbol} ({source}): last end date {log_entry.last_end_date}")
+                    return log_entry.last_end_date
                 
                 logger.info(f"No previous import record found for {symbol} ({source})")
                 return None
                 
         except Exception as e:
             logger.error(f"Error retrieving last import date: {e}", exc_info=True)
+            return None
+            
+    def _get_last_begin_date(self, source: str, symbol: str, exchange: str, interval: str) -> Optional[datetime]:
+        """获取上次导入的开始日期
+        
+        Args:
+            source: 数据源名称
+            symbol: 品种代码
+            exchange: 交易所
+            interval: K线周期
+            
+        Returns:
+            上次导入的开始日期，如果没有记录则返回None
+        """
+        try:
+            from sqlalchemy.orm import Session
+            from sqlalchemy import create_engine
+            from simpletrade.config.settings import DB_CONFIG
+            
+            # 创建数据库连接
+            db_url = f"mysql+pymysql://{DB_CONFIG['DB_USER']}:{DB_CONFIG['DB_PASSWORD']}@{DB_CONFIG['DB_HOST']}:{DB_CONFIG['DB_PORT']}/{DB_CONFIG['DB_NAME']}"
+            engine = create_engine(db_url)
+            
+            with Session(engine) as session:
+                # 查找现有记录
+                log_entry = session.query(DataImportLog).filter_by(
+                    source=source,
+                    symbol=symbol,
+                    exchange=exchange,
+                    interval=interval
+                ).first()
+                
+                if log_entry and log_entry.last_begin_date:
+                    logger.info(f"Found previous import record for {symbol} ({source}): last begin date {log_entry.last_begin_date}")
+                    return log_entry.last_begin_date
+                
+                logger.info(f"No previous import record found for {symbol} ({source})")
+                return None
+                
+        except Exception as e:
+            logger.error(f"Error retrieving last begin date: {e}", exc_info=True)
             return None
 
     def _get_db_date_range(self, symbol: str, exchange: Exchange, interval: Interval) -> Tuple[Optional[datetime], Optional[datetime]]:
@@ -162,8 +208,7 @@ class DataSyncService:
                 exchange=exchange,
                 interval=interval,
                 start=datetime(1970, 1, 1),  # 从最早日期开始
-                end=datetime.now(timezone.utc),  # 到当前日期
-                return_cursor=False  # 返回全部数据
+                end=datetime.now(timezone.utc)  # 到当前日期
             )
             
             if not bars:
@@ -201,8 +246,7 @@ class DataSyncService:
                 exchange=exchange,
                 interval=interval,
                 start=datetime(1970, 1, 1),  # 从最早日期开始
-                end=datetime.now(timezone.utc),  # 到当前日期
-                return_cursor=False  # 返回全部数据
+                end=datetime.now(timezone.utc)  # 到当前日期
             )
             
             if not bars:
@@ -385,16 +429,16 @@ class DataSyncService:
                 
                 # 如果没有配置开始日期，尝试从导入日志获取
                 if not configured_start_dt:
-                    last_import_date = self._get_last_import_date(
+                    last_end_date = self._get_last_import_date(
                         source=source,
                         symbol=symbol,
                         exchange=exchange_name,
                         interval=interval_name
                     )
                     
-                    if last_import_date:
+                    if last_end_date:
                         # 有导入记录，设置开始日期为最后导入日期的下一天
-                        configured_start_dt = last_import_date + timedelta(days=1)
+                        configured_start_dt = last_end_date + timedelta(days=1)
                         logger.info(f"Using start date based on import log: {configured_start_dt}")
                     else:
                         # 默认使用较早的开始日期
@@ -421,7 +465,8 @@ class DataSyncService:
                             interval=interval, 
                             success=True, 
                             message=f"No missing dates to import",
-                            last_date=end_dt
+                            last_begin_date=configured_start_dt,
+                            last_end_date=end_dt
                         )
                         return
                     
@@ -461,17 +506,23 @@ class DataSyncService:
                         count = self.db.save_bar_data(all_bars)
                         logger.info(f"Saved {count} bars for {symbol} from {source} importer.")
                         
-                        # 找出最新日期
-                        last_date = max(bar.datetime for bar in all_bars) if all_bars else None
+                        # 找出最新日期（改为记录整个范围）
+                        if all_bars:
+                            earliest_date = min(bar.datetime for bar in all_bars)
+                            latest_date = max(bar.datetime for bar in all_bars)
+                            logger.info(f"Imported data range: {earliest_date} to {latest_date}")
+                        else:
+                            earliest_date = None
+                            latest_date = None
                         
                         # 更新消息以反映保存结果
                         message = f"Successfully imported and saved {count} bars for missing dates from {source} data."
                         
                         # 导入成功，记录到导入日志
-                        self._update_import_log(source, symbol, exchange, interval, True, message, last_date)
+                        self._update_import_log(source, symbol, exchange, interval, True, message, earliest_date, latest_date)
                     else:
                         logger.warning(f"No data was imported for missing dates of {symbol}.")
-                        self._update_import_log(source, symbol, exchange, interval, True, "No data available for missing dates", None)
+                        self._update_import_log(source, symbol, exchange, interval, True, "No data available for missing dates", None, None)
                         
                     return
                 
@@ -509,7 +560,8 @@ class DataSyncService:
                             interval=interval, 
                             success=True, 
                             message=f"Skipped import: database already has complete data",
-                            last_date=db_latest_date
+                            last_begin_date=db_earliest_date,
+                            last_end_date=db_latest_date
                         )
                         return
                     
@@ -539,17 +591,23 @@ class DataSyncService:
                         count = self.db.save_bar_data(all_bars)
                         logger.info(f"Saved {count} bars for {symbol} from {source} importer.")
                         
-                        # 找出最新日期
-                        last_date = max(bar.datetime for bar in all_bars) if all_bars else db_latest_date
+                        # 找出日期范围（改为记录整个范围）
+                        if all_bars:
+                            earliest_date = min(bar.datetime for bar in all_bars)
+                            latest_date = max(bar.datetime for bar in all_bars)
+                            logger.info(f"Imported data range: {earliest_date} to {latest_date}")
+                        else:
+                            earliest_date = db_earliest_date
+                            latest_date = db_latest_date
                         
                         # 更新消息以反映保存结果
                         message = f"Successfully imported and saved {count} bars from {source} data."
                         
                         # 导入成功，记录到导入日志
-                        self._update_import_log(source, symbol, exchange, interval, True, message, last_date)
+                        self._update_import_log(source, symbol, exchange, interval, True, message, earliest_date, latest_date)
                     else:
                         logger.warning(f"No new data was imported for {symbol}.")
-                        self._update_import_log(source, symbol, exchange, interval, True, "No new data available", db_latest_date)
+                        self._update_import_log(source, symbol, exchange, interval, True, "No new data available", db_earliest_date, db_latest_date)
                         
                     return
                 
@@ -571,36 +629,38 @@ class DataSyncService:
                     if not self.db:
                         message += " (Error: Cannot save bars, database connection not available.)"
                         logger.error(message)
-                        self._update_import_log(source, symbol, exchange, interval, False, message)
+                        self._update_import_log(source, symbol, exchange, interval, False, message, None, None)
                     else:
                         logger.info(f"Saving {len(bars)} bars from {source} importer to database...")
                         count = self.db.save_bar_data(bars)
                         logger.info(f"Saved {count} bars for {symbol} from {source} importer.")
                         
-                        # 找出最新日期
-                        last_date = None
+                        # 找出日期范围
+                        earliest_date = None
+                        latest_date = None
                         if bars:
-                            last_date = max(bar.datetime for bar in bars)
-                            logger.info(f"Last date in imported data: {last_date}")
+                            earliest_date = min(bar.datetime for bar in bars)
+                            latest_date = max(bar.datetime for bar in bars)
+                            logger.info(f"Imported data range: {earliest_date} to {latest_date}")
                         
                         # 更新消息以反映保存结果
                         message = f"Successfully imported and saved {count} bars from {source} data."
                         
                         # 导入成功，记录到导入日志
-                        self._update_import_log(source, symbol, exchange, interval, True, message, last_date)
+                        self._update_import_log(source, symbol, exchange, interval, True, message, earliest_date, latest_date)
                 elif success and not bars:
                     logger.warning(f"Import reported success but returned no bars for {symbol} (Message: '{message}'). Nothing to save.")
                     # 记录到导入日志（成功但无数据）
-                    self._update_import_log(source, symbol, exchange, interval, True, message)
+                    self._update_import_log(source, symbol, exchange, interval, True, message, None, None)
                 elif not success:
                     logger.error(f"Import failed for {symbol} (Message: '{message}'). Nothing saved.")
                     # 记录到导入日志（失败）
-                    self._update_import_log(source, symbol, exchange, interval, False, message)
+                    self._update_import_log(source, symbol, exchange, interval, False, message, None, None)
                 
             except ValueError as param_err:
                 message = f"Parameter validation failed: {param_err}"
                 logger.error(message)
-                self._update_import_log(source, symbol, exchange, interval, False, message)
+                self._update_import_log(source, symbol, exchange, interval, False, message, None, None)
                 return
 
         except Exception as e:
@@ -617,7 +677,7 @@ class DataSyncService:
                 interval = target.get("interval", "UNKNOWN")
                 
             # 记录异常到导入日志
-            self._update_import_log(source, symbol, exchange, interval, False, error_message)
+            self._update_import_log(source, symbol, exchange, interval, False, error_message, None, None)
             # Re-raise the exception so asyncio.gather logs it properly
             raise e
 

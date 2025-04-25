@@ -177,7 +177,8 @@ class TestDataSyncIntegration(unittest.TestCase):
             
             self.assertIsNotNone(log_entry, "应该创建DataImportLog记录")
             self.assertEqual(log_entry.status, 'success', "同步状态应该是success")
-            self.assertIsNotNone(log_entry.last_import_date, "应该更新last_import_date")
+            self.assertIsNotNone(log_entry.last_end_date, "应该更新last_end_date")
+            self.assertIsNotNone(log_entry.last_begin_date, "应该更新last_begin_date")
             
             # 可以进一步验证导入的数据是否存在于VnPy数据库中
             # 这需要查询VnPy的数据库表
