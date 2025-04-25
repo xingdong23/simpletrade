@@ -47,6 +47,12 @@ class DoubleMaStrategy(CtaTemplate):
         """
         super().__init__(cta_engine, strategy_name, setting)
         
+        # 确保参数为整数类型
+        if "fast_window" in setting:
+            self.fast_window = int(self.fast_window)
+        if "slow_window" in setting:
+            self.slow_window = int(self.slow_window)
+        
         # 创建K线时间序列管理工具
         self.am = ArrayManager()
     
@@ -90,11 +96,11 @@ class DoubleMaStrategy(CtaTemplate):
         
         # 计算快速均线
         self.fast_ma1 = self.fast_ma0
-        self.fast_ma0 = am.sma(self.fast_window)
+        self.fast_ma0 = am.sma(int(self.fast_window))
         
         # 计算慢速均线
         self.slow_ma1 = self.slow_ma0
-        self.slow_ma0 = am.sma(self.slow_window)
+        self.slow_ma0 = am.sma(int(self.slow_window))
         
         # 判断是否完成了指标初始化
         if not self.fast_ma1 or not self.slow_ma1:

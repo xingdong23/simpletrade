@@ -137,10 +137,26 @@ class BacktestService:
             engine = BacktestEngineFactory.create_engine(strategy_type)
             
             # 合并默认参数和用户传入的参数
-            final_params = {**default_params}
+            final_params = {}
+            # 检查默认参数格式，如果是字典嵌套格式则提取默认值
+            for key, value in default_params.items():
+                if isinstance(value, dict) and "default" in value:
+                    final_params[key] = value["default"]
+                else:
+                    final_params[key] = value
+                    
+            # 更新用户传入的参数
             if parameters:
                 final_params.update(parameters)
                 
+            # 确保数值参数都是正确的类型
+            for key, value in final_params.items():
+                if isinstance(value, str) and value.isdigit():
+                    if "." in value:  # 浮点数
+                        final_params[key] = float(value)
+                    else:  # 整数
+                        final_params[key] = int(value)
+            
             # 设置回测引擎参数
             interval_obj = _get_vnpy_interval(interval)
             if not interval_obj:
@@ -162,7 +178,7 @@ class BacktestService:
                 rate=float(rate),
                 slippage=float(slippage),
                 size=float(default_params.get("size", 1.0)),
-                pricetick=float(default_params.get("pricetick", 0.0)),
+                pricetick=float(default_params.get("pricetick", 0.01)),
                 capital=float(initial_capital),
                 mode=BacktestingMode.BAR
             )

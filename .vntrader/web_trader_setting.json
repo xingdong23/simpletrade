@@ -1,8 +1,0 @@
-{
-    "username": "admin",
-    "password": "admin",
-    "req_address": "tcp://127.0.0.1:2014",
-    "sub_address": "tcp://127.0.0.1:4102",
-    "host": "127.0.0.1",
-    "port": "8000"
-}
