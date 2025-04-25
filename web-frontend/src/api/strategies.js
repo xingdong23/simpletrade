@@ -63,3 +63,16 @@ export function getStrategyTypes() {
 export function runStrategyBacktest(backtestConfig) {
   return axios.post(`${API_BASE_URL}/strategies/backtest`, backtestConfig);
 }
+
+/**
+ * 创建用户策略
+ * @param {object} userStrategyData 用户策略数据
+ * @param {number} userStrategyData.user_id 用户ID
+ * @param {number} userStrategyData.strategy_id 策略模板ID
+ * @param {string} userStrategyData.name 用户策略名称
+ * @param {object} userStrategyData.parameters 策略参数
+ * @returns {Promise} 包含创建结果的Promise
+ */
+export function createUserStrategy(userStrategyData) {
+  return axios.post(`${API_BASE_URL}/strategies/user/create`, userStrategyData);
+}

@@ -44,7 +44,8 @@ def create_database():
 
 def add_sample_data():
     """添加示例数据"""
-    with get_db() as db:
+    db = next(get_db())  # 获取数据库会话
+    try:
         # 添加交易品种
         symbols = [
             Symbol(symbol="AAPL", exchange="SMART", name="Apple Inc.", category="Stock"),
@@ -155,7 +156,10 @@ def add_sample_data():
         ]
         db.add_all(strategies)
         
+        db.commit()  # 确保提交事务
         print("示例数据添加成功")
+    finally:
+        db.close()  # 确保关闭会话
 
 def main():
     """主函数"""

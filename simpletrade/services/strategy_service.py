@@ -188,7 +188,8 @@ class StrategyService:
             return None
         
         try:
-            with get_db() as db:
+            db = next(get_db())  # 获取数据库会话
+            try:
                 strategy = Strategy(
                     name=name,
                     description=description,
@@ -202,6 +203,8 @@ class StrategyService:
                 db.refresh(strategy)
                 logger.info(f"Strategy {name} created successfully")
                 return strategy
+            finally:
+                db.close()  # 确保会话被关闭
         except Exception as e:
             logger.error(f"Failed to create strategy: {e}")
             return None
@@ -221,7 +224,8 @@ class StrategyService:
             UserStrategy: 创建的用户策略记录，如果失败则返回None
         """
         try:
-            with get_db() as db:
+            db = next(get_db())  # 获取数据库会话
+            try:
                 # 检查策略是否存在
                 strategy = db.query(Strategy).filter(
                     Strategy.id == strategy_id,
@@ -245,6 +249,8 @@ class StrategyService:
                 db.refresh(user_strategy)
                 logger.info(f"User strategy {name} created successfully")
                 return user_strategy
+            finally:
+                db.close()  # 确保会话被关闭
         except Exception as e:
             logger.error(f"Failed to create user strategy: {e}")
             return None
@@ -263,7 +269,8 @@ class StrategyService:
             UserStrategy: 更新后的用户策略记录，如果失败则返回None
         """
         try:
-            with get_db() as db:
+            db = next(get_db())  # 获取数据库会话
+            try:
                 user_strategy = db.query(UserStrategy).filter(
                     UserStrategy.id == user_strategy_id,
                     UserStrategy.is_active == True
@@ -279,6 +286,8 @@ class StrategyService:
                 db.refresh(user_strategy)
                 logger.info(f"User strategy {name} updated successfully")
                 return user_strategy
+            finally:
+                db.close()  # 确保会话被关闭
         except Exception as e:
             logger.error(f"Failed to update user strategy: {e}")
             return None
@@ -294,7 +303,8 @@ class StrategyService:
             bool: 是否删除成功
         """
         try:
-            with get_db() as db:
+            db = next(get_db())  # 获取数据库会话
+            try:
                 user_strategy = db.query(UserStrategy).filter(
                     UserStrategy.id == user_strategy_id,
                     UserStrategy.is_active == True
@@ -308,6 +318,8 @@ class StrategyService:
                 db.commit()
                 logger.info(f"User strategy {user_strategy_id} deleted successfully")
                 return True
+            finally:
+                db.close()  # 确保会话被关闭
         except Exception as e:
             logger.error(f"Failed to delete user strategy: {e}")
             return False

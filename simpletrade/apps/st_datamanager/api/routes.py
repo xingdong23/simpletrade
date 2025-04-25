@@ -130,7 +130,8 @@ async def get_symbols():
         from simpletrade.config.database import get_db
         from simpletrade.models.database import Symbol
 
-        with get_db() as db:
+        db = next(get_db())  # 获取数据库会话
+        try:
             db_symbols = db.query(Symbol).filter(Symbol.is_active == True).all()
 
             # 如果数据库中没有数据，返回测试数据
@@ -153,6 +154,8 @@ async def get_symbols():
                         "category": s.category
                     } for s in db_symbols
                 ]
+        finally:
+            db.close()  # 确保关闭会话
 
         return {
             "success": True,

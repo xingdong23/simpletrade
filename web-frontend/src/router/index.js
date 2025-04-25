@@ -21,6 +21,12 @@ const routes = [
     props: true
   },
   {
+    path: '/create-from-template/:templateId',
+    name: 'CreateFromTemplate',
+    component: () => import(/* webpackChunkName: "create-template" */ '../views/CreateFromTemplateView.vue'),
+    props: true
+  },
+  {
     path: '/trading-center',
     name: 'tradingCenter',
     component: () => import(/* webpackChunkName: "trading" */ '../views/TradingCenterView.vue')

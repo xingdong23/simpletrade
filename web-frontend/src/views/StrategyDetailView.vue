@@ -99,12 +99,11 @@ export default {
       if (!this.strategy || !this.strategy.parameters || typeof this.strategy.parameters !== 'object') {
         return [];
       }
-      // 改造一下，确保即使后端没提供 details，也能显示默认值
-      return Object.entries(this.strategy.parameters).map(([name, defaultValue]) => ({
+      // 修正从参数对象获取默认值的方式
+      return Object.entries(this.strategy.parameters).map(([name, paramData]) => ({
         name,
-        default: defaultValue,
-        // 尝试从 strategy.class_details 获取描述 (如果后端返回了)
-        description: this.strategy.class_details?.parameters?.[name]?.description || ''
+        default: paramData.default,  // 正确获取default属性值而不是整个对象
+        description: paramData.description || ''  // 直接从参数对象获取描述
       }));
     }
   },
@@ -149,14 +148,11 @@ export default {
     // (可选) 处理"使用模板"按钮点击
     handleUseTemplate() {
         if (!this.strategy) return;
-        // TODO: 实现跳转到创建"我的策略"页面的逻辑
-        // 可能需要将 strategy.id, strategy.name, strategy.parameters 等信息带过去
-        this.$message.info(`功能待开发：使用模板 ${this.strategy.name} (ID: ${this.strategy.id}) 创建我的策略`);
-        // 示例跳转 (假设有这样一个路由):
-        // this.$router.push({ 
-        //     name: 'CreateMyStrategy', 
-        //     query: { templateId: this.strategy.id } 
-        // });
+        // 跳转到"创建我的策略"页面，并传递模板ID
+        this.$router.push({ 
+            name: 'CreateFromTemplate', 
+            params: { templateId: this.strategy.id } 
+        });
     }
   },
   created() {

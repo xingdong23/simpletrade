@@ -289,11 +289,27 @@ async def create_user_strategy(request: CreateUserStrategyRequest, strategy_serv
             name=request.name, 
             parameters=request.parameters
         )
+        
+        if not user_strategy:
+            raise HTTPException(status_code=400, detail="创建用户策略失败")
+        
+        # 将UserStrategy对象转换为可序列化的字典
+        user_strategy_dict = {
+            "id": user_strategy.id,
+            "user_id": user_strategy.user_id,
+            "strategy_id": user_strategy.strategy_id,
+            "name": user_strategy.name,
+            "parameters": user_strategy.parameters,
+            "created_at": user_strategy.created_at.isoformat() if user_strategy.created_at else None,
+            "updated_at": user_strategy.updated_at.isoformat() if user_strategy.updated_at else None,
+            "is_active": user_strategy.is_active
+        }
+        
         # 返回创建成功的对象信息
         return {
             "success": True, 
             "message": "用户策略创建成功", 
-            "data": user_strategy # 假设服务层返回了包含ID的对象
+            "data": user_strategy_dict # 返回字典而不是对象
         }
     except ValueError as ve:
         # 捕获服务层可能抛出的特定错误 (例如，策略ID不存在)
