@@ -13,7 +13,7 @@ from vnpy.trader.constant import Interval, Exchange
 from vnpy_ctastrategy.backtesting import BacktestingEngine as CTABacktestingEngine
 from vnpy_ctastrategy.backtesting import BacktestingMode
 
-from simpletrade.core.base_engine import STBaseEngine
+from simpletrade.core.app import STBaseEngine
 
 # 尝试导入其他策略类型的回测引擎
 try:
@@ -238,9 +238,9 @@ class BacktestEngineFactory:
 class STBacktestEngine(STBaseEngine):
     """SimpleTrade回测引擎"""
     
-    def __init__(self, main_engine=None, event_engine=None):
+    def __init__(self, main_engine=None, event_engine=None, app_name=None):
         """初始化回测引擎"""
-        super().__init__(main_engine, event_engine)
+        super().__init__(main_engine, event_engine, app_name)
         self.factory = BacktestEngineFactory()
         
     def create_backtest_engine(self, strategy_type: str) -> AbstractBacktestEngine:
