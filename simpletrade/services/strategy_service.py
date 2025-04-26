@@ -7,6 +7,7 @@
 import logging
 from typing import Dict, List, Optional, Any, Union
 from sqlalchemy.orm import Session, joinedload
+from pathlib import Path
 
 from simpletrade.core.engine import STMainEngine
 from simpletrade.api.deps import get_db
@@ -93,6 +94,47 @@ class StrategyService:
         else:
             logger.info(f"StrategyService.get_strategy: Strategy ID {strategy_id} not found in DB.")
         return strategy
+    
+    def load_strategy_code(self, strategy: Strategy) -> Optional[str]:
+        """
+        从文件加载策略代码
+        
+        参数:
+            strategy (Strategy): 策略记录
+            
+        返回:
+            Optional[str]: 策略代码，如果无法加载则返回None
+        """
+        if not strategy:
+            return None
+            
+        strategy_code = None
+        file_path_str = ""
+        
+        if hasattr(strategy, 'identifier') and strategy.identifier:
+            try:
+                # 找到策略目录
+                current_file_path = Path(__file__).resolve()  # 服务文件的绝对路径
+                # simpletrade/services/strategy_service.py -> simpletrade/services/ -> simpletrade/
+                simpletrade_root = current_file_path.parent.parent
+                strategies_dir = simpletrade_root / "strategies"
+                
+                file_path = strategies_dir / f"{strategy.identifier}.py"
+                file_path_str = str(file_path)
+
+                if file_path.is_file():
+                    strategy_code = file_path.read_text(encoding='utf-8')
+                    logger.info(f"成功加载策略代码文件: {file_path_str}")
+                else:
+                    logger.warning(f"策略代码文件未找到: {file_path_str}")
+            except FileNotFoundError:
+                logger.warning(f"策略代码文件未找到 (FileNotFoundError): {file_path_str}")
+            except Exception as e:
+                logger.error(f"读取策略代码文件失败 ({file_path_str}): {e}")
+        else:
+            logger.warning(f"策略 {strategy.id} ({strategy.name}) 没有有效的 identifier 字段，无法加载代码。")
+            
+        return strategy_code
     
     def get_user_strategies(self, db: Session, user_id: int) -> List[Dict[str, Any]]:
         """
