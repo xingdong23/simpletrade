@@ -596,27 +596,50 @@ class MyStrategy(CtaTemplate):
            <el-row :gutter="20">
                <el-col :span="12">
                    <el-form-item label="合约代码" required>
-                       <el-input v-model="backtestConfig.symbol" placeholder="例如 rb2410"></el-input>
+                       <el-select 
+                         v-model="backtestConfig.symbol" 
+                         filterable 
+                         placeholder="选择合约代码"
+                         @change="onSymbolChange">
+                           <el-option
+                             v-for="symbol in availableSymbols"
+                             :key="symbol"
+                             :label="symbol"
+                             :value="symbol">
+                           </el-option>
+                       </el-select>
                    </el-form-item>
                </el-col>
                <el-col :span="12">
                     <el-form-item label="交易所" required>
-                       <el-input v-model="backtestConfig.exchange" placeholder="例如 SHFE"></el-input>
+                       <el-select 
+                         v-model="backtestConfig.exchange" 
+                         filterable 
+                         placeholder="选择交易所"
+                         @change="onExchangeChange">
+                           <el-option
+                             v-for="exchange in availableExchanges"
+                             :key="exchange"
+                             :label="exchange"
+                             :value="exchange">
+                           </el-option>
+                       </el-select>
                    </el-form-item>
                </el-col>
            </el-row>
            <el-row :gutter="20">
                 <el-col :span="12">
                    <el-form-item label="K线周期" required>
-                       <el-select v-model="backtestConfig.interval" placeholder="选择周期">
-                           <el-option label="1分钟" value="1m"></el-option>
-                           <el-option label="5分钟" value="5m"></el-option>
-                           <el-option label="15分钟" value="15m"></el-option>
-                           <el-option label="30分钟" value="30m"></el-option>
-                           <el-option label="1小时" value="1h"></el-option>
-                           <el-option label="4小时" value="4h"></el-option>
-                           <el-option label="日线" value="d"></el-option>
-                           <el-option label="周线" value="w"></el-option>
+                       <el-select 
+                         v-model="backtestConfig.interval" 
+                         placeholder="选择周期"
+                         @change="onIntervalChange">
+                           <el-option
+                             v-for="interval in availableIntervals"
+                             :key="interval"
+                             :label="getIntervalLabel(interval)"
+                             :value="interval">
+                           </el-option>
                        </el-select>
                    </el-form-item>
                 </el-col>
@@ -688,6 +711,7 @@ class MyStrategy(CtaTemplate):
 <script>
 // 导入 API 函数 - 需要添加 runStrategyBacktest
 import { getStrategies, getUserStrategies, getStrategyTypes, runStrategyBacktest } from '@/api/strategies'; 
+import { getAvailableSymbols, getAvailableExchanges, getAvailableIntervals, getBarData } from '@/api/data';
 import dayjs from 'dayjs'; // 引入 dayjs 用于日期处理
 
 export default {
@@ -755,7 +779,11 @@ export default {
         bestParams: {},
         paramSets: []
       },
-      liveTradeRecords: []
+      liveTradeRecords: [],
+      // --- Add new data properties for the new backtest dialog ---
+      availableSymbols: [],
+      availableExchanges: [],
+      availableIntervals: ['1m', '5m', '15m', '30m', '1h', '4h', 'd', 'w']
     };
   },
   computed: {
@@ -777,7 +805,6 @@ export default {
     // --- Restore missing methods ---
     handleTabClick(tab) {
         console.log("Tab clicked:", tab.name);
-        // Logic to potentially load data based on tab can be added here if needed later
     },
     filterBasicStrategies() {
         if (this.selectedBasicType === 'all') {
@@ -874,25 +901,30 @@ export default {
         this.optimizeResult.hasResult = false; 
     },
     handleBacktest(row) {
-      // ... (handleBacktest logic remains the same) ...
-        this.currentBacktestStrategy = row; 
-        const endDate = dayjs().format('YYYY-MM-DD');
-        const startDate = dayjs().subtract(3, 'month').format('YYYY-MM-DD');
-        this.backtestConfig = {
-          symbol: '',
-          exchange: '',
-          interval: 'd',
-          start_date: startDate,
-          end_date: endDate,
-          initial_capital: 100000,
-          rate: 0.0001,
-          slippage: 0.2,
-          parameters_json: '',
-          parameters: null
-        };
-        this.backtestResultDisplay = { hasResult: false, record_id: null, statistics: {} }; 
-        this.backtestDialogVisible = true; 
-        this.backtestDialogLoading = false;
+      this.currentBacktestStrategy = row;
+      const defaultParams = row.parameters || {};
+      
+      this.backtestConfig = {
+        strategy_id: row.id,
+        symbol: '',
+        exchange: '',
+        interval: 'd',
+        start_date: dayjs().subtract(3, 'month').format('YYYY-MM-DD'),
+        end_date: dayjs().format('YYYY-MM-DD'),
+        initial_capital: 100000,
+        rate: 0.0001,
+        slippage: 0.2,
+        parameters_json: '',
+        parameters: null,
+        user_id: this.currentUserId
+      };
+      
+      this.backtestResultDisplay = { hasResult: false, record_id: null, statistics: {} };
+      this.backtestDialogVisible = true;
+      this.backtestDialogLoading = false;
+      
+      // 加载可用的交易所列表
+      this.loadAvailableExchanges();
     },
     handleOptimize(row) {
       // ... (handleOptimize logic remains the same) ...
@@ -934,181 +966,137 @@ export default {
       });
     },
     async runBacktest() {
-      // ... (runBacktest logic remains the same - the refactored one) ...
-        if (!this.currentBacktestStrategy) {
-          this.$message.error('未指定要回测的策略');
-          return;
-        }
-        if (!this.backtestConfig.symbol || !this.backtestConfig.exchange) {
-            this.$message.error('请输入合约代码和交易所');
-            return;
-        }
-        if (!this.backtestConfig.start_date || !this.backtestConfig.end_date) {
-            this.$message.error('请选择回测起始和结束日期');
-            return;
-        }
-        if (dayjs(this.backtestConfig.end_date).isBefore(dayjs(this.backtestConfig.start_date))) {
-             this.$message.error('结束日期不能早于起始日期');
-            return;
-        }
-        let userParams = null;
-        if (this.backtestConfig.parameters_json.trim()) {
-          try {
-            userParams = JSON.parse(this.backtestConfig.parameters_json);
-            if (typeof userParams !== 'object' || userParams === null) {
-               throw new Error('自定义参数必须是 JSON 对象');
-            }
-            this.backtestConfig.parameters = userParams; 
-          } catch (e) {
-            this.$message.error(`自定义参数 JSON 格式错误: ${e.message}`);
-            return;
-          }
-        } else {
-            this.backtestConfig.parameters = null; 
-        }
-        const payload = {
-          strategy_id: this.currentBacktestStrategy.id, 
-          user_id: this.currentUserId, 
-          symbol: this.backtestConfig.symbol,
-          exchange: this.backtestConfig.exchange,
-          interval: this.backtestConfig.interval,
-          start_date: this.backtestConfig.start_date,
-          end_date: this.backtestConfig.end_date,
-          initial_capital: this.backtestConfig.initial_capital,
-          rate: this.backtestConfig.rate,
-          slippage: this.backtestConfig.slippage,
-          parameters: this.backtestConfig.parameters 
-        };
-        this.backtestDialogLoading = true;
-        this.backtestResultDisplay = { hasResult: false, record_id: null, statistics: {} }; 
-        try {
-          console.log("Sending backtest request:", payload);
-          const response = await runStrategyBacktest(payload); 
-          console.log("Backtest response:", response);
-          if (response.data && response.data.success) {
-            this.$message.success('回测成功');
-            this.backtestResultDisplay.hasResult = true;
-            this.backtestResultDisplay.record_id = response.data.data.record_id;
-            this.backtestResultDisplay.statistics = response.data.data.statistics || {};
-          } else {
-            this.$message.error(`回测失败: ${response.data.message || '未知错误'}`);
-          }
-        } catch (err) {
-          console.error('运行回测时出错:', err);
-          const errorMsg = (err.response && err.response.data && err.response.data.detail) 
-                             || (err.response && err.response.data && err.response.data.message)
-                             || err.message
-                             || '网络错误或服务器内部错误';
-          this.$message.error(`回测请求失败: ${errorMsg}`);
-        } finally {
-          this.backtestDialogLoading = false;
-        }
-    },
-    formatPercent(value) {
-      // ... (formatPercent logic remains the same) ...
-       if (value === null || value === undefined || isNaN(value)) return '-';
-       return (value * 100).toFixed(2) + '%';
-    },
-    formatNumber(value, precision = 2) {
-      // ... (formatNumber logic remains the same) ...
-       if (value === null || value === undefined || isNaN(value)) return '-';
-       return Number(value).toFixed(precision);
-    },
-    getPerfClass(value) {
-      // ... (getPerfClass logic remains the same) ...
-       if (value === null || value === undefined || isNaN(value)) return '';
-       return value >= 0 ? 'positive' : 'negative';
-    },
-    deployToLive() {
-      // ... (deployToLive logic remains the same) ...
-       this.$confirm('确定要将策略部署到实盘吗？', '提示', {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning'
-      }).then(() => {
-        this.$message({
-          type: 'info',
-          message: '正在部署策略...'
-        });
-        setTimeout(() => {
-          if (this.currentStrategy) {
-            this.currentStrategy.status = '运行中';
-            const strategy = this.myStrategiesList.find(s => s.name === this.currentStrategy.name); 
-            if (strategy) {
-              strategy.status = '运行中';
-            }
-            this.detailActiveTab = 'live';
-            this.liveTradeRecords = [
-              { date: '2023-10-25 09:30:15', type: '买入', price: '156.50', quantity: '100', amount: '15,650.00', status: '已成交' },
-              { date: '2023-10-25 10:15:30', type: '卖出', price: '157.25', quantity: '50', amount: '7,862.50', status: '已成交' },
-              { date: '2023-10-25 14:20:45', type: '买入', price: '155.75', quantity: '50', amount: '7,787.50', status: '已成交' }
-            ];
-            this.$message({
-              type: 'success',
-              message: `策略 ${this.currentStrategy.name} 已成功部署到实盘`
-            });
-          }
-        }, 1500);
-      }).catch(() => {});
-    },
-    runOptimization() {
-     // ... (runOptimization logic remains the same) ...
-       if (!this.optimizeParams.parameters.length) {
-        this.$message({
-          type: 'warning',
-          message: '请选择要优化的参数'
-        });
+      if (!this.backtestConfig.symbol || !this.backtestConfig.exchange || !this.backtestConfig.interval) {
+        this.$message.error('请完整填写回测参数');
         return;
       }
-      this.$message({
-        type: 'info',
-        message: '正在运行参数优化...'
-      });
-      setTimeout(() => {
-        this.optimizeResult = {
-          hasResult: true,
-          bestParams: {
-            shortPeriod: 3,
-            longPeriod: 15,
-            rsiPeriod: 12,
-            rsiOverbought: 75,
-            rsiOversold: 25
-          },
-          paramSets: [
-            { shortPeriod: 3, longPeriod: 15, rsiPeriod: 12, totalReturn: 32.5, maxDrawdown: 10.2, winRate: 62 },
-            { shortPeriod: 5, longPeriod: 20, rsiPeriod: 14, totalReturn: 28.5, maxDrawdown: 12.3, winRate: 58 },
-            { shortPeriod: 7, longPeriod: 25, rsiPeriod: 16, totalReturn: 25.8, maxDrawdown: 14.5, winRate: 55 },
-            { shortPeriod: 3, longPeriod: 20, rsiPeriod: 14, totalReturn: 30.2, maxDrawdown: 11.5, winRate: 60 },
-            { shortPeriod: 5, longPeriod: 15, rsiPeriod: 12, totalReturn: 29.7, maxDrawdown: 13.1, winRate: 59 }
-          ]
-        };
-        this.$message({
-          type: 'success',
-          message: '参数优化完成'
-        });
-      }, 2000);
-    },
-    applyOptimizedParams() {
-      // ... (applyOptimizedParams logic remains the same) ...
-       Object.assign(this.strategyParams, this.optimizeResult.bestParams);
-      this.$message({
-        type: 'success',
-        message: '已应用最佳参数'
-      });
-      this.detailActiveTab = 'info';
-    },
-    applyParamSet(paramSet) {
-      // ... (applyParamSet logic remains the same) ...
-       Object.keys(paramSet).forEach(key => {
-        if (key !== 'totalReturn' && key !== 'maxDrawdown' && key !== 'winRate') {
-          this.strategyParams[key] = paramSet[key];
+      
+      this.backtestDialogLoading = true;
+      
+      try {
+        // 处理自定义参数
+        if (this.backtestConfig.parameters_json) {
+          try {
+            this.backtestConfig.parameters = JSON.parse(this.backtestConfig.parameters_json);
+          } catch (e) {
+            this.$message.error('自定义参数JSON格式错误');
+            this.backtestDialogLoading = false;
+            return;
+          }
         }
-      });
-      this.$message({
-        type: 'success',
-        message: '已应用选中的参数组合'
-      });
-      this.detailActiveTab = 'info';
+        
+        // 发送回测请求
+        const response = await runStrategyBacktest(this.backtestConfig);
+        
+        if (response.data && response.data.success) {
+          const result = response.data.data;
+          this.backtestResultDisplay = {
+            hasResult: true,
+            record_id: result.id || 'N/A',
+            statistics: result.statistics || {}
+          };
+          this.$message.success('回测运行成功');
+        } else {
+          this.$message.error(response.data.message || '回测失败');
+        }
+      } catch (error) {
+        console.error('运行回测时出错:', error);
+        this.$message.error(error.response?.data?.message || '回测运行失败');
+      } finally {
+        this.backtestDialogLoading = false;
+      }
+    },
+    formatPercent(value) {
+      if (value === undefined || value === null) return 'N/A';
+      return (value * 100).toFixed(2) + '%';
+    },
+    formatNumber(value, precision = 2) {
+      if (value === undefined || value === null) return 'N/A';
+      return Number(value).toFixed(precision);
+    },
+    getPerfClass(value) {
+      if (value === undefined || value === null) return '';
+      return value >= 0 ? 'positive' : 'negative';
+    },
+    // 加载可用交易所列表
+    async loadAvailableExchanges() {
+      try {
+        const response = await getAvailableExchanges();
+        if (response.data && response.data.success) {
+          this.availableExchanges = response.data.data || [];
+        } else {
+          console.error('获取交易所列表失败:', response.data.message);
+          this.$message.warning('无法加载交易所列表，请手动输入');
+        }
+      } catch (error) {
+        console.error('获取交易所列表出错:', error);
+        this.$message.warning('无法加载交易所列表，请手动输入');
+      }
+    },
+    // 加载可用合约列表
+    async loadAvailableSymbols(exchange) {
+      if (!exchange) return;
+      
+      try {
+        const response = await getAvailableSymbols(exchange);
+        if (response.data && response.data.success) {
+          this.availableSymbols = response.data.data || [];
+        } else {
+          console.error('获取合约列表失败:', response.data.message);
+          this.$message.warning('无法加载合约列表，请手动输入');
+        }
+      } catch (error) {
+        console.error('获取合约列表出错:', error);
+        this.$message.warning('无法加载合约列表，请手动输入');
+      }
+    },
+    // 加载可用周期列表
+    async loadAvailableIntervals(exchange, symbol) {
+      if (!exchange || !symbol) return;
+      
+      try {
+        const response = await getAvailableIntervals(symbol, exchange);
+        if (response.data && response.data.success) {
+          this.availableIntervals = response.data.data || ['1m', '5m', '15m', '30m', '1h', '4h', 'd', 'w'];
+        } else {
+          console.error('获取周期列表失败:', response.data.message);
+          // 使用默认周期列表
+          this.availableIntervals = ['1m', '5m', '15m', '30m', '1h', '4h', 'd', 'w'];
+        }
+      } catch (error) {
+        console.error('获取周期列表出错:', error);
+        // 使用默认周期列表
+        this.availableIntervals = ['1m', '5m', '15m', '30m', '1h', '4h', 'd', 'w'];
+      }
+    },
+    // 交易所改变时的处理
+    onExchangeChange(value) {
+      this.backtestConfig.symbol = ''; // 清空合约
+      this.loadAvailableSymbols(value);
+    },
+    // 合约改变时的处理
+    onSymbolChange(value) {
+      if (this.backtestConfig.exchange && value) {
+        this.loadAvailableIntervals(this.backtestConfig.exchange, value);
+      }
+    },
+    // 周期改变时的处理
+    onIntervalChange(value) {
+      // 可以在这里添加周期相关的逻辑，比如根据周期调整起止时间等
+    },
+    // 获取周期显示文本
+    getIntervalLabel(interval) {
+      const labelMap = {
+        '1m': '1分钟',
+        '5m': '5分钟',
+        '15m': '15分钟',
+        '30m': '30分钟',
+        '1h': '1小时',
+        '4h': '4小时',
+        'd': '日线',
+        'w': '周线'
+      };
+      return labelMap[interval] || interval;
     }
   }
 }

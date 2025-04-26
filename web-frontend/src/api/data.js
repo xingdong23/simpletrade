@@ -56,3 +56,52 @@ export function exportData(data) {
 export function deleteData(symbol, exchange, interval) {
   return axios.delete(`${API_BASE_URL}/data/bars?symbol=${symbol}&exchange=${exchange}&interval=${interval}`)
 }
+
+/**
+ * 获取可用的合约代码列表
+ * @param {string} exchange 可选，指定交易所筛选
+ * @param {string} interval 可选，指定周期筛选
+ */
+export function getAvailableSymbols(exchange, interval) {
+  let url = `${API_BASE_URL}/data/available-symbols`
+  const params = {}
+  if (exchange) params.exchange = exchange
+  if (interval) params.interval = interval
+  
+  return axios.get(url, { params })
+}
+
+/**
+ * 获取可用的交易所列表
+ * @param {string} symbol 可选，指定合约代码筛选
+ * @param {string} interval 可选，指定周期筛选
+ */
+export function getAvailableExchanges(symbol, interval) {
+  let url = `${API_BASE_URL}/data/available-exchanges`
+  const params = {}
+  if (symbol) params.symbol = symbol
+  if (interval) params.interval = interval
+  
+  return axios.get(url, { params })
+}
+
+/**
+ * 获取可用的K线周期列表
+ * @param {string} symbol 可选，指定合约代码筛选
+ * @param {string} exchange 可选，指定交易所筛选
+ */
+export function getAvailableIntervals(symbol, exchange) {
+  let url = `${API_BASE_URL}/data/available-intervals`
+  const params = {}
+  if (symbol) params.symbol = symbol
+  if (exchange) params.exchange = exchange
+  
+  return axios.get(url, { params })
+}
+
+/**
+ * 获取所有可用数据记录
+ */
+export function getAvailableData() {
+  return axios.get(`${API_BASE_URL}/data/available-data`)
+}
