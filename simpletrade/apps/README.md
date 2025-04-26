@@ -142,9 +142,10 @@ main_engine.add_app(STDataManagerApp)
 
 ```python
 # 测试 API
-from simpletrade.api.server import create_server
-api_server = create_server(main_engine, event_engine)
-api_server.start()
+from simpletrade.core.server import app, configure_server
+configure_server(main_engine, event_engine)
+import uvicorn
+uvicorn.run(app, host="0.0.0.0", port=8000)
 
 # 测试消息指令
 message_engine = main_engine.get_engine("st_message")
@@ -176,7 +177,7 @@ run_interactive_test(message_engine)
 
 ### 集成关系
 
-在 `simpletrade/api/server.py` 中，会导入并注册 st_datamanager 的 API 路由：
+在 `simpletrade/core/server.py` 中，会导入并注册 st_datamanager 的 API 路由：
 
 ```python
 from simpletrade.apps.st_datamanager.api import router as data_router

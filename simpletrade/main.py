@@ -106,7 +106,7 @@ def start_api_server(main_engine, event_engine):
 
     try:
         # 导入API相关模块
-        from simpletrade.api.server import app as fastapi_app, configure_server
+        from simpletrade.core.server import app as fastapi_app, configure_server
         
         # 配置API服务器
         if main_engine and event_engine and fastapi_app and configure_server:

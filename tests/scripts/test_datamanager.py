@@ -32,14 +32,16 @@ def test_api():
     main_engine.add_app(STDataManagerApp)
 
     # 启动API服务
-    from simpletrade.api.server import create_server
-    api_server = create_server(main_engine, event_engine)
-
-    # 打印API地址
+    from simpletrade.core.server import app, configure_server
+    configure_server(main_engine, event_engine)
+    
+    # 需要使用uvicorn手动启动服务
+    import uvicorn
+    print("API服务已配置，启动uvicorn...")
     print("API服务已启动，访问 http://localhost:8000/docs 查看API文档")
-
+    
     # 启动服务
-    api_server.start()
+    uvicorn.run(app, host="0.0.0.0", port=8000)
 
 def test_message():
     """测试消息指令功能"""

@@ -20,7 +20,7 @@ import asyncio
 
 # 导入将在 simpletrade 包中定义的应用和配置函数
 from simpletrade.services.data_sync_service import run_initial_data_sync
-from simpletrade.api.server import configure_server # 导入 API 配置函数
+from simpletrade.core.server import configure_server # 导入服务器配置函数
 # +++ 导入新的核心初始化函数 +++
 from simpletrade.core.initialization import initialize_core_components
 
@@ -109,9 +109,9 @@ if __name__ == "__main__":
 
     logging.info(f"Running Uvicorn on {host}:{port}")
 
-    # 重点：现在指向 simpletrade.api.server 中的 app 实例
+    # 更新指向core.server中的app实例
     uvicorn.run(
-        "simpletrade.api.server:app", # 指向 server.py 中的 app
+        "simpletrade.core.server:app", # 指向 core/server.py 中的 app
         host=host,
         port=port,
         log_level=log_level,
