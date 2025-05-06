@@ -12,7 +12,7 @@ from simpletrade.models.database import DataImportLog
 from simpletrade.api.schemas.common import ApiResponse
 
 router = APIRouter(
-    prefix="/data",
+    prefix="/api/data",
     tags=["data"],
 )
 
