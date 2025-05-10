@@ -1,21 +1,21 @@
 <template>
-  <div class="backtest-page-container el-main">
-    <el-card class="box-card">
-      <div slot="header" class="clearfix">
-        <!-- 策略名称将在这里动态显示 -->
-        <h2>策略回测配置: {{ currentBacktestStrategy ? currentBacktestStrategy.name : '通用回测' }}</h2>
-      </div>
+  <div class="backtest-page-container">
+    <div class="page-header">
+      <h1 class="page-title">策略回测配置</h1>
+      <div class="strategy-name" v-if="currentBacktestStrategy">{{ currentBacktestStrategy.name }}</div>
+    </div>
+    <div class="main-content">
       <el-form :model="backtestConfig" :inline="false" label-width="120px" ref="backtestForm">
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="合约代码" prop="symbol" :rules="[{ required: true, message: '请输入合约代码', trigger: 'change' }]">
-              <el-select 
+              <el-select
                 v-model="backtestConfig.symbol"
                 filterable
                 remote
                 reserve-keyword
                 placeholder="请输入合约代码搜索，如 IF2401"
-                :remote-method="remoteMethodSymbolSearch" 
+                :remote-method="remoteMethodSymbolSearch"
                 :loading="symbolLoading"
                 @change="onSymbolChange"
                 style="width: 100%;"
@@ -69,7 +69,7 @@
             </el-form-item>
           </el-col>
         </el-row>
-        
+
         <!-- 数据范围提示将在这里添加 -->
         <el-row :gutter="20" v-if="dataRange.message || (dataRange.startDate && dataRange.endDate)" style="margin-bottom: 10px;">
             <el-col :span="24">
@@ -92,23 +92,22 @@
 
         <el-divider content-position="left">策略参数</el-divider>
         <div v-if="currentBacktestStrategy && currentBacktestStrategy.parameters">
-          <h4>策略参数：</h4>
           <el-row :gutter="20">
             <el-col :span="12" v-for="(paramDetails, paramName) in currentBacktestStrategy.parameters" :key="paramName">
               <el-form-item :label="paramDetails.description || paramName" :prop="'parameters.' + paramName">
-                <el-input-number v-if="paramDetails.type === 'int' || paramDetails.type === 'float'" 
-                                v-model.number="backtestConfig.parameters[paramName]" 
+                <el-input-number v-if="paramDetails.type === 'int' || paramDetails.type === 'float'"
+                                v-model.number="backtestConfig.parameters[paramName]"
                                 :step="paramDetails.type === 'float' ? 0.01 : 1"
                                 style="width: 100%;">
                 </el-input-number>
-                <el-select v-else-if="paramDetails.type === 'enum' && paramDetails.enum_values" 
-                           v-model="backtestConfig.parameters[paramName]" 
+                <el-select v-else-if="paramDetails.type === 'enum' && paramDetails.enum_values"
+                           v-model="backtestConfig.parameters[paramName]"
                            placeholder="请选择"
                            style="width: 100%;">
                   <el-option v-for="enumValue in paramDetails.enum_values" :key="enumValue" :label="enumValue" :value="enumValue"></el-option>
                 </el-select>
-                <el-input v-else 
-                          v-model="backtestConfig.parameters[paramName]" 
+                <el-input v-else
+                          v-model="backtestConfig.parameters[paramName]"
                           style="width: 100%;">
                 </el-input>
               </el-form-item>
@@ -135,23 +134,20 @@
           </el-col>
         </el-row>
 
-        <el-form-item style="text-align: center; margin-top: 30px;">
-          <el-button type="primary" @click="submitForm('backtestForm')" :loading="submitting">开始回测</el-button>
-          <el-button @click="resetForm('backtestForm')">重置参数</el-button>
-        </el-form-item>
+        <div class="form-actions">
+          <el-button type="primary" @click="submitForm('backtestForm')" :loading="submitting" icon="el-icon-video-play" size="medium">开始回测</el-button>
+          <el-button @click="resetForm('backtestForm')" icon="el-icon-refresh" size="medium">重置参数</el-button>
+        </div>
       </el-form>
-    </el-card>
-
-    <!-- 回测结果展示区域将放在这里 -->
-
+    </div>
   </div>
 </template>
 
 <script>
 // 假设API函数在@/api/strategies中定义
-import { 
+import {
     getStrategyDetail, // Corrected: Was getStrategy
-    runStrategyBacktest, 
+    runStrategyBacktest,
     getAvailableExchanges,
     getAvailableSymbols,
     getAvailableIntervals,
@@ -274,16 +270,16 @@ export default {
           if (response.success) {
             // 如果API返回的数据已经按query过滤，则直接使用
             // 否则，如果API返回所有，则前端过滤 (如下面的allSymbolsCache逻辑)
-            this.allSymbolsCache = response.data.map(s => ({ 
-                label: `${s.name} (${s.symbol}) - ${s.exchange.toUpperCase()}`, 
-                value: s.symbol, 
+            this.allSymbolsCache = response.data.map(s => ({
+                label: `${s.name} (${s.symbol}) - ${s.exchange.toUpperCase()}`,
+                value: s.symbol,
                 exchange: s.exchange // 保留交易所信息用于可能的自动填充或过滤
             }));
-            
+
             // 前端基于query再次过滤 (如果API没有完全按query返回)
             // 或者，如果API直接返回过滤后的，就不需要下面这步
-            this.availableSymbols = this.allSymbolsCache.filter(s => 
-                s.label.toLowerCase().includes(query.toLowerCase()) || 
+            this.availableSymbols = this.allSymbolsCache.filter(s =>
+                s.label.toLowerCase().includes(query.toLowerCase()) ||
                 s.value.toLowerCase().includes(query.toLowerCase())
             ).slice(0, 100); // 限制下拉列表数量
 
@@ -369,31 +365,31 @@ export default {
 
             const serverResponse = axiosResponse.data; // Key: actual server JSON payload
 
-            if (serverResponse && serverResponse.success === true && serverResponse.data && 
+            if (serverResponse && serverResponse.success === true && serverResponse.data &&
                 typeof serverResponse.data.start_date === 'string' && serverResponse.data.start_date.trim() !== '' &&
                 typeof serverResponse.data.end_date === 'string' && serverResponse.data.end_date.trim() !== '') {
-                
+
                 this.dataRange.startDate = serverResponse.data.start_date;
-                this.dataRange.endDate = serverResponse.data.end_date;     
+                this.dataRange.endDate = serverResponse.data.end_date;
                 this.dataRange.count = serverResponse.data.count;
                 this.dataRange.message = ''; // Clear warning message, hides the alert
 
                 // Update form model, which should update date pickers
                 this.backtestConfig.start_date = serverResponse.data.start_date;
                 this.backtestConfig.end_date = serverResponse.data.end_date;
-                
+
                 // console.log('Successfully processed data range. Dates set in backtestConfig to:', this.backtestConfig.start_date, 'to', this.backtestConfig.end_date);
             } else {
                 this.dataRange.startDate = null;
                 this.dataRange.endDate = null;
                 this.dataRange.count = 0;
-                let errMsg = '未能获取该合约的数据范围。'; 
+                let errMsg = '未能获取该合约的数据范围。';
 
-                if (serverResponse && serverResponse.message) { 
+                if (serverResponse && serverResponse.message) {
                     errMsg = serverResponse.message; // Use message from server if available
                 } else if (axiosResponse && axiosResponse.status && axiosResponse.status !== 200) {
                     errMsg = `请求数据范围失败，状态码: ${axiosResponse.status}`;
-                } else if (axiosResponse && !serverResponse && axiosResponse.status === 200) { 
+                } else if (axiosResponse && !serverResponse && axiosResponse.status === 200) {
                      errMsg = '请求数据范围成功，但服务器未返回有效或可解析的数据。';
                 } else if (serverResponse && serverResponse.success === true && serverResponse.data) {
                     if (!serverResponse.data.start_date || typeof serverResponse.data.start_date !== 'string' || serverResponse.data.start_date.trim() === '') {
@@ -433,9 +429,9 @@ export default {
         this.submitting = true; // 使用 submitting 状态
         const response = await getStrategyDetail(strategyId);
 
-        if (response.data && response.data.success && response.data.data) { 
+        if (response.data && response.data.success && response.data.data) {
           this.currentBacktestStrategy = response.data.data; // 存储完整策略对象
-          
+
           if (!isParameterReset) { // 首次加载或非参数重置
             this.backtestConfig.strategy_id = response.data.data.id;
             this.backtestConfig.strategy_name = response.data.data.name;
@@ -444,7 +440,7 @@ export default {
             // this.backtestConfig.exchange = response.data.default_exchange || '';
             // this.backtestConfig.interval = response.data.default_interval || '';
           }
-          
+
           // 总是（重新）加载策略的默认参数
           const newParameters = {};
           if (response.data.data.parameters) {
@@ -452,8 +448,8 @@ export default {
               newParameters[paramName] = response.data.data.parameters[paramName].default;
             }
           }
-          this.backtestConfig.parameters = newParameters; 
-          
+          this.backtestConfig.parameters = newParameters;
+
           // 如果加载了策略，可能需要重新获取数据范围
           // 但这通常由 symbol/exchange/interval 的 watcher 触发
           // 如果策略有默认的symbol/exchange/interval，则会自动触发
@@ -505,7 +501,7 @@ export default {
             if (serverResponse.success && serverResponse.data && serverResponse.data.success) {
               this.$message.success(serverResponse.message || '回测任务已启动！');
               const recordId = serverResponse.data.record_id;
-              
+
               if (recordId) {
                 this.$router.push({ name: 'BacktestReport', params: { backtest_id: recordId } }); // Changed 'id' to 'backtest_id'
               } else {
@@ -545,7 +541,7 @@ export default {
     },
     resetForm(formName, triggeredByButton = true) {
       this.dataRange = { startDate: null, endDate: null, count: 0, message: '' };
-      if (this.currentBacktestStrategy && triggeredByButton) { 
+      if (this.currentBacktestStrategy && triggeredByButton) {
           // 如果有策略上下文，并且是用户点击重置按钮，则重载策略的默认参数
           this.loadStrategyDetails(this.currentBacktestStrategy.id, true);
           // 保留 symbol, exchange, interval 等，只重置参数和日期等
@@ -562,7 +558,7 @@ export default {
           this.$refs[formName].clearValidate();
       } else {
           // 无策略上下文，或非按钮触发的重置 (例如从有策略切换到无策略时)
-          if (this.$refs[formName]) this.$refs[formName].resetFields(); 
+          if (this.$refs[formName]) this.$refs[formName].resetFields();
 
           // 手动重置非prop绑定的字段，以及resetFields可能未覆盖的
           const today = new Date();
@@ -573,9 +569,9 @@ export default {
           this.backtestConfig.rate = 0.0001;
           this.backtestConfig.slippage = 0;
           this.backtestConfig.mode = 'bar';
-          this.backtestConfig.strategy_id = null; 
-          this.backtestConfig.strategy_name = ''; 
-          this.backtestConfig.parameters = {}; 
+          this.backtestConfig.strategy_id = null;
+          this.backtestConfig.strategy_name = '';
+          this.backtestConfig.parameters = {};
       }
     },
     async loadAvailableIntervals() {
@@ -583,14 +579,14 @@ export default {
         const params = {};
         if (this.backtestConfig.exchange) params.exchange = this.backtestConfig.exchange;
         if (this.backtestConfig.symbol) params.symbol = this.backtestConfig.symbol;
-        
-        const axiosResponse = await getAvailableIntervals(params); 
+
+        const axiosResponse = await getAvailableIntervals(params);
 
         if (axiosResponse.data && axiosResponse.data.success) {
           if (Array.isArray(axiosResponse.data.data)) {
             this.availableIntervals = axiosResponse.data.data.map(item => ({
               value: item.value,
-              label: item.label || this.getIntervalLabel(item.value) 
+              label: item.label || this.getIntervalLabel(item.value)
             }));
             if (axiosResponse.data.data.length === 0) {
               this.$message.info('K线周期数据为空');
@@ -626,10 +622,10 @@ export default {
     },
     getDefaultIntervals() {
         return [
-            { value: '1m', label: '1分钟' }, 
-            { value: '5m', label: '5分钟' }, 
-            { value: '1h', label: '1小时' }, 
-            { value: '1d', label: '日线' } 
+            { value: '1m', label: '1分钟' },
+            { value: '5m', label: '5分钟' },
+            { value: '1h', label: '1小时' },
+            { value: '1d', label: '日线' }
         ];
     },
     async loadDefaultSymbolsForExchange(exchange) {
@@ -641,17 +637,17 @@ export default {
         this.symbolLoading = true;
         try {
             // getAvailableSymbols返回的是axiosResponse，所以需要从中取data
-            const axiosFullResponse = await getAvailableSymbols({ exchange: exchange }); 
+            const axiosFullResponse = await getAvailableSymbols({ exchange: exchange });
             const response = axiosFullResponse.data; // 服务器的实际响应体
 
             if (response && response.success) {
-                if (Array.isArray(response.data)) { 
+                if (Array.isArray(response.data)) {
                     this.availableSymbols = response.data.map(s => ({
                         label: `${s.name} (${s.symbol}) - ${s.exchange.toUpperCase()}`,
                         value: s.symbol,
                         exchange: s.exchange
                     })).slice(0, 100); // 限制数量，避免过多DOM
-                    this.allSymbolsCache = [...this.availableSymbols]; 
+                    this.allSymbolsCache = [...this.availableSymbols];
                     if (response.data.length === 0) {
                         this.$message.info(`交易所 ${exchange} 下没有找到合约数据`);
                     }
@@ -698,7 +694,7 @@ export default {
         this.backtestConfig.start_date = oneYearAgo.toISOString().split('T')[0];
         this.backtestConfig.end_date = today.toISOString().split('T')[0];
     }
-    
+
     this.loadAvailableExchanges();
     this.loadAvailableIntervals(); // 加载通用的周期列表，或在交易所/合约选定后再次加载
     // 考虑是否在created时加载一个默认的合约列表，或者等待用户输入
@@ -708,15 +704,102 @@ export default {
 </script>
 
 <style scoped>
+/* 整体布局 */
 .backtest-page-container {
-  padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--spacing-lg);
+  background-color: var(--bg-white);
 }
-.box-card {
-  margin-bottom: 20px;
+
+/* 页面标题 */
+.page-header {
+  margin-bottom: var(--spacing-lg);
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: var(--spacing-sm);
 }
-/* 可以从StrategyCenterView.vue复制或定义新的样式 */
+
+.page-title {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-primary);
+  margin: 0 0 var(--spacing-xxs) 0;
+}
+
+.strategy-name {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+}
+
+/* 主内容区 */
+.main-content {
+  background-color: var(--bg-white);
+}
+
+/* 表单样式 */
+.el-form {
+  margin-bottom: var(--spacing-lg);
+}
+
+.el-form-item {
+  margin-bottom: var(--spacing-md);
+}
+
+.el-form-item :deep(.el-form-item__label) {
+  color: var(--text-primary);
+  font-weight: var(--font-weight-normal);
+}
+
+.el-select, .el-input, .el-input-number, .el-date-picker {
+  width: 100%;
+}
+
+/* 分隔线 */
+.el-divider {
+  margin: var(--spacing-lg) 0;
+}
+
+.el-divider :deep(.el-divider__text) {
+  background-color: var(--bg-white);
+  color: var(--text-primary);
+  font-weight: var(--font-weight-normal);
+  font-size: var(--font-size-sm);
+}
+
+/* 按钮区域 */
 .form-actions {
-  margin-top: 20px;
-  text-align: center; /* 让按钮居中 */
+  margin-top: var(--spacing-xl);
+  text-align: center;
+  padding-top: var(--spacing-md);
+  border-top: 1px solid var(--border-color);
+}
+
+.form-actions .el-button {
+  min-width: 120px;
+}
+
+.form-actions .el-button + .el-button {
+  margin-left: var(--spacing-md);
+}
+
+/* 提示信息 */
+.el-alert {
+  margin-bottom: var(--spacing-md);
+  border-radius: var(--border-radius-md);
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+  .backtest-page-container {
+    padding: var(--spacing-sm);
+  }
+
+  .page-header {
+    margin-bottom: var(--spacing-md);
+  }
+
+  .form-actions .el-button {
+    min-width: 100px;
+  }
 }
 </style>
