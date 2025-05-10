@@ -7,13 +7,11 @@ SimpleTrade回测服务
 import logging
 import traceback
 from datetime import datetime, date
-from typing import List, Optional, Any, Dict, Tuple
+from typing import List, Optional, Dict, Any
 
-import numpy as np
 import pandas as pd
 
-from vnpy.trader.constant import Exchange as VnExchange, Interval as VnInterval
-from vnpy.trader.object import BarData, TickData, OrderData, TradeData
+from vnpy.trader.constant import Direction
 from vnpy_ctastrategy.backtesting import BacktestingMode
 
 from simpletrade.config.database import SessionLocal
@@ -218,13 +216,13 @@ class BacktestService:
         """
         if isinstance(obj, (datetime, date)):
             return obj.isoformat()
-        elif isinstance(obj, (np.integer, int)):
+        elif isinstance(obj, (int)):
             return int(obj)
-        elif isinstance(obj, (np.floating, float)):
-            if np.isnan(obj):
+        elif isinstance(obj, (float)):
+            if obj != obj:  # Check for NaN
                 return None
             return float(obj)
-        elif isinstance(obj, np.ndarray):
+        elif isinstance(obj, pd.Series):
             return obj.tolist()
         elif isinstance(obj, Dict):
             return {k: self._convert_to_json_serializable(v) for k, v in obj.items()}
@@ -407,12 +405,15 @@ class BacktestService:
             gross_profit = 0.0
             gross_loss = 0.0
 
-            if not daily_df.empty and 'pnl' in daily_df.columns:
-                for daily_pnl_value in daily_df['pnl']:
-                    if daily_pnl_value > 0:
-                        gross_profit += daily_pnl_value
-                    elif daily_pnl_value < 0:
-                        gross_loss += abs(daily_pnl_value)
+            if not daily_df.empty and 'net_pnl' in daily_df.columns:
+                for daily_net_pnl_value in daily_df['net_pnl']:
+                    if daily_net_pnl_value > 0:
+                        gross_profit += daily_net_pnl_value
+                    elif daily_net_pnl_value < 0:
+                        gross_loss += abs(daily_net_pnl_value)
+            else:
+                if not daily_df.empty:
+                    pass
 
             if gross_loss > 0:
                 profit_factor = gross_profit / gross_loss
@@ -434,12 +435,11 @@ class BacktestService:
                 result["daily_results"] = daily_df.to_dict(orient="records")
             
             # 获取并处理交易记录
-            all_trades_original = engine.get_all_trades()
-            result["trades"] = self._process_trades(all_trades_original)
+            result["trades"] = self._process_trades(engine)
 
             # 记录回测结果
-            logger.info(f"回测完成，收益率: {stats.get('total_return', 0.0) * 100:.2f}%, 夏普比率: {stats.get('sharpe_ratio', 0.0):.2f}")
-            
+            print(f"[INFO] 回测完成，收益率: {result['statistics'].get('total_return', 0.0) * 100:.2f}%, 夏普比率: {result['statistics'].get('sharpe_ratio', 0.0):.2f}")
+
             # 如果提供了用户ID，保存回测记录
             if user_id is not None:
                 record_id = self._save_backtest_record(
