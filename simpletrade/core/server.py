@@ -103,9 +103,9 @@ def _register_routes():
 def _register_data_routes():
     """注册数据管理API路由"""
     try:
-        from simpletrade.apps.st_datamanager.api import router as data_router
+        from simpletrade.api.routers.data import router as data_router
         app.include_router(data_router)
-        logger.debug("数据管理API路由已添加")
+        logger.debug("核心数据API路由(simpletrade.api.routers.data)已添加")
     except Exception as e:
         _log_router_error("数据管理API", e)
 

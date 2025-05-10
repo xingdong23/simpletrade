@@ -7,12 +7,13 @@ SimpleTrade回测服务
 import logging
 import traceback
 from datetime import datetime, date
-from typing import List, Optional, Any, Dict, Union, Tuple
+from typing import List, Optional, Any, Dict, Tuple
 
 import numpy as np
 import pandas as pd
 
-from vnpy.trader.constant import Interval
+from vnpy.trader.constant import Exchange as VnExchange, Interval as VnInterval
+from vnpy.trader.object import TradeData
 from vnpy_ctastrategy.backtesting import BacktestingMode
 
 from simpletrade.config.database import SessionLocal
@@ -214,9 +215,11 @@ class BacktestService:
         """
         if isinstance(obj, (datetime, date)):
             return obj.isoformat()
-        elif isinstance(obj, (np.int32, np.int64)):
+        elif isinstance(obj, (np.integer, int)):
             return int(obj)
-        elif isinstance(obj, (np.float16, np.float32, np.float64)):
+        elif isinstance(obj, (np.floating, float)):
+            if np.isnan(obj):
+                return None
             return float(obj)
         elif isinstance(obj, np.ndarray):
             return obj.tolist()
@@ -404,6 +407,43 @@ class BacktestService:
                     logger.warning(f"处理统计指标 {key} 时出错: {str(e)}")
                     result["statistics"][key] = None
             
+            # 尝试手动计算胜率和盈亏比
+            all_trades: List[TradeData] = engine.get_all_trades() # 获取所有交易记录
+            
+            if all_trades:
+                winning_trades_count = 0
+                gross_profit = 0.0
+                gross_loss = 0.0
+                
+                for trade in all_trades:
+                    if trade.pnl > 0:
+                        winning_trades_count += 1
+                        gross_profit += trade.pnl
+                    elif trade.pnl < 0:
+                        gross_loss += trade.pnl
+                
+                # 计算胜率
+                total_trade_count_from_stats = result["statistics"].get("total_trade_count", 0)
+                if total_trade_count_from_stats > 0:
+                    win_rate = winning_trades_count / total_trade_count_from_stats
+                    result["statistics"]["win_rate"] = self._convert_to_json_serializable(win_rate)
+                else:
+                    result["statistics"]["win_rate"] = self._convert_to_json_serializable(0.0)
+                
+                # 计算盈亏比
+                if gross_loss != 0:
+                    profit_factor = gross_profit / abs(gross_loss)
+                    result["statistics"]["profit_factor"] = self._convert_to_json_serializable(profit_factor)
+                elif gross_profit > 0: # 只有盈利，没有亏损
+                    result["statistics"]["profit_factor"] = self._convert_to_json_serializable(float('inf'))
+                else: # 没有盈利也没有亏损，或者只有0盈亏的交易
+                    result["statistics"]["profit_factor"] = self._convert_to_json_serializable(0.0)
+            else:
+                result["statistics"]["win_rate"] = self._convert_to_json_serializable(0.0)
+                result["statistics"]["profit_factor"] = self._convert_to_json_serializable(0.0)
+
+            logger.info(f"[BACKTEST] 最终回测统计数据(含手动计算): {result['statistics']}")
+
             # 处理每日结果
             if isinstance(daily_df, pd.DataFrame) and not daily_df.empty:
                 result["daily_results"] = daily_df.to_dict(orient="records")

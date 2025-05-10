@@ -51,7 +51,7 @@ def start_api_server():
     try:
         # 创建一个新的进程来运行API服务器
         api_process = subprocess.Popen(
-            [sys.executable, "-m", "uvicorn", "simpletrade.api.server:app", "--host", "0.0.0.0", "--port", "8000"],
+            [sys.executable, "-m", "uvicorn", "simpletrade.api.main:app", "--host", "0.0.0.0", "--port", "8000"],
             cwd=str(ROOT_DIR),
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
