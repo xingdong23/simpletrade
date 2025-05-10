@@ -492,21 +492,130 @@ export default {
             };
 
             console.log('Submitting backtest with payload:', payload);
+
+            // 直接从控制台获取回测ID
+            console.log('\n\n\n请在控制台中查找回测ID，格式如: "record_id": 123\n\n\n');
+
             const axiosResponse = await runStrategyBacktest(payload);
 
             const serverResponse = axiosResponse.data; // serverResponse is the actual JSON from the server
 
-            console.log('Received server response:', serverResponse);
+            console.log('收到服务器响应:', serverResponse);
+            console.log('响应类型:', typeof serverResponse);
+            console.log('响应结构 (JSON字符串):', JSON.stringify(serverResponse));
+            console.log('响应数据类型:', typeof serverResponse.data);
+            console.log('响应数据键:', Object.keys(serverResponse.data));
 
-            if (serverResponse.success && serverResponse.data && serverResponse.data.success) {
+            // 深度检查响应结构
+            if (serverResponse.data && typeof serverResponse.data === 'object') {
+              console.log('数据对象内容:', serverResponse.data);
+
+              if (serverResponse.data.statistics) {
+                console.log('统计数据内容:', serverResponse.data.statistics);
+              }
+
+              // 递归查找所有可能的 ID 字段
+              const findAllIds = (obj, path = '') => {
+                if (!obj || typeof obj !== 'object') return;
+
+                Object.keys(obj).forEach(key => {
+                  const newPath = path ? `${path}.${key}` : key;
+                  if (key === 'id' || key === 'record_id' || key.includes('id')) {
+                    console.log(`找到可能的ID字段: ${newPath} = ${obj[key]}`);
+                  }
+
+                  if (obj[key] && typeof obj[key] === 'object') {
+                    findAllIds(obj[key], newPath);
+                  }
+                });
+              };
+
+              findAllIds(serverResponse);
+            }
+            console.log('Response type:', typeof serverResponse);
+            console.log('Response structure:', JSON.stringify(serverResponse, null, 2));
+
+            // 详细检查响应结构
+            if (serverResponse.data) {
+              console.log('data field type:', typeof serverResponse.data);
+              console.log('data field keys:', Object.keys(serverResponse.data));
+
+              // 如果 data 是对象，递归检查其所有属性
+              const inspectObject = (obj, path = '') => {
+                if (obj && typeof obj === 'object' && !Array.isArray(obj)) {
+                  Object.keys(obj).forEach(key => {
+                    const newPath = path ? `${path}.${key}` : key;
+                    console.log(`Checking path: ${newPath}, value:`, obj[key]);
+                    inspectObject(obj[key], newPath);
+                  });
+                }
+              };
+
+              inspectObject(serverResponse.data);
+            }
+
+            if (serverResponse.success && serverResponse.data) {
               this.$message.success(serverResponse.message || '回测任务已启动！');
-              const recordId = serverResponse.data.record_id;
+
+              // 检查不同的响应格式，尝试找到回测ID
+              let recordId = null;
+
+              // 直接使用回测结果中的回测ID
+              if (serverResponse.data && serverResponse.data.statistics) {
+                // 从统计数据中提取回测ID
+                const stats = serverResponse.data.statistics;
+
+                // 尝试从统计数据中获取回测ID
+                if (stats.record_id) {
+                  recordId = stats.record_id;
+                  console.log('从统计数据中找到回测ID (statistics.record_id):', recordId);
+                } else if (stats.id) {
+                  recordId = stats.id;
+                  console.log('从统计数据中找到回测ID (statistics.id):', recordId);
+                }
+              }
+
+              // 如果还是找不到，尝试从响应中提取数字字符串
+              if (!recordId) {
+                const responseStr = JSON.stringify(serverResponse);
+                const matches = responseStr.match(/"id":\s*(\d+)/g) || responseStr.match(/"record_id":\s*(\d+)/g);
+                if (matches && matches.length > 0) {
+                  const idMatch = matches[0].match(/(\d+)/);
+                  if (idMatch && idMatch[0]) {
+                    recordId = idMatch[0];
+                    console.log('从响应字符串中提取到回测ID:', recordId);
+                  }
+                }
+              }
+
+              // 不使用临时ID，如果找不到就显示错误信息
 
               if (recordId) {
-                this.$router.push({ name: 'BacktestReport', params: { backtest_id: recordId } }); // Changed 'id' to 'backtest_id'
+                this.$router.push({ name: 'BacktestReport', params: { backtest_id: recordId } });
               } else {
-                console.error("成功响应中未找到 record_id:", serverResponse.data);
-                this.$message.error('成功响应中未找到回测ID，无法跳转到报告页面。');
+                console.error("成功响应中未找到回测ID:", serverResponse);
+
+                // 使用 Element UI 的 MessageBox 请求用户手动输入回测ID
+                this.$confirm('系统无法自动获取回测ID，请从控制台中查找回测ID并手动输入。是否要手动输入回测ID？', '提示', {
+                  confirmButtonText: '是，我要手动输入',
+                  cancelButtonText: '取消',
+                  type: 'warning'
+                }).then(() => {
+                  // 用户点击确认按钮，显示输入框
+                  this.$prompt('请输入回测ID', '手动输入回测ID', {
+                    confirmButtonText: '确定',
+                    cancelButtonText: '取消',
+                    inputPattern: /^\d+$/,
+                    inputErrorMessage: '回测ID必须是数字'
+                  }).then(({ value }) => {
+                    // 用户输入了回测ID，跳转到报告页面
+                    this.$router.push({ name: 'BacktestReport', params: { backtest_id: value } });
+                  }).catch(() => {
+                    this.$message.info('已取消手动输入');
+                  });
+                }).catch(() => {
+                  this.$message.info('已取消手动输入');
+                });
               }
             } else {
               // Handle various error scenarios based on outer and inner success flags

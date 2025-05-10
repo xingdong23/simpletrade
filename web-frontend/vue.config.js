@@ -15,9 +15,9 @@ module.exports = {
     // 代理 API 请求到后端服务器
     proxy: {
       '/api': {
-        target: 'http://localhost:8003', // 正确的后端端口是 8003
+        target: 'http://127.0.0.1:8003', // 使用 IP 地址而不是主机名
         changeOrigin: true,
-        // pathRewrite: { '^/api': '/api' } // 如果需要路径重写
+        logLevel: 'debug' // 打印调试日志
       }
     }
   },

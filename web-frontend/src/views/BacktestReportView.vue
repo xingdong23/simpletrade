@@ -243,8 +243,26 @@ export default {
         const response = await getBacktestReport(this.backtestIdValue);
         console.log('获取到的回测报告数据:', response);
 
-        if (response) {
+        // 处理响应格式
+        if (response && response.data) {
+          // 如果响应中有 data.data，使用 data.data
+          if (response.data.data) {
+            this.backtestReport = response.data.data;
+            console.log('使用 response.data.data:', this.backtestReport);
+          }
+          // 如果响应中有 data.success，使用 data
+          else if (response.data.success) {
+            this.backtestReport = response.data;
+            console.log('使用 response.data:', this.backtestReport);
+          }
+          // 否则直接使用 data
+          else {
+            this.backtestReport = response.data;
+            console.log('使用 response.data:', this.backtestReport);
+          }
+        } else if (response) {
           this.backtestReport = response;
+          console.log('使用 response:', this.backtestReport);
         } else {
           throw new Error('返回的数据格式不正确');
         }

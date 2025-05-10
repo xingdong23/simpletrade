@@ -1,0 +1,217 @@
+"""
+SimpleTrade回测服务
+
+提供策略回测服务功能。
+"""
+
+import logging
+import traceback
+import json
+from datetime import datetime, date
+from typing import List, Optional, Dict, Any, Tuple
+
+import pandas as pd
+import numpy as np
+
+from vnpy_ctastrategy.backtesting import BacktestingMode
+
+from simpletrade.config.database import SessionLocal
+from simpletrade.models.database import Strategy, BacktestRecord
+from simpletrade.strategies import get_strategy_class
+from simpletrade.api.schemas.backtest_report import (
+    BacktestReportConfigModel,
+    EquityCurvePointModel,
+    TradeDetailOutputModel,
+    BacktestReportDataModel
+)
+from .engine import BacktestEngineFactory, _get_vnpy_interval, _get_vnpy_exchange
+
+logger = logging.getLogger("simpletrade.apps.st_backtest.service")
+
+class BacktestService:
+    """回测服务类"""
+    
+    def __init__(self):
+        """初始化回测服务"""
+        self.backtest_engine_factory = BacktestEngineFactory()
+    
+    def get_backtest_report_data(self, backtest_id: str) -> Optional[BacktestReportDataModel]:
+        """根据backtest_id获取详细的回测报告数据"""
+        db = SessionLocal()
+        try:
+            record = db.query(BacktestRecord).filter(BacktestRecord.id == backtest_id).first()
+            if not record:
+                logger.warning(f"未找到ID为 {backtest_id} 的回测记录")
+                return None
+            
+            # 1. 构建配置信息
+            # 获取策略信息
+            strategy = db.query(Strategy).filter(Strategy.id == record.strategy_id).first()
+            strategy_name = getattr(strategy, 'name', None) if strategy else None
+            
+            # 如果记录中没有 strategy_name 字段，使用策略表中的名称
+            record_strategy_name = getattr(record, 'strategy_name', None)
+            if not record_strategy_name and strategy_name:
+                record_strategy_name = strategy_name
+            elif not record_strategy_name:
+                record_strategy_name = f"Strategy {record.strategy_id}"
+            
+            # 如果记录中没有 strategy_class_name 字段，使用默认值
+            record_class_name = getattr(record, 'strategy_class_name', None)
+            if not record_class_name and strategy:
+                record_class_name = strategy.identifier
+            elif not record_class_name:
+                record_class_name = "Unknown"
+            
+            # 如果记录中没有 parameters 字段，从 results 中获取
+            record_parameters = getattr(record, 'parameters', None)
+            if not record_parameters and hasattr(record, 'results') and record.results:
+                if isinstance(record.results, dict) and 'parameters' in record.results:
+                    record_parameters = json.dumps(record.results['parameters'])
+                else:
+                    record_parameters = "{}"
+            elif not record_parameters:
+                record_parameters = "{}"
+            
+            # 如果记录中没有 capital, rate, slippage, mode 字段，使用默认值
+            record_capital = getattr(record, 'capital', None)
+            if not record_capital:
+                record_capital = record.initial_capital
+            
+            record_rate = getattr(record, 'rate', None)
+            if not record_rate:
+                record_rate = 0.0001
+            
+            record_slippage = getattr(record, 'slippage', None)
+            if not record_slippage:
+                record_slippage = 0
+            
+            record_mode = getattr(record, 'mode', None)
+            if not record_mode:
+                record_mode = "bar"
+            
+            # 构建配置数据
+            config_data = {
+                "strategy_id": str(record.strategy_id),
+                "strategy_name": record_strategy_name,
+                "class_name": record_class_name,
+                "symbol": record.symbol,
+                "exchange": record.exchange,
+                "interval": record.interval,
+                "start_date": record.start_date,
+                "end_date": record.end_date,
+                "capital": float(record_capital),
+                "rate": float(record_rate),
+                "slippage": float(record_slippage),
+                "mode": record_mode,
+                "parameters": json.loads(record_parameters) if isinstance(record_parameters, str) else record_parameters
+            }
+            
+            report_config = BacktestReportConfigModel(**config_data)
+
+            # 2. 提取统计摘要
+            record_statistics = getattr(record, 'statistics', None)
+            if not record_statistics and hasattr(record, 'results') and record.results:
+                if isinstance(record.results, dict) and 'statistics' in record.results:
+                    record_statistics = json.dumps(record.results['statistics'])
+                else:
+                    record_statistics = "{}"
+            elif not record_statistics:
+                record_statistics = "{}"
+            
+            summary_stats = json.loads(record_statistics) if isinstance(record_statistics, str) else record_statistics
+            
+            # 对summary_stats中的NaN和Infinity进行处理
+            for key, value in summary_stats.items():
+                if isinstance(value, float) and (pd.isna(value) or value == float('inf') or value == float('-inf')):
+                    summary_stats[key] = str(value) 
+                elif isinstance(value, pd.Timestamp):
+                     summary_stats[key] = value.isoformat()
+
+            # 3. 处理资金曲线
+            equity_curve_data = []
+            record_daily_results = getattr(record, 'daily_results_json', None)
+            if record_daily_results:
+                try:
+                    daily_df = pd.read_json(record_daily_results)
+                    if not daily_df.empty and 'date' in daily_df.columns and 'balance' in daily_df.columns:
+                         # 确保 'date' 列是 datetime 类型，然后转换为 date
+                        daily_df['date'] = pd.to_datetime(daily_df['date']).dt.date
+                        for _, row in daily_df.iterrows():
+                            equity_curve_data.append(
+                                EquityCurvePointModel(date=row['date'], equity=row['balance'])
+                            )
+                except Exception as e:
+                    logger.warning(f"处理资金曲线数据时出错: {e}")
+            
+            # 如果没有资金曲线数据，创建一个简单的模拟数据
+            if not equity_curve_data:
+                start_date = record.start_date
+                end_date = record.end_date
+                initial_capital = float(record_capital)
+                final_capital = float(record.final_capital) if record.final_capital else initial_capital
+                
+                # 创建两个点的资金曲线
+                equity_curve_data = [
+                    EquityCurvePointModel(date=start_date, equity=initial_capital),
+                    EquityCurvePointModel(date=end_date, equity=final_capital)
+                ]
+            
+            # 4. 处理交易详情
+            trades_data = []
+            record_trades = getattr(record, 'trades_json', None)
+            if record_trades:
+                try:
+                    trades_list_of_dicts = json.loads(record_trades)
+                    for trade_dict in trades_list_of_dicts:
+                        # 将字符串日期时间转换为datetime对象
+                        if 'datetime' in trade_dict and isinstance(trade_dict['datetime'], str):
+                            try:
+                                trade_dict['datetime'] = datetime.fromisoformat(trade_dict['datetime'])
+                            except ValueError:
+                                 # 尝试其他常见格式，如果需要
+                                try:
+                                    trade_dict['datetime'] = datetime.strptime(trade_dict['datetime'], "%Y-%m-%d %H:%M:%S.%f")
+                                except ValueError:
+                                    logger.warning(f"无法解析交易记录中的日期时间: {trade_dict['datetime']}")
+                                    continue # 跳过此交易记录
+                        
+                        # 确保pnl是float或None
+                        if 'pnl' in trade_dict and trade_dict['pnl'] is not None:
+                            try:
+                                trade_dict['pnl'] = float(trade_dict['pnl'])
+                            except (ValueError, TypeError):
+                                trade_dict['pnl'] = None
+                        else:
+                            trade_dict['pnl'] = None
+                            
+                        trades_data.append(TradeDetailOutputModel(**trade_dict))
+                except Exception as e:
+                    logger.warning(f"处理交易详情数据时出错: {e}")
+            
+            # 如果没有交易数据，创建一个空列表
+            if not trades_data:
+                trades_data = []
+            
+            # 5. 获取执行时间
+            record_ran_at = getattr(record, 'ran_at', None)
+            if not record_ran_at:
+                record_ran_at = record.created_at if hasattr(record, 'created_at') else datetime.now()
+
+            report_data = BacktestReportDataModel(
+                backtest_id=str(record.id),
+                ran_at=record_ran_at,
+                config=report_config,
+                summary_stats=summary_stats,
+                equity_curve=equity_curve_data,
+                trades=trades_data
+            )
+            return report_data
+        except Exception as e:
+            logger.error(f"获取回测报告 {backtest_id} 时出错: {e}")
+            traceback.print_exc()
+            return None
+        finally:
+            db.close()
+
+    # 其他方法保持不变...

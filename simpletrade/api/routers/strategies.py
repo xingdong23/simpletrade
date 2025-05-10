@@ -17,7 +17,7 @@ from vnpy.trader.object import ContractData
 
 from simpletrade.api.deps import get_db, handle_api_exception
 from simpletrade.api.schemas.strategy import (
-    ApiResponse, 
+    ApiResponse,
     CreateUserStrategyRequest,
     BacktestRequest,
     BacktestRecord,
@@ -44,7 +44,7 @@ def get_main_engine(request: Request) -> STMainEngine:
     if hasattr(request.app.state, 'main_engine') and request.app.state.main_engine:
         return request.app.state.main_engine
     raise HTTPException(
-        status_code=500, 
+        status_code=500,
         detail="主引擎未初始化，请检查服务器启动流程"
     )
 
@@ -113,7 +113,7 @@ async def get_available_exchanges_endpoint():
             "name": exchange_member.name,  # 例如: 'NASDAQ'
             "value": exchange_member.value # 例如: 'NASDAQ'
         })
-    
+
     # 按交易所名称排序 (通常是字母顺序)
     exchanges_data.sort(key=lambda x: x["name"])
 
@@ -164,7 +164,7 @@ async def get_available_symbols_endpoint(
                         symbols_data.append(item)
                 else:
                     symbols_data.append(item)
-        
+
         if not symbols_data and query:
             return ApiResponse(success=True, message=f"在交易所 {exchange} 未找到符合查询 '{query}' 的合约 (占位符数据)", data=[])
         elif not symbols_data:
@@ -199,7 +199,7 @@ async def get_strategies(
     """获取策略列表，可按类型和分类过滤"""
     try:
         strategies = strategy_service.get_strategies(db, type, category)
-        
+
         if not strategies:
             return {
                 "success": True,
@@ -230,7 +230,7 @@ async def get_strategies(
 
 @router.get("/{strategy_id}", response_model=ApiResponse)
 async def get_strategy(
-    strategy_id: int, 
+    strategy_id: int,
     db: Session = Depends(get_db),
     strategy_service: StrategyService = Depends(get_strategy_service)
 ):
@@ -243,7 +243,7 @@ async def get_strategy(
 
         # 加载策略代码
         strategy_code = strategy_service.load_strategy_code(strategy)
-        
+
         # 获取策略类详情
         strategy_details = None
         for detail in strategy_service.get_strategy_details():
@@ -279,7 +279,7 @@ async def get_strategy(
 
 @router.get("/user/{user_id}", response_model=ApiResponse)
 async def get_user_strategies(
-    user_id: int, 
+    user_id: int,
     db: Session = Depends(get_db),
     strategy_service: StrategyService = Depends(get_strategy_service)
 ):
@@ -292,21 +292,21 @@ async def get_user_strategies(
 
 @router.post("/user/create", response_model=ApiResponse)
 async def create_user_strategy(
-    request: CreateUserStrategyRequest, 
+    request: CreateUserStrategyRequest,
     strategy_service: StrategyService = Depends(get_strategy_service)
 ):
     """创建用户策略实例"""
     try:
         user_strategy = strategy_service.create_user_strategy(
-            user_id=request.user_id, 
-            strategy_id=request.strategy_id, 
-            name=request.name, 
+            user_id=request.user_id,
+            strategy_id=request.strategy_id,
+            name=request.name,
             parameters=request.parameters
         )
-        
+
         if not user_strategy:
             raise HTTPException(status_code=400, detail="创建用户策略失败")
-        
+
         user_strategy_dict = {
             "id": user_strategy.id,
             "user_id": user_strategy.user_id,
@@ -317,10 +317,10 @@ async def create_user_strategy(
             "updated_at": user_strategy.updated_at.isoformat() if user_strategy.updated_at else None,
             "is_active": user_strategy.is_active
         }
-        
+
         return {
-            "success": True, 
-            "message": "用户策略创建成功", 
+            "success": True,
+            "message": "用户策略创建成功",
             "data": user_strategy_dict
         }
     except ValueError as ve:
@@ -361,7 +361,7 @@ async def stop_strategy(
 
 @router.post("/backtest", response_model=ApiResponse)
 async def run_backtest(
-    request: BacktestRequest, 
+    request: BacktestRequest,
     backtest_service: BacktestService = Depends(get_backtest_service)
 ):
     """运行策略回测"""
@@ -379,7 +379,28 @@ async def run_backtest(
             parameters=request.parameters,
             user_id=request.user_id
         )
-        return {"success": True, "message": "回测运行成功", "data": result}
+
+        # 打印回测结果，帮助调试
+        logger.info(f"回测结果: {result}")
+
+        # 确保回测ID在响应中正确返回
+        response_data = result.copy() if isinstance(result, dict) else {}
+
+        # 如果有回测ID，将其复制到多个位置
+        if "record_id" in response_data:
+            record_id = response_data["record_id"]
+            # 在根级别也设置回测ID
+            response_data["id"] = record_id
+
+            # 如果有统计数据，在统计数据中也设置回测ID
+            if "statistics" in response_data and isinstance(response_data["statistics"], dict):
+                response_data["statistics"]["record_id"] = record_id
+                response_data["statistics"]["id"] = record_id
+
+            # 打印日志，帮助调试
+            logger.info(f"回测记录ID: {record_id}")
+
+        return {"success": True, "message": "回测运行成功", "data": response_data}
     except ValueError as ve:
         logger.warning(f"回测参数错误: {ve}")
         raise HTTPException(status_code=400, detail=str(ve))
@@ -397,15 +418,15 @@ async def get_backtest_records(
     """获取回测记录列表，支持分页"""
     try:
         records_data, total_count = backtest_service.get_backtest_records(
-            user_id=user_id, 
+            user_id=user_id,
             strategy_id=strategy_id,
             page=page,
             page_size=page_size
         )
-        
+
         # 将字典列表转换为 BacktestRecord 模型列表
         typed_records = [BacktestRecord(**record) for record in records_data]
-        
+
         paginated_response = PaginatedBacktestRecordsResponse(
             total=total_count,
             records=typed_records
@@ -416,7 +437,7 @@ async def get_backtest_records(
 
 @router.get("/backtest/records/{record_id}", response_model=ApiResponse[BacktestRecord])
 async def get_backtest_record(
-    record_id: str, 
+    record_id: str,
     backtest_service: BacktestService = Depends(get_backtest_service)
 ):
     """获取单个回测记录详情"""
@@ -424,7 +445,7 @@ async def get_backtest_record(
         record_dict = backtest_service.get_backtest_record_detail(record_id)
         if not record_dict:
             raise HTTPException(status_code=404, detail=f"未找到ID为 {record_id} 的回测记录")
-        
+
         # 将字典转换为 BacktestRecord 模型
         typed_record = BacktestRecord(**record_dict)
         return {"success": True, "message": "获取回测记录详情成功", "data": typed_record}
@@ -435,7 +456,7 @@ async def get_backtest_record(
 
 @router.get("/backtest/reports/{backtest_id}", response_model=ApiResponse[BacktestReportDataModel])
 async def get_backtest_report(
-    backtest_id: str, 
+    backtest_id: str,
     backtest_service: BacktestService = Depends(get_backtest_service)
 ):
     """获取详细的回测报告数据"""
@@ -443,8 +464,7 @@ async def get_backtest_report(
         report_data = backtest_service.get_backtest_report_data(backtest_id)
         if not report_data:
             raise HTTPException(status_code=404, detail=f"未找到ID为 {backtest_id} 的回测报告")
-        
-        # FastAPI 会自动使用 BacktestReportDataModel 校验和序列化 report_data
+
         return {"success": True, "message": "获取回测报告成功", "data": report_data}
     except HTTPException as he:
         raise he
@@ -454,8 +474,8 @@ async def get_backtest_report(
 @router.get("/stock_data_range", response_model=ApiResponse)
 async def get_stock_data_range(
     symbol: str,
-    exchange_str: str, 
-    interval_str: str, 
+    exchange_str: str,
+    interval_str: str,
 ):
     """获取指定股票在VnPy数据库中的K线数据起止日期"""
     try:
@@ -463,7 +483,7 @@ async def get_stock_data_range(
             target_exchange = Exchange(exchange_str.upper())
         except ValueError:
             raise HTTPException(status_code=400, detail=f"无效的交易所代码: {exchange_str}. 可选项: {', '.join([e.value for e in Exchange])}")
-        
+
         try:
             target_interval = Interval(interval_str.lower())
         except ValueError:
@@ -479,13 +499,13 @@ async def get_stock_data_range(
         found_overview = None
         for overview in overviews:
             if (
-                overview.symbol == symbol and 
-                overview.exchange == target_exchange and 
+                overview.symbol == symbol and
+                overview.exchange == target_exchange and
                 overview.interval == target_interval
             ):
                 found_overview = overview
                 break
-        
+
         if found_overview and found_overview.start and found_overview.end:
             return {
                 "success": True,
@@ -507,7 +527,7 @@ async def get_stock_data_range(
             }
 
     except HTTPException as http_exc:
-        raise http_exc 
+        raise http_exc
     except Exception as e:
         logger.error(f"获取股票 {symbol} 数据范围时出错: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"获取数据范围时发生内部错误: {str(e)}")

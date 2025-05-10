@@ -18,10 +18,18 @@ class BacktestReportConfigModel(BaseModel):
     mode: str
     parameters: Dict[str, Any]
 
+    class Config:
+        # 允许额外的字段
+        extra = "ignore"
+
 class EquityCurvePointModel(BaseModel):
     """资金曲线上单点的数据模型"""
     date: date # 或者 datetime，取决于回测引擎的输出精度
     equity: float
+
+    class Config:
+        # 允许额外的字段
+        extra = "ignore"
 
 class TradeDetailOutputModel(BaseModel):
     """回测报告中单笔交易的详细信息模型"""
@@ -36,6 +44,10 @@ class TradeDetailOutputModel(BaseModel):
     # commission: Optional[float] = None # 手续费 (如果回测引擎提供)
     # slippage_cost: Optional[float] = None # 滑点成本 (如果回测引擎提供)
 
+    class Config:
+        # 允许额外的字段
+        extra = "ignore"
+
 class BacktestReportDataModel(BaseModel):
     """完整回测报告的数据模型"""
     backtest_id: str
@@ -45,6 +57,12 @@ class BacktestReportDataModel(BaseModel):
     equity_curve: List[EquityCurvePointModel]
     trades: List[TradeDetailOutputModel]
     # logs: Optional[List[str]] = None # 可选的回测日志
+
+    class Config:
+        # 允许额外的字段
+        extra = "ignore"
+        # 允许从字典创建模型
+        orm_mode = True
 
 class BacktestRecordOutput(BaseModel): # 用于 /api/backtest/records/{record_id}
     """单个回测记录（不含完整资金曲线和交易列表，用于列表和概览）"""

@@ -109,6 +109,19 @@ class BacktestRecord(Base):
     results = Column(JSONType)
     created_at = Column(DateTime, default=datetime.utcnow)
 
+    # 添加缺失的字段
+    strategy_name = Column(String(100), nullable=True)
+    strategy_class_name = Column(String(100), nullable=True)
+    statistics = Column(Text, nullable=True)
+    parameters = Column(Text, nullable=True)
+    daily_results_json = Column(Text, nullable=True)
+    trades_json = Column(Text, nullable=True)
+    capital = Column(String(20), nullable=True)
+    rate = Column(String(20), nullable=True)
+    slippage = Column(String(20), nullable=True)
+    mode = Column(String(20), nullable=True)
+    ran_at = Column(DateTime, default=datetime.utcnow)
+
     strategy = relationship("Strategy", back_populates="backtest_records")
 
     __table_args__ = (
@@ -160,7 +173,7 @@ class DbBarOverview(Base):
 
     __table_args__ = (
         Index('dbbaroverview_symbol_exchange_interval', 'symbol', 'exchange', 'interval', unique=True),
-        {'mysql_charset': 'utf8mb4', 'mysql_collate': 'utf8mb4_unicode_ci'}, 
+        {'mysql_charset': 'utf8mb4', 'mysql_collate': 'utf8mb4_unicode_ci'},
     )
 
     def __repr__(self):
