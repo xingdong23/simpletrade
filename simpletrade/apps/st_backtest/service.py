@@ -6,17 +6,24 @@ SimpleTrade回测服务
 
 import logging
 import traceback
+import json
 from datetime import datetime, date
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Tuple
 
 import pandas as pd
+import numpy as np
 
-from vnpy.trader.constant import Direction
 from vnpy_ctastrategy.backtesting import BacktestingMode
 
 from simpletrade.config.database import SessionLocal
 from simpletrade.models.database import Strategy, BacktestRecord
 from simpletrade.strategies import get_strategy_class
+from simpletrade.api.schemas.backtest_report import (
+    BacktestReportConfigModel,
+    EquityCurvePointModel,
+    TradeDetailOutputModel,
+    BacktestReportDataModel
+)
 from .engine import BacktestEngineFactory, _get_vnpy_interval, _get_vnpy_exchange
 
 logger = logging.getLogger("simpletrade.apps.st_backtest.service")
@@ -216,6 +223,14 @@ class BacktestService:
         """
         if isinstance(obj, (datetime, date)):
             return obj.isoformat()
+        elif isinstance(obj, np.integer): 
+            return int(obj)
+        elif isinstance(obj, np.floating): 
+            if np.isnan(obj):
+                return None
+            return float(obj)
+        elif isinstance(obj, np.bool_): 
+            return bool(obj)
         elif isinstance(obj, (int)):
             return int(obj)
         elif isinstance(obj, (float)):
@@ -287,6 +302,98 @@ class BacktestService:
             logger.debug(traceback.format_exc())
             return None
     
+    def get_backtest_report_data(self, backtest_id: str) -> Optional[BacktestReportDataModel]:
+        """根据backtest_id获取详细的回测报告数据"""
+        db = SessionLocal()
+        try:
+            record = db.query(BacktestRecord).filter(BacktestRecord.id == backtest_id).first()
+            if not record:
+                logger.warning(f"未找到ID为 {backtest_id} 的回测记录")
+                return None
+
+            # 1. 构建配置模型
+            config_data = {
+                "strategy_id": str(record.strategy_id) if record.strategy_id else None,
+                "strategy_name": record.strategy_name,
+                "class_name": record.strategy_class_name, 
+                "symbol": record.symbol,
+                "exchange": record.exchange,
+                "interval": record.interval,
+                "start_date": record.start_date,
+                "end_date": record.end_date,
+                "capital": record.capital,
+                "rate": record.rate,
+                "slippage": record.slippage,
+                "mode": record.mode,
+                "parameters": json.loads(record.parameters) if record.parameters else {}
+            }
+            report_config = BacktestReportConfigModel(**config_data)
+
+            # 2. 提取统计摘要
+            summary_stats = json.loads(record.statistics) if record.statistics else {}
+            # 对summary_stats中的NaN和Infinity进行处理
+            for key, value in summary_stats.items():
+                if isinstance(value, float) and (pd.isna(value) or value == float('inf') or value == float('-inf')):
+                    summary_stats[key] = str(value) 
+                elif isinstance(value, pd.Timestamp):
+                     summary_stats[key] = value.isoformat()
+
+            # 3. 处理资金曲线
+            equity_curve_data = []
+            if record.daily_results_json:
+                daily_df = pd.read_json(record.daily_results_json)
+                if not daily_df.empty and 'date' in daily_df.columns and 'balance' in daily_df.columns:
+                     # 确保 'date' 列是 datetime 类型，然后转换为 date
+                    daily_df['date'] = pd.to_datetime(daily_df['date']).dt.date
+                    for _, row in daily_df.iterrows():
+                        equity_curve_data.append(
+                            EquityCurvePointModel(date=row['date'], equity=row['balance'])
+                        )
+            
+            # 4. 处理交易详情
+            trades_data = []
+            if record.trades_json:
+                trades_list_of_dicts = json.loads(record.trades_json)
+                for trade_dict in trades_list_of_dicts:
+                    # 将字符串日期时间转换为datetime对象
+                    if 'datetime' in trade_dict and isinstance(trade_dict['datetime'], str):
+                        try:
+                            trade_dict['datetime'] = datetime.fromisoformat(trade_dict['datetime'])
+                        except ValueError:
+                             # 尝试其他常见格式，如果需要
+                            try:
+                                trade_dict['datetime'] = datetime.strptime(trade_dict['datetime'], "%Y-%m-%d %H:%M:%S.%f")
+                            except ValueError:
+                                logger.warning(f"无法解析交易记录中的日期时间: {trade_dict['datetime']}")
+                                continue # 跳过此交易记录
+                    
+                    # 确保pnl是float或None
+                    if 'pnl' in trade_dict and trade_dict['pnl'] is not None:
+                        try:
+                            trade_dict['pnl'] = float(trade_dict['pnl'])
+                        except (ValueError, TypeError):
+                            trade_dict['pnl'] = None
+                    else:
+                        trade_dict['pnl'] = None
+                        
+                    trades_data.append(TradeDetailOutputModel(**trade_dict))
+
+            report_data = BacktestReportDataModel(
+                backtest_id=str(record.id),
+                ran_at=record.ran_at,
+                config=report_config,
+                summary_stats=summary_stats,
+                equity_curve=equity_curve_data,
+                trades=trades_data
+            )
+            return report_data
+        except Exception as e:
+            logger.error(f"获取回测报告 {backtest_id} 时出错: {e}")
+            traceback.print_exc()
+            return None
+        finally:
+            db.close()
+
     def run_backtest(self, strategy_id, symbol, exchange, interval, start_date, end_date, initial_capital, rate, slippage, parameters=None, user_id=None):
         """运行回测并返回结果
         
@@ -487,3 +594,43 @@ class BacktestService:
         """
         with SessionLocal() as db:
             return db.query(BacktestRecord).filter(BacktestRecord.id == record_id).first()
+    
+    def get_backtest_record_detail(self, record_id: str) -> Optional[Dict[str, Any]]:
+        """获取单个回测记录的详情，包括JSON格式的trades和daily_results。"""
+        db = SessionLocal()
+        try:
+            record = db.query(BacktestRecord).filter(BacktestRecord.id == record_id).first()
+            if not record:
+                return None
+            
+            statistics_data = json.loads(record.statistics) if record.statistics else {}
+            # 处理NaN和Infinity
+            for key, value in statistics_data.items():
+                 if isinstance(value, float) and (pd.isna(value) or value == float('inf') or value == float('-inf')):
+                    statistics_data[key] = str(value)
+                 elif isinstance(value, pd.Timestamp):
+                     statistics_data[key] = value.isoformat() 
+
+            return {
+                "id": str(record.id),
+                "user_id": str(record.user_id) if record.user_id else None,
+                "strategy_id": str(record.strategy_id) if record.strategy_id else None,
+                "strategy_name": record.strategy_name,
+                "strategy_class_name": record.strategy_class_name, 
+                "symbol": record.symbol,
+                "exchange": record.exchange,
+                "interval": record.interval,
+                "start_date": record.start_date.isoformat(),
+                "end_date": record.end_date.isoformat(),
+                "capital": record.capital,
+                "rate": record.rate,
+                "slippage": record.slippage,
+                "mode": record.mode,
+                "parameters": json.loads(record.parameters) if record.parameters else {},
+                "statistics": statistics_data,
+                "daily_results_json": record.daily_results_json, 
+                "trades_json": record.trades_json, 
+                "ran_at": record.ran_at.isoformat()
+            }
+        finally:
+            db.close()

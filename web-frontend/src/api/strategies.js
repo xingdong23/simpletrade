@@ -46,6 +46,32 @@ export function getStrategyTypes() {
 }
 
 /**
+ * 获取可用的K线周期列表
+ */
+export function getAvailableIntervals() {
+  return axios.get(`${API_BASE_URL}/strategies/available-intervals`);
+}
+
+/**
+ * 获取可用的交易所列表
+ */
+export function getAvailableExchanges() {
+  return axios.get(`${API_BASE_URL}/strategies/available-exchanges`);
+}
+
+/**
+ * 获取可用的合约代码列表
+ * @param {object} params 查询参数
+ * @param {string} [params.query] 搜索关键词
+ * @param {string} [params.exchange] 交易所代码
+ */
+export function getAvailableSymbols(params) {
+  // 注意：这里返回的是原始的axios Promise
+  // 前端组件中应该处理 response.data 来获取后端 ApiResponse 格式的数据
+  return axios.get(`${API_BASE_URL}/strategies/available-symbols`, { params });
+}
+
+/**
  * 运行策略回测
  * @param {object} backtestConfig 回测配置对象
  * @param {number} backtestConfig.strategy_id 
@@ -75,4 +101,16 @@ export function runStrategyBacktest(backtestConfig) {
  */
 export function createUserStrategy(userStrategyData) {
   return axios.post(`${API_BASE_URL}/strategies/user/create`, userStrategyData);
+}
+
+/**
+ * 获取指定合约、交易所、K线周期的数据可用范围
+ * @param {object} params
+ * @param {string} params.symbol 合约代码
+ * @param {string} params.exchange 交易所代码
+ * @param {string} params.interval K线周期
+ */
+export function getStockDataRange(params) {
+  // params should be an object like { symbol: 'AAPL', exchange: 'NASDAQ', interval: '1d' }
+  return axios.get(`${API_BASE_URL}/data/stock-data-range`, { params });
 }

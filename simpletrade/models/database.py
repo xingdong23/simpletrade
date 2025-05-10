@@ -6,7 +6,7 @@
 
 import json
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, Text, Boolean, Float, DateTime, ForeignKey, Date, Numeric, func, Index
+from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, ForeignKey, Date, Numeric, func, Index
 from sqlalchemy.orm import relationship
 from sqlalchemy.types import TypeDecorator, VARCHAR
 
@@ -145,3 +145,23 @@ class DataImportLog(Base):
         return f"<DataImportLog(source='{self.source}', symbol='{self.symbol}', exchange='{self.exchange}', interval='{self.interval}', range='{self.last_begin_date} to {self.last_end_date}', status='{self.status}')>"
 
 # 注意: 添加新模型后, 可能需要数据库迁移 (如果使用 Alembic) 或手动创建表。
+
+class DbBarOverview(Base):
+    """VnPy K线数据概览表模型"""
+    __tablename__ = "dbbaroverview"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    symbol = Column(String(255), nullable=False)
+    exchange = Column(String(255), nullable=False)
+    interval = Column("interval", String(255), nullable=False) # Explicitly name column
+    count = Column(Integer, nullable=False)
+    start = Column(DateTime, nullable=False)
+    end = Column(DateTime, nullable=False)
+
+    __table_args__ = (
+        Index('dbbaroverview_symbol_exchange_interval', 'symbol', 'exchange', 'interval', unique=True),
+        {'mysql_charset': 'utf8mb4', 'mysql_collate': 'utf8mb4_unicode_ci'}, 
+    )
+
+    def __repr__(self):
+        return f"<DbBarOverview(symbol='{self.symbol}', exchange='{self.exchange}', interval='{self.interval}', count='{self.count}', start='{self.start}', end='{self.end}')>"

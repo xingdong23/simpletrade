@@ -5,15 +5,17 @@ SimpleTrade 策略模块数据模型
 """
 
 from datetime import date
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, TypeVar, Generic
 from pydantic import BaseModel, Field
 
+DataType = TypeVar('DataType')
+
 # 通用API响应模型
-class ApiResponse(BaseModel):
+class ApiResponse(BaseModel, Generic[DataType]):
     """API响应模型"""
     success: bool
     message: str
-    data: Optional[Any] = None
+    data: Optional[DataType] = None
 
 # 策略参数模型
 class StrategyParameter(BaseModel):
@@ -100,3 +102,10 @@ class BacktestRecord(BaseModel):
     sharpe_ratio: Optional[float] = None
     results: Optional[Dict[str, Any]] = None
     created_at: Optional[str] = None 
+
+class PaginatedBacktestRecordsResponse(BaseModel):
+    """分页的回测记录响应模型"""
+    total: int
+    page: int
+    page_size: int
+    items: List[BacktestRecord]

@@ -3,13 +3,14 @@
 """
 
 import logging
-from typing import List, Optional
+from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from simpletrade.core.database import get_db
-from simpletrade.models.database import DataImportLog
+from simpletrade.models.database import DataImportLog, DbBarOverview
 from simpletrade.api.schemas.common import ApiResponse
+from simpletrade.api.schemas.data import DataRangeDetail
 
 router = APIRouter(
     prefix="/api/data",
@@ -171,3 +172,63 @@ async def get_available_data(db: Session = Depends(get_db)):
     except Exception as e:
         logger.error(f"获取可用数据记录失败: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"获取可用数据记录失败: {str(e)}") 
+
+@router.get("/stock-data-range", response_model=ApiResponse[DataRangeDetail])
+async def get_stock_data_range(
+    symbol: str,
+    exchange: str,
+    interval: str,
+    db: Session = Depends(get_db)
+):
+    logger.debug(f"API: get_stock_data_range called with symbol={symbol}, exchange={exchange}, interval={interval}")
+
+    # Map frontend interval to backend interval if necessary
+    db_interval = interval
+    if interval == "1d":
+        db_interval = "d"
+    # Add other mappings if needed, e.g., "1h" -> "h"
+
+    try:
+        record = db.query(
+            DbBarOverview.start,
+            DbBarOverview.end,
+            DbBarOverview.count
+        ).filter(
+            DbBarOverview.symbol == symbol,
+            DbBarOverview.exchange == exchange,
+            DbBarOverview.interval == db_interval # Use mapped interval
+        ).first()
+
+        if record:
+            data_detail = DataRangeDetail(
+                symbol=symbol,
+                exchange=exchange,
+                interval=interval, # Original interval for response
+                start_date=record.start.date() if record.start else None, # Convert to date
+                end_date=record.end.date() if record.end else None,     # Convert to date
+                count=record.count,      # Use 'count' from DbBarOverview
+                message="数据范围获取成功"
+            )
+            logger.debug(f"Data range found: {data_detail}")
+            return ApiResponse(success=True, message="数据范围获取成功", data=data_detail)
+        else:
+            logger.warning(f"No data range record found for {symbol}, {exchange}, {db_interval}")
+            data_detail = DataRangeDetail(
+                symbol=symbol,
+                exchange=exchange,
+                interval=interval,
+                count=0,
+                message="未找到指定条件的数据记录"
+            )
+            return ApiResponse(success=True, message="未找到指定条件的数据记录", data=data_detail)
+
+    except Exception as e:
+        logger.error(f"Error querying stock data range for {symbol}, {exchange}, {interval}: {e}", exc_info=True)
+        error_data_detail = DataRangeDetail(
+            symbol=symbol,
+            exchange=exchange,
+            interval=interval,
+            count=0,
+            message=f"查询数据范围时发生服务器错误: {str(e)}"
+        )
+        return ApiResponse(success=False, message=f"查询数据范围时发生服务器错误: {str(e)}", data=error_data_detail)

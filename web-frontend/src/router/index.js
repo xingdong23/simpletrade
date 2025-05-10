@@ -40,6 +40,23 @@ const routes = [
     path: '/user-center',
     name: 'userCenter',
     component: () => import(/* webpackChunkName: "user" */ '../views/UserCenterView.vue')
+  },
+  {
+    path: '/backtest',
+    name: 'BacktestPage',
+    component: () => import(/* webpackChunkName: "backtest" */ '../views/BacktestPageView.vue')
+  },
+  {
+    path: '/backtest/:strategyId',
+    name: 'BacktestPageWithStrategy',
+    component: () => import(/* webpackChunkName: "backtest-strategy" */ '../views/BacktestPageView.vue'),
+    props: true // Allows strategyId to be passed as a prop to the component
+  },
+  {
+    path: '/backtests/report/:backtest_id',
+    name: 'BacktestReport',
+    component: () => import(/* webpackChunkName: "backtest-report" */ '../views/BacktestReportView.vue'),
+    props: true // Allows backtest_id to be passed as a prop to the component
   }
 ]
 

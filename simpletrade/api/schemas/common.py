@@ -2,17 +2,17 @@
 通用API响应模型定义
 """
 
-from typing import Any, Dict, Generic, List, Optional, TypeVar, Union
+from typing import Any, Dict, Generic, List, Optional, TypeVar
 from pydantic import BaseModel, Field
 
 # 用于泛型响应的类型变量
 T = TypeVar('T')
 
-class ApiResponse(BaseModel):
+class ApiResponse(BaseModel, Generic[T]):
     """通用API响应模型"""
     success: bool = Field(..., description="操作是否成功")
     message: str = Field(..., description="响应消息")
-    data: Optional[Any] = Field(None, description="响应数据")
+    data: Optional[T] = Field(None, description="响应数据")
     
     class Config:
         json_schema_extra = {

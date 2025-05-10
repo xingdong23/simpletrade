@@ -11,7 +11,6 @@ from typing import Dict, Any, List, Type, Optional
 import pandas as pd
 from vnpy.trader.constant import Interval, Exchange
 from vnpy_ctastrategy.backtesting import BacktestingEngine as CTABacktestingEngine
-from vnpy_ctastrategy.backtesting import BacktestingMode
 
 from simpletrade.core.app import STBaseEngine
 
@@ -23,20 +22,6 @@ except ImportError:
     HAS_OPTION_ENGINE = False
     logging.warning("vnpy_optionmaster not found. Option strategy backtesting won't be available.")
 
-try:
-    from vnpy_spreadtrading.backtesting import BacktestingEngine as SpreadBacktestingEngine
-    HAS_SPREAD_ENGINE = True
-except ImportError:
-    HAS_SPREAD_ENGINE = False
-    logging.warning("vnpy_spreadtrading not found. Spread strategy backtesting won't be available.")
-
-try:
-    from vnpy_algotrading.backtesting import BacktestingEngine as AlgoBacktestingEngine
-    HAS_ALGO_ENGINE = True
-except ImportError:
-    HAS_ALGO_ENGINE = False
-    logging.warning("vnpy_algotrading not found. Algo strategy backtesting won't be available.")
-
 logger = logging.getLogger("simpletrade.apps.st_backtest.engine")
 
 # Helper functions
@@ -45,7 +30,8 @@ def _get_vnpy_interval(interval_str: str) -> Optional[Interval]:
     interval_map = {
         "1m": Interval.MINUTE,
         "1h": Interval.HOUR,
-        "d": Interval.DAILY,
+        "d": Interval.DAILY,    # 保留 "d" 以防其他地方使用
+        "1d": Interval.DAILY,   # 新增 "1d" 映射到日线
         "w": Interval.WEEKLY,
     }
     return interval_map.get(interval_str)

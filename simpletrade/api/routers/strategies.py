@@ -5,17 +5,25 @@ SimpleTrade策略API
 """
 
 import logging
-from typing import Optional
+from typing import Optional, List
+from pydantic import BaseModel
 
 from fastapi import APIRouter, HTTPException, Depends, Request
 from sqlalchemy.orm import Session
 
+from vnpy.trader.constant import Exchange, Interval
+from vnpy.trader.database import get_database
+from vnpy.trader.object import ContractData
+
 from simpletrade.api.deps import get_db, handle_api_exception
 from simpletrade.api.schemas.strategy import (
-    ApiResponse,
+    ApiResponse, 
     CreateUserStrategyRequest,
-    BacktestRequest
+    BacktestRequest,
+    BacktestRecord,
+    PaginatedBacktestRecordsResponse
 )
+from simpletrade.api.schemas.backtest_report import BacktestReportDataModel
 from simpletrade.apps.st_backtest.service import BacktestService
 from simpletrade.core.engine import STMainEngine
 from simpletrade.services.monitor_service import MonitorService
@@ -57,7 +65,117 @@ def get_backtest_service(main_engine: STMainEngine = Depends(get_main_engine)) -
         logger.warning(f"无法从主引擎获取回测引擎: {e}，创建独立服务实例")
         return BacktestService()
 
+# Define the response model for an interval option
+class IntervalResponse(BaseModel):
+    value: str
+    label: str
+
+# Define the response model for an exchange item
+class ExchangeItem(BaseModel):
+    name: str
+    value: str
+
+# Define the response model for a symbol item
+class SymbolItem(BaseModel):
+    name: str
+    symbol: str
+    exchange: str
+
 # ---------------- 策略管理API ----------------
+
+@router.get("/available-intervals", response_model=ApiResponse[List[IntervalResponse]])
+async def get_available_intervals_endpoint():
+    """
+    获取可用的K线周期列表。
+    """
+    intervals_data = [
+        {"value": "1m", "label": "1分钟"},
+        {"value": "5m", "label": "5分钟"},
+        {"value": "15m", "label": "15分钟"},
+        {"value": "30m", "label": "30分钟"},
+        {"value": "1h", "label": "1小时"},
+        {"value": "1d", "label": "日线"},
+        # {"value": "tick", "label": "Tick"}, # Future: if tick data selection is needed here
+    ]
+    return ApiResponse(success=True, message="K线周期列表获取成功", data=intervals_data)
+
+@router.get("/available-exchanges", response_model=ApiResponse[List[ExchangeItem]])
+async def get_available_exchanges_endpoint():
+    """
+    获取可用的交易所列表 (从VnPy的Exchange枚举动态生成)。
+    """
+    exchanges_data = []
+    for exchange_member in Exchange:
+        # 使用枚举成员的 .name 作为显示名称 (例如 'SSE', 'NASDAQ')
+        # 使用枚举成员的 .value 作为实际值 (例如 'SSE', 'NASDAQ')
+        # 在 vnpy.trader.constant.Exchange 中, .name 和 .value 通常是相同的字符串
+        exchanges_data.append({
+            "name": exchange_member.name,  # 例如: 'NASDAQ'
+            "value": exchange_member.value # 例如: 'NASDAQ'
+        })
+    
+    # 按交易所名称排序 (通常是字母顺序)
+    exchanges_data.sort(key=lambda x: x["name"])
+
+    return ApiResponse(success=True, message="交易所列表获取成功", data=exchanges_data)
+
+@router.get("/available-symbols", response_model=ApiResponse[List[SymbolItem]])
+async def get_available_symbols_endpoint(
+    exchange: str,  # From query param ?exchange=NASDAQ
+    query: Optional[str] = None, # Optional search query ?query=AAPL
+    main_engine: STMainEngine = Depends(get_main_engine) # Or db: Session = Depends(get_db)
+):
+    """
+    获取指定交易所下的可用合约列表。
+    可以根据query参数进行模糊搜索。
+    NOTE: Current implementation uses placeholder data.
+    """
+    try:
+        symbols_data = []
+        # Placeholder data logic - REPLACE WITH ACTUAL DATA SOURCE ACCESS
+        # This is to make the endpoint functional and resolve the 422 error.
+        # You need to replace this with logic to fetch real contract data from your system.
+        placeholder_contracts = {
+            "NASDAQ": [
+                {"name": "Apple Inc.", "symbol": "AAPL", "exchange": "NASDAQ"},
+                {"name": "Microsoft Corp.", "symbol": "MSFT", "exchange": "NASDAQ"},
+                {"name": "Amazon.com Inc.", "symbol": "AMZN", "exchange": "NASDAQ"},
+                {"name": "Alphabet Inc. Class A", "symbol": "GOOGL", "exchange": "NASDAQ"},
+                {"name": "Meta Platforms Inc.", "symbol": "META", "exchange": "NASDAQ"},
+            ],
+            "SSE": [
+                {"name": "贵州茅台", "symbol": "600519", "exchange": "SSE"},
+                {"name": "工商银行", "symbol": "601398", "exchange": "SSE"},
+            ],
+            "SZSE": [
+                {"name": "宁德时代", "symbol": "300750", "exchange": "SZSE"},
+            ],
+            "HKEX": [
+                {"name": "腾讯控股", "symbol": "00700", "exchange": "HKEX"},
+            ]
+            # Add more exchanges and symbols as needed for testing
+        }
+
+        if exchange in placeholder_contracts:
+            for contract_info in placeholder_contracts[exchange]:
+                item = SymbolItem(**contract_info)
+                if query:
+                    if query.lower() in item.name.lower() or query.lower() in item.symbol.lower():
+                        symbols_data.append(item)
+                else:
+                    symbols_data.append(item)
+        
+        if not symbols_data and query:
+            return ApiResponse(success=True, message=f"在交易所 {exchange} 未找到符合查询 '{query}' 的合约 (占位符数据)", data=[])
+        elif not symbols_data:
+            return ApiResponse(success=True, message=f"交易所 {exchange} 下没有配置合约数据 (占位符数据)", data=[])
+
+        return ApiResponse(success=True, message="合约列表获取成功 (占位符数据)", data=symbols_data)
+
+    except Exception as e:
+        logger.error("获取合约列表时发生错误: %s", e, exc_info=True)
+        # Return a generic error message, or more specific if possible
+        return ApiResponse(success=False, message="获取合约列表失败: 服务内部错误", data=None)
 
 @router.get("/types", response_model=ApiResponse)
 async def get_strategy_types(
@@ -268,84 +386,128 @@ async def run_backtest(
     except Exception as e:
         handle_api_exception("运行回测", e)
 
-@router.get("/backtest/records", response_model=ApiResponse)
+@router.get("/backtest/records", response_model=ApiResponse[PaginatedBacktestRecordsResponse])
 async def get_backtest_records(
     user_id: Optional[int] = None,
     strategy_id: Optional[int] = None,
+    page: int = 1,
+    page_size: int = 10,
     backtest_service: BacktestService = Depends(get_backtest_service)
 ):
-    """获取回测记录列表"""
+    """获取回测记录列表，支持分页"""
     try:
-        records = backtest_service.get_backtest_records(user_id, strategy_id)
-
-        if not records:
-            return {
-                "success": True,
-                "message": "没有找到符合条件的回测记录",
-                "data": []
-            }
-
-        record_list = [
-            {
-                "id": r.id,
-                "user_id": r.user_id,
-                "strategy_id": r.strategy_id,
-                "symbol": r.symbol,
-                "exchange": r.exchange,
-                "interval": r.interval,
-                "start_date": r.start_date.isoformat() if r.start_date else None,
-                "end_date": r.end_date.isoformat() if r.end_date else None,
-                "initial_capital": float(r.initial_capital) if r.initial_capital is not None else None,
-                "final_capital": float(r.final_capital) if r.final_capital is not None else None,
-                "total_return": float(r.total_return) if r.total_return is not None else None,
-                "annual_return": float(r.annual_return) if r.annual_return is not None else None,
-                "max_drawdown": float(r.max_drawdown) if r.max_drawdown is not None else None,
-                "sharpe_ratio": float(r.sharpe_ratio) if r.sharpe_ratio is not None else None,
-                "results": r.results,
-                "created_at": r.created_at.isoformat() if r.created_at else None
-            } for r in records
-        ]
-
-        return {
-            "success": True,
-            "message": f"获取回测记录成功，共 {len(record_list)} 条",
-            "data": record_list
-        }
+        records_data, total_count = backtest_service.get_backtest_records(
+            user_id=user_id, 
+            strategy_id=strategy_id,
+            page=page,
+            page_size=page_size
+        )
+        
+        # 将字典列表转换为 BacktestRecord 模型列表
+        typed_records = [BacktestRecord(**record) for record in records_data]
+        
+        paginated_response = PaginatedBacktestRecordsResponse(
+            total=total_count,
+            records=typed_records
+        )
+        return {"success": True, "message": "获取回测记录列表成功", "data": paginated_response}
     except Exception as e:
-        handle_api_exception("获取回测记录", e)
+        handle_api_exception("获取回测记录列表", e)
 
-@router.get("/backtest/records/{record_id}", response_model=ApiResponse)
+@router.get("/backtest/records/{record_id}", response_model=ApiResponse[BacktestRecord])
 async def get_backtest_record(
-    record_id: int, 
+    record_id: str, 
     backtest_service: BacktestService = Depends(get_backtest_service)
 ):
     """获取单个回测记录详情"""
     try:
-        record = backtest_service.get_backtest_record(record_id)
-        if not record:
-            raise HTTPException(status_code=404, detail="未找到指定的回测记录")
+        record_dict = backtest_service.get_backtest_record_detail(record_id)
+        if not record_dict:
+            raise HTTPException(status_code=404, detail=f"未找到ID为 {record_id} 的回测记录")
         
-        record_dict = {
-            "id": record.id,
-            "user_id": record.user_id,
-            "strategy_id": record.strategy_id,
-            "symbol": record.symbol,
-            "exchange": record.exchange,
-            "interval": record.interval,
-            "start_date": record.start_date.isoformat() if record.start_date else None,
-            "end_date": record.end_date.isoformat() if record.end_date else None,
-            "initial_capital": float(record.initial_capital) if record.initial_capital is not None else None,
-            "final_capital": float(record.final_capital) if record.final_capital is not None else None,
-            "total_return": float(record.total_return) if record.total_return is not None else None,
-            "annual_return": float(record.annual_return) if record.annual_return is not None else None,
-            "max_drawdown": float(record.max_drawdown) if record.max_drawdown is not None else None,
-            "sharpe_ratio": float(record.sharpe_ratio) if record.sharpe_ratio is not None else None,
-            "results": record.results,
-            "created_at": record.created_at.isoformat() if record.created_at else None
-        }
-
-        return {"success": True, "message": "获取回测记录详情成功", "data": record_dict}
-    except HTTPException as http_exc:
-        raise http_exc
+        # 将字典转换为 BacktestRecord 模型
+        typed_record = BacktestRecord(**record_dict)
+        return {"success": True, "message": "获取回测记录详情成功", "data": typed_record}
+    except HTTPException as he:
+        raise he
     except Exception as e:
-        handle_api_exception("获取回测记录详情", e) 
+        handle_api_exception("获取回测记录详情", e)
+
+@router.get("/backtest/reports/{backtest_id}", response_model=ApiResponse[BacktestReportDataModel])
+async def get_backtest_report(
+    backtest_id: str, 
+    backtest_service: BacktestService = Depends(get_backtest_service)
+):
+    """获取详细的回测报告数据"""
+    try:
+        report_data = backtest_service.get_backtest_report_data(backtest_id)
+        if not report_data:
+            raise HTTPException(status_code=404, detail=f"未找到ID为 {backtest_id} 的回测报告")
+        
+        # FastAPI 会自动使用 BacktestReportDataModel 校验和序列化 report_data
+        return {"success": True, "message": "获取回测报告成功", "data": report_data}
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        handle_api_exception("获取回测报告", e)
+
+@router.get("/stock_data_range", response_model=ApiResponse)
+async def get_stock_data_range(
+    symbol: str,
+    exchange_str: str, 
+    interval_str: str, 
+):
+    """获取指定股票在VnPy数据库中的K线数据起止日期"""
+    try:
+        try:
+            target_exchange = Exchange(exchange_str.upper())
+        except ValueError:
+            raise HTTPException(status_code=400, detail=f"无效的交易所代码: {exchange_str}. 可选项: {', '.join([e.value for e in Exchange])}")
+        
+        try:
+            target_interval = Interval(interval_str.lower())
+        except ValueError:
+            raise HTTPException(status_code=400, detail=f"无效的K线周期: {interval_str}. 可选项: {', '.join([i.value for i in Interval])}")
+
+        db_manager = get_database()
+        if not db_manager:
+            logger.error("无法获取VnPy数据库实例")
+            raise HTTPException(status_code=500, detail="无法连接到数据服务")
+
+        overviews = db_manager.get_bar_overview()
+
+        found_overview = None
+        for overview in overviews:
+            if (
+                overview.symbol == symbol and 
+                overview.exchange == target_exchange and 
+                overview.interval == target_interval
+            ):
+                found_overview = overview
+                break
+        
+        if found_overview and found_overview.start and found_overview.end:
+            return {
+                "success": True,
+                "message": "获取股票数据范围成功",
+                "data": {
+                    "symbol": symbol,
+                    "exchange": target_exchange.value,
+                    "interval": target_interval.value,
+                    "start_date": found_overview.start.strftime("%Y-%m-%d"),
+                    "end_date": found_overview.end.strftime("%Y-%m-%d"),
+                    "count": found_overview.count
+                }
+            }
+        else:
+            return {
+                "success": False,
+                "message": "未找到指定股票、交易所和周期的数据范围",
+                "data": None
+            }
+
+    except HTTPException as http_exc:
+        raise http_exc 
+    except Exception as e:
+        logger.error(f"获取股票 {symbol} 数据范围时出错: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"获取数据范围时发生内部错误: {str(e)}")

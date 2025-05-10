@@ -1,5 +1,8 @@
 module.exports = {
   lintOnSave: false,
+  transpileDependencies: [
+    'quasar' // 告诉 Babel 转译 Quasar 依赖
+  ],
   devServer: {
     host: '0.0.0.0',
     port: 8080,
