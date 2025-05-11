@@ -45,19 +45,83 @@ check_docker() {
     fi
 }
 
+# 配置阴镜像加速器
+configure_mirror() {
+    echo "检查镜像加速器配置..."
+
+    # 检查是否已配置镜像加速器
+    if [ ! -f /etc/docker/daemon.json ] || ! grep -q "registry-mirrors" /etc/docker/daemon.json; then
+        echo "未找到镜像加速器配置，正在配置阿里云镜像加速器..."
+
+        # 创建daemon.json文件
+        sudo mkdir -p /etc/docker
+
+        # 如果文件已存在，先备份
+        if [ -f /etc/docker/daemon.json ]; then
+            sudo cp /etc/docker/daemon.json /etc/docker/daemon.json.bak
+            echo "原有配置已备份为 /etc/docker/daemon.json.bak"
+
+            # 如果文件已存在但不包含 registry-mirrors，则添加
+            if ! grep -q "registry-mirrors" /etc/docker/daemon.json; then
+                # 使用jq工具合并JSON（如果安装了jq）
+                if command -v jq &> /dev/null; then
+                    sudo cp /etc/docker/daemon.json /etc/docker/daemon.json.tmp
+                    jq '. + {"registry-mirrors": ["https://qoy9ouh4.mirror.aliyuncs.com"]}' /etc/docker/daemon.json.tmp | sudo tee /etc/docker/daemon.json > /dev/null
+                    sudo rm -f /etc/docker/daemon.json.tmp
+                else
+                    # 如果没有jq，则直接覆盖
+                    sudo tee /etc/docker/daemon.json > /dev/null << EOF
+{
+  "registry-mirrors": ["https://qoy9ouh4.mirror.aliyuncs.com"]
+}
+EOF
+                fi
+            fi
+        else
+            # 创建新的daemon.json文件
+            sudo tee /etc/docker/daemon.json > /dev/null << EOF
+{
+  "registry-mirrors": ["https://qoy9ouh4.mirror.aliyuncs.com"]
+}
+EOF
+        fi
+
+        # 重启Docker服务
+        echo "重启Docker服务以应用镜像加速器配置..."
+        sudo systemctl daemon-reload
+        sudo systemctl restart docker
+
+        # 等待Docker服务重启
+        sleep 3
+
+        # 检查Docker服务状态
+        if ! systemctl is-active --quiet docker; then
+            echo "错误: Docker服务重启失败。请手动检查配置。"
+            exit 1
+        fi
+
+        echo "阿里云镜像加速器配置成功。"
+    else
+        echo "镜像加速器已配置。"
+    fi
+}
+
 # 检查基础镜像是否已加载
 check_base_images() {
     echo "检查基础镜像..."
-    
+
     # 检查CentOS 8镜像
     if ! docker images | grep -q "centos.*8"; then
         echo "警告: 未找到CentOS 8镜像。"
-        echo "将尝试从本地仓库拉取..."
-        
+        echo "将尝试使用阿里云镜像加速器拉取..."
+
+        # 先配置镜像加速器
+        configure_mirror
+
         # 尝试拉取CentOS 8镜像
         docker pull centos:8 || {
-            echo "错误: 无法拉取CentOS 8镜像。"
-            echo "请确保已加载CentOS 8镜像或配置了可用的镜像源。"
+            echo "错误: 即使使用阿里云镜像加速器仍无法拉取CentOS 8镜像。"
+            echo "请确保网络连接正常或手动加载CentOS 8镜像。"
             exit 1
         }
     else
@@ -68,22 +132,23 @@ check_base_images() {
 # 构建Docker镜像
 build_image() {
     echo "构建Docker镜像..."
-    
-    # 检查Docker和基础镜像
+
+    # 检查Docker、配置镜像加速器和基础镜像
     check_docker
+    configure_mirror
     check_base_images
-    
+
     # 创建日志目录
     mkdir -p "$LOG_DIR"
-    
+
     # 记录构建开始
     BUILD_LOG="$LOG_DIR/build_$(date +%Y%m%d_%H%M%S).log"
     echo "===== 构建开始 $(date) =====" | tee -a "$BUILD_LOG"
-    
+
     # 构建Docker镜像
     cd "$REPO_DIR"
     docker build -t "$DOCKER_IMAGE:latest" -f deploy/Dockerfile.centos . 2>&1 | tee -a "$BUILD_LOG"
-    
+
     # 检查构建结果
     if [ ${PIPESTATUS[0]} -eq 0 ]; then
         echo "===== 构建成功 $(date) =====" | tee -a "$BUILD_LOG"
@@ -99,27 +164,27 @@ build_image() {
 # 运行Docker容器
 run_container() {
     echo "运行Docker容器..."
-    
+
     # 检查Docker
     check_docker
-    
+
     # 检查镜像是否存在
     if ! docker images | grep -q "$DOCKER_IMAGE"; then
         echo "错误: 未找到镜像 $DOCKER_IMAGE。请先构建镜像。"
         echo "  $0 --build"
         exit 1
     fi
-    
+
     # 检查容器是否已存在
     if docker ps -a | grep -q "$CONTAINER_NAME"; then
         echo "容器已存在，先停止并删除..."
         docker stop "$CONTAINER_NAME" > /dev/null 2>&1
         docker rm "$CONTAINER_NAME" > /dev/null 2>&1
     fi
-    
+
     # 创建日志和数据目录
     mkdir -p "$LOG_DIR" "$DATA_DIR"
-    
+
     # 运行容器
     docker run -d --name "$CONTAINER_NAME" \
         -p 80:80 \
@@ -127,12 +192,12 @@ run_container() {
         -v "$DATA_DIR:/app/data" \
         --security-opt label=disable \
         "$DOCKER_IMAGE:latest"
-    
+
     # 检查运行结果
     if [ $? -eq 0 ]; then
         # 获取服务器IP地址
         SERVER_IP=$(hostname -I | awk '{print $1}')
-        
+
         echo "Docker容器启动成功!"
         echo "访问地址: http://$SERVER_IP"
         echo "部署面板: http://$SERVER_IP/deploy/"
@@ -149,19 +214,19 @@ run_container() {
 # 停止Docker容器
 stop_container() {
     echo "停止Docker容器..."
-    
+
     # 检查Docker
     check_docker
-    
+
     # 检查容器是否存在
     if ! docker ps -a | grep -q "$CONTAINER_NAME"; then
         echo "容器 $CONTAINER_NAME 不存在。"
         exit 0
     fi
-    
+
     # 停止容器
     docker stop "$CONTAINER_NAME"
-    
+
     if [ $? -eq 0 ]; then
         echo "Docker容器已停止!"
     else
@@ -173,24 +238,24 @@ stop_container() {
 # 删除Docker容器
 delete_container() {
     echo "删除Docker容器..."
-    
+
     # 检查Docker
     check_docker
-    
+
     # 检查容器是否存在
     if ! docker ps -a | grep -q "$CONTAINER_NAME"; then
         echo "容器 $CONTAINER_NAME 不存在。"
         exit 0
     fi
-    
+
     # 停止容器（如果正在运行）
     if docker ps | grep -q "$CONTAINER_NAME"; then
         docker stop "$CONTAINER_NAME" > /dev/null 2>&1
     fi
-    
+
     # 删除容器
     docker rm "$CONTAINER_NAME"
-    
+
     if [ $? -eq 0 ]; then
         echo "Docker容器已删除!"
     else
@@ -202,16 +267,16 @@ delete_container() {
 # 查看容器日志
 view_logs() {
     echo "查看容器日志..."
-    
+
     # 检查Docker
     check_docker
-    
+
     # 检查容器是否存在
     if ! docker ps -a | grep -q "$CONTAINER_NAME"; then
         echo "容器 $CONTAINER_NAME 不存在。"
         exit 1
     fi
-    
+
     # 查看日志
     docker logs -f "$CONTAINER_NAME"
 }

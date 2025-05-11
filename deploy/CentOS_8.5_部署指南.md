@@ -169,9 +169,31 @@ chmod +x deploy/scripts/deploy_centos8.sh
 
 ## 网络受限环境的特殊处理
 
+### 使用阿里云镜像加速器
+
+在网络受限环境中，您可能无法直接从Docker Hub拉取镜像。我们的部署脚本已集成了阿里云镜像加速器的配置，可以显著提高镜像拉取速度。
+
+脚本会自动执行以下操作：
+
+```bash
+# 创建daemon.json文件
+sudo mkdir -p /etc/docker
+sudo tee /etc/docker/daemon.json <<-'EOF'
+{
+  "registry-mirrors": ["https://qoy9ouh4.mirror.aliyuncs.com"]
+}
+EOF
+sudo systemctl daemon-reload
+sudo systemctl restart docker
+```
+
+如果您想手动配置阿里云镜像加速器，可以执行上述命令。
+
+在大多数情况下，使用阿里云镜像加速器应该能够成功拉取CentOS 8镜像。如果仍然无法拉取，可以尝试以下方法：
+
 ### 基础镜像准备
 
-在网络受限环境中，您可能无法直接从Docker Hub拉取镜像。我们的解决方案是使用本地CentOS 8镜像作为基础镜像，避免依赖外部镜像仓库。
+如果使用阿里云镜像加速器仍然无法拉取镜像，您可以手动准备镜像并导入到服务器。
 
 如果您的环境中没有CentOS 8镜像，您可以在可访问互联网的环境中准备镜像：
 

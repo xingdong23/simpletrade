@@ -2,18 +2,32 @@
 FROM centos:8
 WORKDIR /app
 
-# 配置CentOS 8的存储库（因为CentOS 8已经EOL）
+# 配置CentOS 8的存储库（使用阿里云镜像源）
 RUN cd /etc/yum.repos.d/ && \
     sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-* && \
-    sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-*
+    sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://mirrors.aliyun.com/centos|g' /etc/yum.repos.d/CentOS-* && \
+    # 备份原始的repo文件
+    mkdir -p /etc/yum.repos.d/backup && \
+    cp /etc/yum.repos.d/CentOS-* /etc/yum.repos.d/backup/ && \
+    # 下载阿里云的repo文件
+    curl -o /etc/yum.repos.d/CentOS-Base.repo https://mirrors.aliyun.com/repo/Centos-vault-8.5.2111.repo && \
+    # 添加EPEL镜像
+    curl -o /etc/yum.repos.d/epel.repo https://mirrors.aliyun.com/repo/epel-8.repo
 
 # 安装必要的软件
-RUN dnf update -y && \
+RUN dnf clean all && \
+    dnf makecache && \
+    dnf update -y && \
     dnf install -y epel-release && \
     dnf install -y nginx curl procps net-tools vim wget && \
     dnf module install -y nodejs:16 && \
     dnf install -y python39 python39-pip && \
     dnf clean all
+
+# 配置npm和pip镜像源
+RUN npm config set registry https://registry.npmmirror.com && \
+    pip3.9 config set global.index-url https://mirrors.aliyun.com/pypi/simple/ && \
+    pip3.9 config set install.trusted-host mirrors.aliyun.com
 
 # 创建目录
 RUN mkdir -p /app/frontend /app/backend /app/panel /app/logs /app/data
