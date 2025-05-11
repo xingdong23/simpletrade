@@ -281,20 +281,86 @@ sudo firewall-cmd --reload
 ```bash
 # 备份原始的repo文件
 sudo mkdir -p /etc/yum.repos.d/backup
-sudo cp /etc/yum.repos.d/CentOS-* /etc/yum.repos.d/backup/
+sudo cp /etc/yum.repos.d/CentOS-* /etc/yum.repos.d/backup/ 2>/dev/null || true
 
-# 下载阿里云的repo文件
-sudo curl -o /etc/yum.repos.d/CentOS-Base.repo https://mirrors.aliyun.com/repo/Centos-vault-8.5.2111.repo
+# 移除原有的repo文件
+sudo rm -f /etc/yum.repos.d/CentOS-*.repo
 
-# 添加EPEL镜像
-sudo curl -o /etc/yum.repos.d/epel.repo https://mirrors.aliyun.com/repo/epel-8.repo
+# 创建新的Base仓库文件
+sudo cat > /etc/yum.repos.d/CentOS-Base.repo << 'REPO'
+[base]
+name=CentOS-$releasever - Base - mirrors.aliyun.com
+failovermethod=priority
+baseurl=https://mirrors.aliyun.com/centos-vault/8.5.2111/BaseOS/x86_64/os/
+gpgcheck=0
+gpgkey=https://mirrors.aliyun.com/centos/RPM-GPG-KEY-CentOS-Official
+
+[updates]
+name=CentOS-$releasever - Updates - mirrors.aliyun.com
+failovermethod=priority
+baseurl=https://mirrors.aliyun.com/centos-vault/8.5.2111/BaseOS/x86_64/os/
+gpgcheck=0
+gpgkey=https://mirrors.aliyun.com/centos/RPM-GPG-KEY-CentOS-Official
+
+[extras]
+name=CentOS-$releasever - Extras - mirrors.aliyun.com
+failovermethod=priority
+baseurl=https://mirrors.aliyun.com/centos-vault/8.5.2111/extras/x86_64/os/
+gpgcheck=0
+gpgkey=https://mirrors.aliyun.com/centos/RPM-GPG-KEY-CentOS-Official
+
+[centosplus]
+name=CentOS-$releasever - Plus - mirrors.aliyun.com
+failovermethod=priority
+baseurl=https://mirrors.aliyun.com/centos-vault/8.5.2111/centosplus/x86_64/os/
+gpgcheck=0
+gpgkey=https://mirrors.aliyun.com/centos/RPM-GPG-KEY-CentOS-Official
+
+[PowerTools]
+name=CentOS-$releasever - PowerTools - mirrors.aliyun.com
+failovermethod=priority
+baseurl=https://mirrors.aliyun.com/centos-vault/8.5.2111/PowerTools/x86_64/os/
+gpgcheck=0
+gpgkey=https://mirrors.aliyun.com/centos/RPM-GPG-KEY-CentOS-Official
+
+[AppStream]
+name=CentOS-$releasever - AppStream - mirrors.aliyun.com
+failovermethod=priority
+baseurl=https://mirrors.aliyun.com/centos-vault/8.5.2111/AppStream/x86_64/os/
+gpgcheck=0
+gpgkey=https://mirrors.aliyun.com/centos/RPM-GPG-KEY-CentOS-Official
+REPO
+
+# 创建 EPEL 仓库文件
+sudo cat > /etc/yum.repos.d/epel.repo << 'REPO'
+[epel]
+name=Extra Packages for Enterprise Linux $releasever - $basearch
+baseurl=https://mirrors.aliyun.com/epel/8/Everything/x86_64/
+enabled=1
+gpgcheck=0
+gpgkey=https://mirrors.aliyun.com/epel/RPM-GPG-KEY-EPEL-8
+
+[epel-debuginfo]
+name=Extra Packages for Enterprise Linux $releasever - $basearch - Debug
+baseurl=https://mirrors.aliyun.com/epel/8/Everything/x86_64/debug/
+enabled=0
+gpgcheck=0
+gpgkey=https://mirrors.aliyun.com/epel/RPM-GPG-KEY-EPEL-8
+
+[epel-source]
+name=Extra Packages for Enterprise Linux $releasever - $basearch - Source
+baseurl=https://mirrors.aliyun.com/epel/8/Everything/source/tree/
+enabled=0
+gpgcheck=0
+gpgkey=https://mirrors.aliyun.com/epel/RPM-GPG-KEY-EPEL-8
+REPO
 
 # 清理缓存并重新生成
 sudo dnf clean all
 sudo dnf makecache
 ```
 
-这将使用阿里云的镜像源替代官方的 vault 存储库，显著提高软件包下载速度。
+这将完全替换原有的软件源配置，使用阿里云的镜像源，并且禁用了mirrorlist，直接使用baseurl，避免了DNS解析问题。
 
 ### 系统限制调整
 

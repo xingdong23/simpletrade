@@ -16,7 +16,6 @@ RUN chmod +x /tmp/configure_centos_repos.sh && \
 # 安装必要的软件
 RUN dnf clean all && \
     dnf makecache && \
-    dnf update -y && \
     dnf install -y epel-release && \
     dnf install -y nginx curl procps net-tools vim wget && \
     dnf module install -y nodejs:16 && \
@@ -27,6 +26,10 @@ RUN dnf clean all && \
 RUN npm config set registry https://registry.npmmirror.com && \
     pip3.9 config set global.index-url https://mirrors.aliyun.com/pypi/simple/ && \
     pip3.9 config set install.trusted-host mirrors.aliyun.com
+
+# 配置网络设置
+RUN echo "nameserver 8.8.8.8" > /etc/resolv.conf && \
+    echo "nameserver 114.114.114.114" >> /etc/resolv.conf
 
 # 创建目录
 RUN mkdir -p /app/frontend /app/backend /app/panel /app/logs /app/data
