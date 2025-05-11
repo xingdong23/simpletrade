@@ -1,164 +1,155 @@
-# SimpleTrade 一体化部署系统
+# SimpleTrade CentOS 8.5 部署指南
 
-这个部署系统提供了一种简单的方式来部署 SimpleTrade 应用，包括前端和后端组件。它使用 Docker 容器化技术将前后端打包为一个整体，并提供了一个简单的 Web 界面来管理部署。
+## 概述
 
-## 系统组件
-
-1. **Docker 容器**：包含前端、后端和部署面板
-2. **Nginx**：作为反向代理，将请求分发到前端、后端和部署 API
-3. **部署面板**：一个简单的 Web 界面，用于管理部署
-4. **部署 API**：处理部署请求的 Python API 服务器
+本文档提供了在CentOS 8.5环境中部署SimpleTrade应用的方法，特别适用于网络受限的环境。通过使用本地Docker镜像，我们可以在无法正常访问Docker Hub的环境中优雅地部署应用。
 
 ## 目录结构
 
 ```
 deploy/
-├── Dockerfile          # Docker 构建文件
-├── README.md           # 本文档
-├── config/             # 配置文件
-│   └── nginx.conf      # Nginx 配置
-├── panel/              # 部署面板
-│   ├── deploy.py       # 部署 API 服务器
-│   └── index.html      # 部署面板 Web 界面
-└── scripts/            # 脚本
-    └── start.sh        # 容器启动脚本
+├── CentOS_8.5_部署指南_网络受限环境.md  # 详细的部署指南
+├── Dockerfile.centos                  # 专为CentOS 8.5环境优化的Dockerfile
+├── config/                            # 配置文件
+│   └── nginx.conf                     # Nginx配置
+├── panel/                             # 部署面板
+│   ├── deploy.py                      # 部署API服务器
+│   └── index.html                     # 部署面板Web界面
+└── scripts/                           # 脚本
+    ├── centos_deploy.sh               # 旧版部署脚本（已弃用）
+    ├── centos_setup.sh                # CentOS环境设置脚本
+    ├── deploy_centos8.sh              # 新版优雅部署脚本
+    └── start.sh                       # 容器启动脚本
 ```
 
-## 使用方法
+## 快速开始
 
-### CentOS 8.5 环境设置
+### 步骤1: 准备环境
 
-如果您使用的是 CentOS 8.5 服务器，我们提供了一个专门的设置脚本：
+首先，确保已安装Docker并配置好环境：
 
 ```bash
 # 给脚本添加执行权限
 chmod +x deploy/scripts/centos_setup.sh
 
-# 运行设置脚本，执行所有操作
+# 运行环境设置脚本
 sudo ./deploy/scripts/centos_setup.sh --all
 ```
 
-这个脚本会安装 Docker、配置 SELinux 和防火墙。
+### 步骤2: 部署应用
 
-### 初始构建和部署
-
-1. 确保已安装 Docker
-2. 克隆项目代码
-3. 使用提供的部署脚本：
+使用优雅部署脚本构建和运行应用：
 
 ```bash
 # 给脚本添加执行权限
-chmod +x deploy/scripts/local_deploy.sh
+chmod +x deploy/scripts/deploy_centos8.sh
 
-# 构建 Docker 镜像
-./deploy/scripts/local_deploy.sh --build
-
-# 运行容器
-./deploy/scripts/local_deploy.sh --run
-
-# 或者一步完成构建和运行
-./deploy/scripts/local_deploy.sh --build --run
+# 构建和运行
+./deploy/scripts/deploy_centos8.sh --build --run
 ```
 
-如果您想手动执行命令，也可以使用以下命令：
+### 步骤3: 访问应用
+
+部署完成后，您可以通过服务器IP地址访问应用：
+
+- **前端应用**: http://your-server-ip/
+- **部署面板**: http://your-server-ip/deploy/
+  - 用户名: admin
+  - 密码: admin123
+
+## 详细说明
+
+### 环境设置脚本 (centos_setup.sh)
+
+此脚本用于设置CentOS 8.5环境，包括：
+
+- 安装Docker和必要的依赖
+- 配置SELinux以允许Docker容器运行
+- 配置防火墙开放HTTP端口
+
+使用方法：
 
 ```bash
-# 构建 Docker 镜像
-docker build -t simpletrade:latest -f deploy/Dockerfile .
-
-# 运行容器
-docker run -d --name simpletrade -p 80:80 -v "$(pwd)/deploy/logs:/app/logs" -v "$(pwd)/data:/app/data" simpletrade:latest
+./deploy/scripts/centos_setup.sh --all
 ```
 
-### 访问应用
+### 优雅部署脚本 (deploy_centos8.sh)
 
-- **前端应用**：http://localhost/
-- **部署面板**：http://localhost/deploy/
-  - 用户名：admin
-  - 密码：admin123
+此脚本用于构建和运行Docker容器，特别优化用于网络受限的环境：
 
-### 部署新版本
+- 使用本地CentOS 8镜像作为基础镜像
+- 在单个阶段中完成所有构建步骤
+- 添加SELinux兼容参数
+- 创建必要的数据和日志目录
 
-1. 访问部署面板
-2. 输入要部署的版本标识（分支名、标签名或提交哈希）
-3. 点击"开始部署"按钮
-4. 确认部署
-5. 等待部署完成
-6. 查看部署日志
+使用方法：
 
-## 注意事项
+```bash
+# 构建Docker镜像
+./deploy/scripts/deploy_centos8.sh --build
 
-### 通用注意事项
+# 运行Docker容器
+./deploy/scripts/deploy_centos8.sh --run
 
-1. **安全性**：部署面板使用基本认证保护，但在生产环境中应该使用更强的安全措施
-2. **数据持久化**：容器重启后，数据库数据将丢失，应该使用数据卷或外部数据库
-3. **日志管理**：部署日志会保存在容器内的 `/app/logs` 目录，可以使用数据卷将其映射到主机
-4. **HTTPS**：在生产环境中，应该配置 SSL 证书以启用 HTTPS
+# 停止Docker容器
+./deploy/scripts/deploy_centos8.sh --stop
 
-### CentOS 8.5 特有注意事项
+# 删除Docker容器
+./deploy/scripts/deploy_centos8.sh --delete
 
-1. **SELinux**：如果遇到权限问题，可能是由于 SELinux 的限制。可以使用以下命令临时禁用 SELinux：
-   ```bash
-   sudo setenforce 0
-   ```
-   或者永久禁用（需要重启）：
-   ```bash
-   sudo sed -i 's/^SELINUX=enforcing$/SELINUX=disabled/' /etc/selinux/config
-   sudo reboot
-   ```
+# 查看容器日志
+./deploy/scripts/deploy_centos8.sh --logs
+```
 
-2. **防火墙**：CentOS 8.5 默认使用 firewalld 作为防火墙。确保已经开放 HTTP 端口：
-   ```bash
-   sudo firewall-cmd --permanent --add-service=http
-   sudo firewall-cmd --reload
-   ```
+### Dockerfile.centos
 
-3. **系统限制**：如果遇到系统限制相关的问题，可以调整以下设置：
-   ```bash
-   echo "* soft nofile 65536" | sudo tee -a /etc/security/limits.conf
-   echo "* hard nofile 65536" | sudo tee -a /etc/security/limits.conf
-   sudo sysctl -p
-   ```
+此Dockerfile专为CentOS 8.5环境优化，使用CentOS 8作为基础镜像，避免从Docker Hub拉取外部镜像。它在单个阶段中完成所有构建步骤，包括：
 
-4. **CentOS 8 生命周期**：CentOS 8 已于 2021 年底结束支持，建议考虑升级到 CentOS Stream 8 或迁移到 Rocky Linux/AlmaLinux。
-
-## 自定义
-
-### 修改认证信息
-
-默认的用户名和密码是 `admin` / `admin123`。要修改它们，可以编辑 `start.sh` 脚本中的相关部分。
-
-### 添加更多功能
-
-可以根据需要扩展部署面板和 API，例如：
-
-- 添加回滚功能
-- 添加数据库迁移功能
-- 添加监控功能
-- 添加多环境支持（开发、测试、生产）
+- 配置CentOS 8的存储库（因为CentOS 8已经EOL）
+- 安装Node.js、Python和其他必要的软件
+- 构建前端和后端
+- 配置Nginx和启动脚本
 
 ## 故障排除
 
-### 容器无法启动
+### 问题1: Docker安装失败
 
-检查 Docker 日志：
+**症状**：运行`centos_setup.sh`脚本时，Docker安装失败。
 
+**解决方案**：
 ```bash
-docker logs simpletrade
+# 手动安装Docker
+sudo dnf config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce.repo
+sudo dnf install -y --nobest docker-ce docker-ce-cli containerd.io
+sudo systemctl start docker
+sudo systemctl enable docker
 ```
 
-### 部署失败
+### 问题2: 构建失败
 
-查看部署日志：
+**症状**：运行`deploy_centos8.sh --build`时，构建失败。
 
-1. 访问部署面板
-2. 在右侧的日志部分选择最新的日志文件
-3. 查看详细错误信息
+**解决方案**：
+- 检查构建日志：`cat /opt/simpletrade/deploy/logs/build_*.log`
+- 确保CentOS 8镜像可用：`docker images | grep centos`
+- 如果CentOS 8镜像不可用，可以尝试手动拉取：`docker pull centos:8`
 
-### API 无法访问
+### 问题3: 容器无法启动
 
-检查 Nginx 日志：
+**症状**：运行`deploy_centos8.sh --run`时，容器无法启动。
 
-```bash
-docker exec simpletrade cat /var/log/nginx/error.log
-```
+**解决方案**：
+- 查看Docker错误日志：`docker logs simpletrade`
+- 检查SELinux状态：`getenforce`
+- 如果SELinux是问题，可以临时禁用：`sudo setenforce 0`
+
+## 更多信息
+
+有关更详细的部署指南，请参阅[CentOS_8.5_部署指南_网络受限环境.md](./CentOS_8.5_部署指南_网络受限环境.md)。
+
+---
+
+**文档版本**: 1.0  
+**最后更新**: 2023年11月15日  
+**适用环境**: CentOS 8.5 64位  
+**文档作者**: SimpleTrade团队
