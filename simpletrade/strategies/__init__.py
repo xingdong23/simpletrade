@@ -20,7 +20,7 @@ from vnpy_ctastrategy.template import CtaTemplate
 
 # 导入自定义策略
 # 如果有自定义策略，可以在这里导入
-# from .moving_average_strategy import MovingAverageStrategy
+from .GridStrategy import GridStrategy
 
 logger = logging.getLogger("simpletrade.strategies")
 
@@ -31,7 +31,7 @@ STRATEGY_CLASS_MAP = {
     "DoubleMaStrategy": DoubleMaStrategy,
     "TurtleSignalStrategy": TurtleSignalStrategy,
     # 添加自定义策略
-    # "MovingAverageStrategy": MovingAverageStrategy,
+    "GridStrategy": GridStrategy,
 }
 
 # 策略分类
@@ -40,6 +40,7 @@ STRATEGY_CATEGORIES = {
     "BollChannelStrategy": "通道突破",
     "DoubleMaStrategy": "均线",
     "TurtleSignalStrategy": "趋势跟踪",
+    "GridStrategy": "网格交易",
 }
 
 # 策略描述
@@ -48,6 +49,7 @@ STRATEGY_DESCRIPTIONS = {
     "BollChannelStrategy": "布林通道策略，通道上轨突破做多，下轨突破做空",
     "DoubleMaStrategy": "双均线策略，快线上穿慢线做多，下穿做空",
     "TurtleSignalStrategy": "海龟交易法则，基于唐奇安通道的趋势跟踪策略",
+    "GridStrategy": "通用网格交易策略，动态调整网格大小，适用于各种加密货币交易对",
 }
 
 def discover_strategies():

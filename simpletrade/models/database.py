@@ -81,6 +81,7 @@ class UserStrategy(Base):
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    strategy_type = Column(String(50), nullable=True, index=True)  # 添加策略类型字段
 
     strategy = relationship("Strategy", back_populates="user_strategies")
 

@@ -211,6 +211,15 @@ def initialize_core_components():
         logger.error(f"Failed to add CTA Strategy App: {e}", exc_info=True)
     logger.debug("Applications added.")
 
+    # 4. 同步策略到数据库
+    try:
+        logger.info("正在同步策略到数据库...")
+        from simpletrade.scripts.sync_strategies_to_db import sync_strategies_to_db
+        sync_strategies_to_db()
+        logger.info("策略同步完成")
+    except Exception as e:
+        logger.error(f"同步策略到数据库失败: {e}", exc_info=True)
+
     logger.info("Core components initialization complete.")
     # +++ Return db_instance along with engines +++
     return main_engine, event_engine, db_instance

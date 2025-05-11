@@ -47,47 +47,47 @@ def _get_vnpy_exchange(exchange_str: str) -> Optional[Exchange]:
 
 class AbstractBacktestEngine(ABC):
     """抽象回测引擎基类"""
-    
+
     @abstractmethod
     def set_parameters(self, **kwargs) -> None:
         """设置回测参数"""
         pass
-    
+
     @abstractmethod
     def add_strategy(self, strategy_class: Type, strategy_params: Dict[str, Any]) -> None:
         """添加策略"""
         pass
-    
+
     @abstractmethod
     def load_data(self) -> None:
         """加载历史数据"""
         pass
-    
+
     @abstractmethod
     def run_backtesting(self) -> None:
         """运行回测"""
         pass
-    
+
     @abstractmethod
     def calculate_result(self) -> None:
         """计算回测结果"""
         pass
-    
+
     @abstractmethod
     def calculate_statistics(self) -> Dict[str, Any]:
         """计算回测统计指标"""
         pass
-    
+
     @abstractmethod
     def get_daily_results(self) -> pd.DataFrame:
         """获取每日结果"""
         pass
-    
+
     @abstractmethod
     def get_all_trades(self) -> List[Any]:
         """获取所有交易记录"""
         pass
-    
+
     @property
     @abstractmethod
     def history_data(self) -> List[Any]:
@@ -97,43 +97,65 @@ class AbstractBacktestEngine(ABC):
 
 class CTABacktestEngine(AbstractBacktestEngine):
     """CTA策略回测引擎"""
-    
+
     def __init__(self):
         """初始化"""
         self.engine = CTABacktestingEngine()
-        
+
     def set_parameters(self, **kwargs) -> None:
         """设置回测参数"""
         self.engine.set_parameters(**kwargs)
-    
+
     def add_strategy(self, strategy_class: Type, strategy_params: Dict[str, Any]) -> None:
         """添加策略"""
-        self.engine.add_strategy(strategy_class, strategy_params)
-    
+        # 直接使用vnpy的原生方法
+        try:
+            # 尝试使用原生方法
+            self.engine.add_strategy(strategy_class, strategy_params)
+        except TypeError as e:
+            # 如果出现类型错误，可能是参数不匹配
+            import logging
+            logger = logging.getLogger("simpletrade.apps.st_backtest.engine")
+            logger.warning(f"使用原生方法添加策略失败: {e}")
+
+            # 尝试手动创建策略实例
+            try:
+                # 假设策略类需要3个参数（包括self）
+                self.engine.strategy = strategy_class(
+                    self.engine,
+                    strategy_class.__name__,
+                    strategy_params
+                )
+                logger.info(f"成功手动创建策略实例: {strategy_class.__name__}")
+            except Exception as e2:
+                # 如果仍然失败，抛出异常
+                logger.error(f"手动创建策略实例失败: {e2}")
+                raise
+
     def load_data(self) -> None:
         """加载历史数据"""
         self.engine.load_data()
-    
+
     def run_backtesting(self) -> None:
         """运行回测"""
         self.engine.run_backtesting()
-    
+
     def calculate_result(self) -> None:
         """计算回测结果"""
         self.engine.calculate_result()
-    
+
     def calculate_statistics(self) -> Dict[str, Any]:
         """计算回测统计指标"""
         return self.engine.calculate_statistics()
-    
+
     def get_daily_results(self) -> pd.DataFrame:
         """获取每日结果"""
         return pd.DataFrame(self.engine.get_daily_results()).fillna(0.0)
-    
+
     def get_all_trades(self) -> List[Any]:
         """获取所有交易记录"""
         return self.engine.get_all_trades()
-    
+
     @property
     def history_data(self) -> List[Any]:
         """获取历史数据"""
@@ -144,43 +166,43 @@ class CTABacktestEngine(AbstractBacktestEngine):
 if HAS_OPTION_ENGINE:
     class OptionBacktestEngine(AbstractBacktestEngine):
         """期权策略回测引擎"""
-        
+
         def __init__(self):
             """初始化"""
             self.engine = OptionBacktestingEngine()
-            
+
         def set_parameters(self, **kwargs) -> None:
             """设置回测参数"""
             self.engine.set_parameters(**kwargs)
-        
+
         def add_strategy(self, strategy_class: Type, strategy_params: Dict[str, Any]) -> None:
             """添加策略"""
             self.engine.add_strategy(strategy_class, strategy_params)
-        
+
         def load_data(self) -> None:
             """加载历史数据"""
             self.engine.load_data()
-        
+
         def run_backtesting(self) -> None:
             """运行回测"""
             self.engine.run_backtesting()
-        
+
         def calculate_result(self) -> None:
             """计算回测结果"""
             self.engine.calculate_result()
-        
+
         def calculate_statistics(self) -> Dict[str, Any]:
             """计算回测统计指标"""
             return self.engine.calculate_statistics()
-        
+
         def get_daily_results(self) -> pd.DataFrame:
             """获取每日结果"""
             return pd.DataFrame(self.engine.get_daily_results()).fillna(0.0)
-        
+
         def get_all_trades(self) -> List[Any]:
             """获取所有交易记录"""
             return self.engine.get_all_trades()
-        
+
         @property
         def history_data(self) -> List[Any]:
             """获取历史数据"""
@@ -189,27 +211,27 @@ if HAS_OPTION_ENGINE:
 
 class BacktestEngineFactory:
     """回测引擎工厂，根据策略类型创建合适的回测引擎"""
-    
+
     @staticmethod
     def create_engine(strategy_type: str) -> AbstractBacktestEngine:
         """
         创建回测引擎
-        
+
         Args:
             strategy_type (str): 策略类型，如 'cta', 'option', 'spread', 'algo'
-            
+
         Returns:
             AbstractBacktestEngine: 回测引擎实例
-            
+
         Raises:
             ValueError: 如果策略类型不支持
         """
         if strategy_type is None:
             logger.warning("策略类型为None，使用默认的CTA回测引擎")
             return CTABacktestEngine()
-            
+
         strategy_type = strategy_type.lower()
-        
+
         if strategy_type in ['cta', 'cat']:  # 添加对'cat'类型的支持
             return CTABacktestEngine()
         elif strategy_type == 'option' and HAS_OPTION_ENGINE:
@@ -223,12 +245,12 @@ class BacktestEngineFactory:
 
 class STBacktestEngine(STBaseEngine):
     """SimpleTrade回测引擎"""
-    
+
     def __init__(self, main_engine=None, event_engine=None, app_name=None):
         """初始化回测引擎"""
         super().__init__(main_engine, event_engine, app_name)
         self.factory = BacktestEngineFactory()
-        
+
     def create_backtest_engine(self, strategy_type: str) -> AbstractBacktestEngine:
         """创建回测引擎实例"""
-        return self.factory.create_engine(strategy_type) 
+        return self.factory.create_engine(strategy_type)

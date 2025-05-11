@@ -28,6 +28,7 @@ from simpletrade.apps.st_backtest.service import BacktestService
 from simpletrade.core.engine import STMainEngine
 from simpletrade.services.monitor_service import MonitorService
 from simpletrade.services.strategy_service import StrategyService
+from simpletrade.models.database import Strategy  # 添加Strategy模型的导入
 
 # 获取logger实例
 logger = logging.getLogger(__name__)
@@ -290,6 +291,23 @@ async def get_user_strategies(
     except Exception as e:
         handle_api_exception("获取用户策略", e)
 
+@router.get("/user/detail/{user_strategy_id}", response_model=ApiResponse)
+async def get_user_strategy_detail(
+    user_strategy_id: int,
+    db: Session = Depends(get_db),
+    strategy_service: StrategyService = Depends(get_strategy_service)
+):
+    """获取单个用户策略详情"""
+    try:
+        user_strategy = strategy_service.get_user_strategy_detail(db, user_strategy_id)
+        if not user_strategy:
+            raise HTTPException(status_code=404, detail=f"未找到ID为 {user_strategy_id} 的用户策略")
+        return {"success": True, "message": "获取用户策略详情成功", "data": user_strategy}
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        handle_api_exception("获取用户策略详情", e)
+
 @router.post("/user/create", response_model=ApiResponse)
 async def create_user_strategy(
     request: CreateUserStrategyRequest,
@@ -307,6 +325,30 @@ async def create_user_strategy(
         if not user_strategy:
             raise HTTPException(status_code=400, detail="创建用户策略失败")
 
+        # 获取策略模板信息，以便添加类型信息
+        db = next(get_db())
+        try:
+            strategy_template = db.query(Strategy).filter(Strategy.id == user_strategy.strategy_id).first()
+
+            # 获取策略类型，优先使用strategy_type字段
+            strategy_type = None
+            if strategy_template:
+                if hasattr(strategy_template, 'strategy_type') and strategy_template.strategy_type:
+                    strategy_type = strategy_template.strategy_type
+                elif hasattr(strategy_template, 'type') and strategy_template.type:
+                    strategy_type = strategy_template.type.lower()
+
+            # 如果策略类型仍然为空，使用默认的CTA类型
+            if not strategy_type:
+                strategy_type = "cta"
+                logger.warning(f"策略 ID {user_strategy.strategy_id} 的类型为空，使用默认的CTA类型")
+
+            strategy_category = strategy_template.category if strategy_template else None
+            strategy_name = strategy_template.name if strategy_template else None
+            strategy_identifier = strategy_template.identifier if strategy_template else None
+        finally:
+            db.close()
+
         user_strategy_dict = {
             "id": user_strategy.id,
             "user_id": user_strategy.user_id,
@@ -315,7 +357,11 @@ async def create_user_strategy(
             "parameters": user_strategy.parameters,
             "created_at": user_strategy.created_at.isoformat() if user_strategy.created_at else None,
             "updated_at": user_strategy.updated_at.isoformat() if user_strategy.updated_at else None,
-            "is_active": user_strategy.is_active
+            "is_active": user_strategy.is_active,
+            "type": strategy_type,  # 添加策略类型
+            "category": strategy_category,  # 添加策略分类
+            "strategy_name": strategy_name,  # 添加策略模板名称
+            "identifier": strategy_identifier  # 添加策略标识符
         }
 
         return {

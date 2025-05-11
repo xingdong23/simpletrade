@@ -1,9 +1,9 @@
 <template>
   <div class="strategy-detail-container">
     <div class="page-header">
-      <el-page-header 
-        @back="goBack" 
-        :content="strategy ? strategy.name : '策略详情'" 
+      <el-page-header
+        @back="goBack"
+        :content="strategy ? strategy.name : '策略详情'"
         title="返回">
       </el-page-header>
     </div>
@@ -48,7 +48,7 @@
                   <pre style="margin: 0;"><code class="language-python">{{ strategy.code }}</code></pre>
               </el-card>
            </div>
-           
+
            <!-- (可选) 添加"使用此模板创建我的策略"按钮 -->
            <div style="margin-top: 30px; text-align: center;">
                <el-button type="success" icon="el-icon-plus" @click="handleUseTemplate">使用此模板创建我的策略</el-button>
@@ -63,14 +63,14 @@
 </template>
 
 <script>
-// 只保留需要的 import
-import { getStrategyDetail } from '@/api/strategies';
+// 导入需要的函数
+import { getStrategyDetail, getUserStrategyDetail } from '@/api/strategies';
 // import dayjs from 'dayjs'; // 不再需要
 
 export default {
   name: 'StrategyDetailView',
   props: {
-    id: { 
+    id: {
       type: [String, Number],
       required: true
     }
@@ -78,13 +78,13 @@ export default {
   data() {
     return {
       strategy: null,
-      loading: false, 
+      loading: false,
       error: null,
-      // --- 移除所有与回测、优化、实盘相关的 data --- 
+      // --- 移除所有与回测、优化、实盘相关的 data ---
       // activeTab: 'info',
       // strategyComplexity: 3,
       // strategyParams: {},
-      // backtestLoading: false, 
+      // backtestLoading: false,
       // backtestSymbol: '',
       // ... (移除其他 backtest 相关)
       // backtestResult: { hasResult: false, statistics: {} },
@@ -111,30 +111,46 @@ export default {
     goBack() {
       this.$router.go(-1); // 改为返回上一页，通常更友好
     },
-    // fetchStrategyDetail 保持不变
+    // 获取策略详情，先尝试获取用户策略，如果失败再尝试获取策略模板
     async fetchStrategyDetail() {
       console.log('StrategyDetailView: fetchStrategyDetail() called with id:', this.id);
       this.loading = true;
       this.error = null;
       this.strategy = null; // 先清空
+
       try {
+        // 先尝试获取用户策略详情
+        try {
+          const userStrategyResponse = await getUserStrategyDetail(this.id);
+          if (userStrategyResponse.data && userStrategyResponse.data.success) {
+            this.strategy = userStrategyResponse.data.data;
+            console.log('成功获取用户策略详情:', this.strategy);
+            return; // 如果成功获取用户策略，直接返回
+          }
+        } catch (userStrategyErr) {
+          console.log('获取用户策略详情失败，尝试获取策略模板:', userStrategyErr);
+          // 如果获取用户策略失败，继续尝试获取策略模板
+        }
+
+        // 如果用户策略获取失败，尝试获取策略模板
         const response = await getStrategyDetail(this.id);
         if (response.data && response.data.success) {
           this.strategy = response.data.data;
+          console.log('成功获取策略模板详情:', this.strategy);
         } else {
           this.error = response.data.message || '获取策略详情失败';
         }
       } catch (err) {
         console.error('Error fetching strategy detail:', err);
         this.error = (err.response && err.response.data && err.response.data.message)
-                       || (err.response && err.response.data && err.response.detail) 
-                       || err.message 
+                       || (err.response && err.response.data && err.response.detail)
+                       || err.message
                        || '网络错误或服务器内部错误';
       } finally {
         this.loading = false;
       }
     },
-    // --- 移除所有与回测、优化、实盘相关的方法 --- 
+    // --- 移除所有与回测、优化、实盘相关的方法 ---
     // runBacktest() { ... }
     // formatPercent() { ... }
     // formatNumber() { ... }
@@ -144,14 +160,14 @@ export default {
     // applyOptimizedParams() { ... }
     // applyParamSet() { ... }
     // stopStrategy() { ... }
-    
+
     // (可选) 处理"使用模板"按钮点击
     handleUseTemplate() {
         if (!this.strategy) return;
         // 跳转到"创建我的策略"页面，并传递模板ID
-        this.$router.push({ 
-            name: 'CreateFromTemplate', 
-            params: { templateId: this.strategy.id } 
+        this.$router.push({
+            name: 'CreateFromTemplate',
+            params: { templateId: this.strategy.id }
         });
     }
   },
@@ -161,7 +177,7 @@ export default {
   watch: {
     // Watch id 保持不变, 但不再需要重置回测状态
     id(newId, oldId) {
-      console.log(`StrategyDetailView: Watcher triggered. ID changed from ${oldId} to ${newId}`); 
+      console.log(`StrategyDetailView: Watcher triggered. ID changed from ${oldId} to ${newId}`);
       if (newId && newId !== oldId) {
         this.fetchStrategyDetail();
       }

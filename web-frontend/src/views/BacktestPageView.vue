@@ -146,7 +146,8 @@
 <script>
 // 假设API函数在@/api/strategies中定义
 import {
-    getStrategyDetail, // Corrected: Was getStrategy
+    getStrategyDetail, // 获取策略模板详情
+    getUserStrategyDetail, // 获取用户策略详情
     runStrategyBacktest,
     getAvailableExchanges,
     getAvailableSymbols,
@@ -427,13 +428,30 @@ export default {
       if (!strategyId) return;
       try {
         this.submitting = true; // 使用 submitting 状态
-        const response = await getStrategyDetail(strategyId);
+
+        // 先尝试获取用户策略详情
+        let response;
+        let isUserStrategy = false;
+
+        try {
+          console.log('尝试获取用户策略详情:', strategyId);
+          response = await getUserStrategyDetail(strategyId);
+          if (response.data && response.data.success && response.data.data) {
+            isUserStrategy = true;
+            console.log('成功获取用户策略详情:', response.data.data);
+          }
+        } catch (userStrategyErr) {
+          console.log('获取用户策略详情失败，尝试获取策略模板:', userStrategyErr);
+          // 如果获取用户策略失败，尝试获取策略模板
+          response = await getStrategyDetail(strategyId);
+        }
 
         if (response.data && response.data.success && response.data.data) {
           this.currentBacktestStrategy = response.data.data; // 存储完整策略对象
 
           if (!isParameterReset) { // 首次加载或非参数重置
-            this.backtestConfig.strategy_id = response.data.data.id;
+            // 如果是用户策略，使用strategy_id字段，否则使用id字段
+            this.backtestConfig.strategy_id = isUserStrategy ? response.data.data.strategy_id : response.data.data.id;
             this.backtestConfig.strategy_name = response.data.data.name;
             // 可以考虑将策略的默认交易对、周期等也加载进来，如果API提供
             // this.backtestConfig.symbol = response.data.default_symbol || '';
@@ -443,12 +461,17 @@ export default {
 
           // 总是（重新）加载策略的默认参数
           const newParameters = {};
-          if (response.data.data.parameters) {
+          // 如果是用户策略，使用parameters字段，如果是策略模板，使用parameters字段的default值
+          if (isUserStrategy && response.data.data.parameters) {
+            // 用户策略的参数已经是具体值，直接使用
+            this.backtestConfig.parameters = response.data.data.parameters;
+          } else if (response.data.data.parameters) {
+            // 策略模板的参数是参数定义，需要提取default值
             for (const paramName in response.data.data.parameters) {
               newParameters[paramName] = response.data.data.parameters[paramName].default;
             }
+            this.backtestConfig.parameters = newParameters;
           }
-          this.backtestConfig.parameters = newParameters;
 
           // 如果加载了策略，可能需要重新获取数据范围
           // 但这通常由 symbol/exchange/interval 的 watcher 触发

@@ -415,6 +415,17 @@ class BacktestService:
 
             # 获取策略类型和默认参数
             strategy_type = db_strategy.strategy_type
+
+            # 如果策略类型为空，尝试从策略的type字段获取
+            if not strategy_type and hasattr(db_strategy, 'type') and db_strategy.type:
+                strategy_type = db_strategy.type.lower()
+                logger.info(f"从策略的type字段获取类型: {strategy_type}")
+
+            # 如果仍然为空，使用默认的CTA类型
+            if not strategy_type:
+                logger.warning(f"策略 ID {strategy_id} 的类型为空，使用默认的CTA类型")
+                strategy_type = "cta"
+
             default_params = db_strategy.parameters
 
             # 使用工厂创建合适的回测引擎

@@ -13,12 +13,12 @@ const API_BASE_URL = 'http://localhost:8003/api'
  */
 export function getStrategies(type, category) {
   let url = `${API_BASE_URL}/strategies/`
-  
+
   // 添加查询参数
   const params = {}
   if (type) params.type = type
   if (category) params.category = category
-  
+
   return axios.get(url, { params })
 }
 
@@ -28,6 +28,14 @@ export function getStrategies(type, category) {
  */
 export function getStrategyDetail(strategyId) {
   return axios.get(`${API_BASE_URL}/strategies/${strategyId}`)
+}
+
+/**
+ * 获取用户策略详情
+ * @param {number} userStrategyId 用户策略ID
+ */
+export function getUserStrategyDetail(userStrategyId) {
+  return axios.get(`${API_BASE_URL}/strategies/user/detail/${userStrategyId}`)
 }
 
 /**
@@ -74,7 +82,7 @@ export function getAvailableSymbols(params) {
 /**
  * 运行策略回测
  * @param {object} backtestConfig 回测配置对象
- * @param {number} backtestConfig.strategy_id 
+ * @param {number} backtestConfig.strategy_id
  * @param {string} backtestConfig.symbol
  * @param {string} backtestConfig.exchange
  * @param {string} backtestConfig.interval
