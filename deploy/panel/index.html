@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SimpleTrade 部署面板</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            padding-top: 20px;
+            padding-bottom: 40px;
+        }
+        .card {
+            margin-bottom: 20px;
+        }
+        .log-container {
+            max-height: 400px;
+            overflow-y: auto;
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+        .version-badge {
+            font-size: 1.2em;
+            padding: 5px 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="row mb-4">
+            <div class="col-md-12">
+                <h1 class="display-4">SimpleTrade 部署面板</h1>
+                <p class="lead">管理和部署 SimpleTrade 应用</p>
+                <hr>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">当前版本信息</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <span>当前版本:</span>
+                            <span class="badge bg-success version-badge" id="current-version">加载中...</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <span>部署时间:</span>
+                            <span id="deploy-time">加载中...</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span>状态:</span>
+                            <span class="badge bg-success" id="status">运行中</span>
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <button class="btn btn-outline-primary" id="refresh-btn">
+                            <i class="bi bi-arrow-clockwise"></i> 刷新信息
+                        </button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0">部署新版本</h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="deploy-form">
+                            <div class="mb-3">
+                                <label for="version" class="form-label">版本标识</label>
+                                <input type="text" class="form-control" id="version" placeholder="例如: v1.0.0, main, latest">
+                                <div class="form-text">输入要部署的版本标识，可以是分支名、标签名或提交哈希</div>
+                            </div>
+                            <button type="submit" class="btn btn-success">
+                                <i class="bi bi-cloud-upload"></i> 开始部署
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="mb-0">部署日志</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <select class="form-select" id="log-select">
+                                <option value="">选择日志文件...</option>
+                            </select>
+                        </div>
+                        <div class="log-container" id="log-content">
+                            选择日志文件查看内容...
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <button class="btn btn-outline-info" id="refresh-logs-btn">
+                            <i class="bi bi-arrow-clockwise"></i> 刷新日志列表
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 部署确认模态框 -->
+    <div class="modal fade" id="deployModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-warning">
+                    <h5 class="modal-title">确认部署</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle"></i> 警告：部署新版本将会重启应用，可能会导致短暂的服务中断。
+                    </div>
+                    <p>确定要部署以下版本吗？</p>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span>版本:</span>
+                        <span class="badge bg-primary version-badge" id="deploy-version">unknown</span>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-warning" id="confirm-deploy">确认部署</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 部署进度模态框 -->
+    <div class="modal fade" id="progressModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-info">
+                    <h5 class="modal-title">部署进行中</h5>
+                </div>
+                <div class="modal-body text-center">
+                    <div class="spinner-border text-primary mb-3" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p>正在部署新版本，请稍候...</p>
+                    <div class="progress">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 100%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // 获取当前版本信息
+        async function fetchVersionInfo() {
+            try {
+                const response = await fetch('/api/version');
+                const data = await response.json();
+
+                if (data.success) {
+                    document.getElementById('current-version').textContent = data.version || 'unknown';
+                    document.getElementById('deploy-time').textContent = data.deploy_time || 'unknown';
+                } else {
+                    throw new Error(data.message || '获取版本信息失败');
+                }
+            } catch (error) {
+                console.error('获取版本信息错误:', error);
+                document.getElementById('current-version').textContent = 'unknown';
+                document.getElementById('deploy-time').textContent = 'unknown';
+            }
+        }
+
+        // 获取日志文件列表
+        async function fetchLogsList() {
+            try {
+                const response = await fetch('/api/logs');
+                const data = await response.json();
+
+                if (data.success) {
+                    const logSelect = document.getElementById('log-select');
+                    logSelect.innerHTML = '<option value="">选择日志文件...</option>';
+
+                    data.logs.forEach(logFile => {
+                        const option = document.createElement('option');
+                        option.value = logFile;
+                        option.textContent = logFile;
+                        logSelect.appendChild(option);
+                    });
+
+                    // 如果有日志文件，默认选择第一个
+                    if (logSelect.options.length > 1) {
+                        logSelect.selectedIndex = 1;
+                        fetchLogContent(logSelect.value);
+                    }
+                } else {
+                    throw new Error(data.message || '获取日志列表失败');
+                }
+            } catch (error) {
+                console.error('获取日志列表错误:', error);
+            }
+        }
+
+        // 获取日志内容
+        async function fetchLogContent(logFile) {
+            if (!logFile) {
+                document.getElementById('log-content').textContent = '选择日志文件查看内容...';
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/logs/' + logFile);
+                const content = await response.text();
+                document.getElementById('log-content').textContent = content;
+            } catch (error) {
+                console.error('获取日志内容错误:', error);
+                document.getElementById('log-content').textContent = '获取日志内容失败: ' + error.message;
+            }
+        }
+
+        // 部署新版本
+        async function deployVersion(version) {
+            // 显示进度模态框
+            const progressModal = new bootstrap.Modal(document.getElementById('progressModal'));
+            progressModal.show();
+
+            try {
+                // 调用部署API
+                const response = await fetch('/api/deploy', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ version: version })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // 部署完成后刷新信息
+                    await fetchVersionInfo();
+                    await fetchLogsList();
+
+                    // 隐藏进度模态框
+                    progressModal.hide();
+
+                    // 显示成功消息
+                    alert(data.message || '部署成功！');
+                } else {
+                    throw new Error(data.message || '部署失败');
+                }
+            } catch (error) {
+                console.error('部署错误:', error);
+
+                // 隐藏进度模态框
+                progressModal.hide();
+
+                // 显示错误消息
+                alert('部署失败: ' + error.message);
+            }
+        }
+
+        // 页面加载时初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            // 获取版本信息
+            fetchVersionInfo();
+
+            // 获取日志列表
+            fetchLogsList();
+
+            // 刷新按钮点击事件
+            document.getElementById('refresh-btn').addEventListener('click', fetchVersionInfo);
+
+            // 刷新日志按钮点击事件
+            document.getElementById('refresh-logs-btn').addEventListener('click', fetchLogsList);
+
+            // 日志选择事件
+            document.getElementById('log-select').addEventListener('change', function() {
+                fetchLogContent(this.value);
+            });
+
+            // 部署表单提交事件
+            document.getElementById('deploy-form').addEventListener('submit', function(e) {
+                e.preventDefault();
+
+                const version = document.getElementById('version').value.trim();
+                if (!version) {
+                    alert('请输入版本标识');
+                    return;
+                }
+
+                document.getElementById('deploy-version').textContent = version;
+
+                const deployModal = new bootstrap.Modal(document.getElementById('deployModal'));
+                deployModal.show();
+
+                document.getElementById('confirm-deploy').onclick = function() {
+                    deployModal.hide();
+                    deployVersion(version);
+                };
+            });
+        });
+    </script>
+</body>
+</html>
