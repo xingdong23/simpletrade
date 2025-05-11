@@ -464,10 +464,30 @@ sudo systemctl enable docker
       -v "$(pwd)/deploy/logs:/app/logs" \
       -v "$(pwd)/data:/app/data" \
       --security-opt label=disable \
+      --dns 8.8.8.8 \
+      --dns 114.114.114.114 \
       simpletrade:latest
   ```
 
-### 问题4: 无法访问应用
+### 问题4: DNS解析问题
+
+**症状**：在构建或运行过程中遇到DNS解析错误，无法访问某些域名。
+
+**解决方案**：
+- 在运行容器时指定DNS服务器：
+  ```bash
+  docker run -d --name simpletrade \
+      --dns 8.8.8.8 \
+      --dns 114.114.114.114 \
+      ... \
+      simpletrade:latest
+  ```
+- 或者在容器内部手动添加hosts条目：
+  ```bash
+  docker exec -it simpletrade bash -c "echo '185.199.108.133 raw.github.com' >> /etc/hosts"
+  ```
+
+### 问题5: 无法访问应用
 
 **症状**：容器已启动，但无法通过浏览器访问应用。
 

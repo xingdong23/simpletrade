@@ -28,8 +28,8 @@ RUN npm config set registry https://registry.npmmirror.com && \
     pip3.9 config set install.trusted-host mirrors.aliyun.com
 
 # 配置网络设置
-RUN echo "nameserver 8.8.8.8" > /etc/resolv.conf && \
-    echo "nameserver 114.114.114.114" >> /etc/resolv.conf
+# 注意：在Docker中，/etc/resolv.conf是只读的，无法直接修改
+# 我们在配置脚本中已经添加了hosts条目来解决一些DNS问题
 
 # 创建目录
 RUN mkdir -p /app/frontend /app/backend /app/panel /app/logs /app/data

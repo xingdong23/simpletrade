@@ -302,6 +302,8 @@ run_container() {
         -v "$LOG_DIR:/app/logs" \
         -v "$DATA_DIR:/app/data" \
         --security-opt label=disable \
+        --dns 8.8.8.8 \
+        --dns 114.114.114.114 \
         "$DOCKER_IMAGE:latest"
 
     # 检查运行结果
