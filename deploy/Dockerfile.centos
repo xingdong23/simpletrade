@@ -2,17 +2,16 @@
 FROM centos:8
 WORKDIR /app
 
+# 添加构建参数
+ARG CONFIGURE_REPOS_SCRIPT=configure_centos_repos.sh
+
+# 复制配置脚本
+COPY ${CONFIGURE_REPOS_SCRIPT} /tmp/configure_centos_repos.sh
+
 # 配置CentOS 8的存储库（使用阿里云镜像源）
-RUN cd /etc/yum.repos.d/ && \
-    sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-* && \
-    sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://mirrors.aliyun.com/centos|g' /etc/yum.repos.d/CentOS-* && \
-    # 备份原始的repo文件
-    mkdir -p /etc/yum.repos.d/backup && \
-    cp /etc/yum.repos.d/CentOS-* /etc/yum.repos.d/backup/ && \
-    # 下载阿里云的repo文件
-    curl -o /etc/yum.repos.d/CentOS-Base.repo https://mirrors.aliyun.com/repo/Centos-vault-8.5.2111.repo && \
-    # 添加EPEL镜像
-    curl -o /etc/yum.repos.d/epel.repo https://mirrors.aliyun.com/repo/epel-8.repo
+RUN chmod +x /tmp/configure_centos_repos.sh && \
+    /tmp/configure_centos_repos.sh && \
+    rm -f /tmp/configure_centos_repos.sh
 
 # 安装必要的软件
 RUN dnf clean all && \

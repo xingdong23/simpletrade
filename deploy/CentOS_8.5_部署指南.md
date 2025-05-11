@@ -24,7 +24,7 @@ deploy/
 ## 环境要求
 
 - **操作系统**: CentOS 8.5 64位
-- **最低配置**: 
+- **最低配置**:
   - CPU: 2核
   - 内存: 4GB
   - 磁盘: 20GB
@@ -274,13 +274,27 @@ sudo firewall-cmd --reload
 
 ### CentOS 8 存储库问题
 
-由于CentOS 8已经结束生命周期，默认存储库可能不可用。我们的Dockerfile已经处理了这个问题，但如果您需要手动修复：
+由于 CentOS 8 已经结束生命周期，默认存储库可能不可用。我们的 Dockerfile 使用了阿里云的 CentOS 8 镜像源，避免了连接官方存储库的问题。
+
+如果您需要手动配置 CentOS 8 的镜像源，可以执行以下命令：
 
 ```bash
-# 将镜像源从mirror.centos.org切换到vault.centos.org
-sudo sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-*
-sudo sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-*
+# 备份原始的repo文件
+sudo mkdir -p /etc/yum.repos.d/backup
+sudo cp /etc/yum.repos.d/CentOS-* /etc/yum.repos.d/backup/
+
+# 下载阿里云的repo文件
+sudo curl -o /etc/yum.repos.d/CentOS-Base.repo https://mirrors.aliyun.com/repo/Centos-vault-8.5.2111.repo
+
+# 添加EPEL镜像
+sudo curl -o /etc/yum.repos.d/epel.repo https://mirrors.aliyun.com/repo/epel-8.repo
+
+# 清理缓存并重新生成
+sudo dnf clean all
+sudo dnf makecache
 ```
+
+这将使用阿里云的镜像源替代官方的 vault 存储库，显著提高软件包下载速度。
 
 ### 系统限制调整
 
@@ -405,7 +419,7 @@ sudo systemctl enable docker
 
 ---
 
-**文档版本**: 1.0  
-**最后更新**: 2023年11月15日  
-**适用环境**: CentOS 8.5 64位  
+**文档版本**: 1.0
+**最后更新**: 2023年11月15日
+**适用环境**: CentOS 8.5 64位
 **文档作者**: SimpleTrade团队

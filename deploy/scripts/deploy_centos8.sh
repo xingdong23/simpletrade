@@ -106,6 +106,36 @@ EOF
     fi
 }
 
+# 配置CentOS 8软件源
+configure_centos_repos() {
+    echo "检查CentOS 8软件源配置..."
+
+    # 创建一个临时脚本来配置CentOS 8软件源
+    cat > /tmp/configure_centos_repos.sh << 'EOF'
+#!/bin/bash
+
+# 备份原始的repo文件
+mkdir -p /etc/yum.repos.d/backup
+cp /etc/yum.repos.d/CentOS-* /etc/yum.repos.d/backup/ 2>/dev/null || true
+
+# 下载阿里云的repo文件
+curl -s -o /etc/yum.repos.d/CentOS-Base.repo https://mirrors.aliyun.com/repo/Centos-vault-8.5.2111.repo
+
+# 添加EPEL镜像
+curl -s -o /etc/yum.repos.d/epel.repo https://mirrors.aliyun.com/repo/epel-8.repo
+
+# 清理缓存并重新生成
+dnf clean all
+dnf makecache
+
+echo "CentOS 8软件源配置完成"
+EOF
+
+    chmod +x /tmp/configure_centos_repos.sh
+
+    echo "已创建CentOS 8软件源配置脚本。该脚本将在构建过程中使用。"
+}
+
 # 检查基础镜像是否已加载
 check_base_images() {
     echo "检查基础镜像..."
@@ -127,6 +157,9 @@ check_base_images() {
     else
         echo "已找到CentOS 8镜像。"
     fi
+
+    # 配置CentOS 8软件源
+    configure_centos_repos
 }
 
 # 构建Docker镜像
@@ -145,9 +178,17 @@ build_image() {
     BUILD_LOG="$LOG_DIR/build_$(date +%Y%m%d_%H%M%S).log"
     echo "===== 构建开始 $(date) =====" | tee -a "$BUILD_LOG"
 
+    # 复制CentOS 8软件源配置脚本到构建上下文
+    cp /tmp/configure_centos_repos.sh "$REPO_DIR/configure_centos_repos.sh"
+
     # 构建Docker镜像
     cd "$REPO_DIR"
-    docker build -t "$DOCKER_IMAGE:latest" -f deploy/Dockerfile.centos . 2>&1 | tee -a "$BUILD_LOG"
+    docker build -t "$DOCKER_IMAGE:latest" \
+        --build-arg CONFIGURE_REPOS_SCRIPT=./configure_centos_repos.sh \
+        -f deploy/Dockerfile.centos . 2>&1 | tee -a "$BUILD_LOG"
+
+    # 清理临时文件
+    rm -f "$REPO_DIR/configure_centos_repos.sh"
 
     # 检查构建结果
     if [ ${PIPESTATUS[0]} -eq 0 ]; then
