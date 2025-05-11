@@ -1,0 +1,53 @@
+# 使用CentOS 8作为基础镜像
+FROM centos:8
+WORKDIR /app
+
+# 配置CentOS 8的存储库（因为CentOS 8已经EOL）
+RUN cd /etc/yum.repos.d/ && \
+    sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-* && \
+    sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-*
+
+# 安装必要的软件
+RUN dnf update -y && \
+    dnf install -y epel-release && \
+    dnf install -y nginx curl procps net-tools vim wget && \
+    dnf module install -y nodejs:16 && \
+    dnf install -y python39 python39-pip && \
+    dnf clean all
+
+# 创建目录
+RUN mkdir -p /app/frontend /app/backend /app/panel /app/logs /app/data
+
+# 复制前端代码
+COPY web-frontend/ /app/frontend-src/
+
+# 构建前端
+WORKDIR /app/frontend-src
+RUN npm install && \
+    npm run build && \
+    cp -r dist/* /app/frontend/ && \
+    rm -rf /app/frontend-src
+
+# 复制后端代码
+COPY simpletrade/ /app/backend/simpletrade/
+COPY setup.py requirements.txt /app/backend/
+
+# 安装后端依赖
+WORKDIR /app/backend
+RUN pip3 install --no-cache-dir -r requirements.txt
+
+# 复制部署面板
+COPY deploy/panel/ /app/panel/
+
+# 复制配置文件
+COPY deploy/config/nginx.conf /etc/nginx/conf.d/default.conf
+
+# 复制启动脚本
+COPY deploy/scripts/start.sh /app/
+RUN chmod +x /app/start.sh
+
+WORKDIR /app
+EXPOSE 80
+
+# 启动服务
+CMD ["/app/start.sh"]
