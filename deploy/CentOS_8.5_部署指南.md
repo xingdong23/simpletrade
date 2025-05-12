@@ -493,6 +493,33 @@ docker images | grep simpletrade
 cat /etc/docker/daemon.json
 ```
 
+### 加载分支列表错误
+
+如果在部署面板中看到"加载分支列表时发生错误"，可能是因为容器中没有安装Git。部署API服务器需要Git来获取分支列表。
+
+**解决方法**：
+
+1. 在容器中安装Git：
+```bash
+# 进入容器
+docker exec -it simpletrade bash
+
+# 安装Git
+dnf install -y git
+
+# 测试是否可以获取分支列表
+curl http://localhost:8080/api/branches
+```
+
+2. 重新构建镜像（推荐）：
+我们已经更新了Dockerfile，确保在构建镜像时安装Git。只需重新构建镜像即可：
+```bash
+./deploy/scripts/deploy_centos8_lowmem.sh --build --run
+```
+
+这个问题的根本原因是部署API服务器需要使用Git命令来获取分支列表，但在容器中没有安装Git。我们已经更新了Dockerfile，确保在构建镜像时安装Git。
+```
+
 应该包含类似以下内容：
 ```json
 {

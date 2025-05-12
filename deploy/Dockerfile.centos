@@ -17,7 +17,7 @@ RUN chmod +x /tmp/configure_centos_repos.sh && \
 RUN dnf clean all && \
     dnf makecache && \
     dnf install -y epel-release && \
-    dnf install -y nginx curl procps net-tools vim wget logrotate && \
+    dnf install -y nginx curl procps net-tools vim wget logrotate git && \
     dnf module install -y nodejs:16 && \
     dnf install -y python39 python39-pip && \
     dnf clean all
