@@ -439,8 +439,43 @@ RUN npm install --legacy-peer-deps --no-optional --no-audit --no-fund --prefer-o
     ...
 ```
 
-注意：不要使用`--production`参数，因为前端构建需要`@vue/cli-service`等开发依赖。但可以使用`--no-optional`、`--no-audit`、`--no-fund`等参数减少内存使用。
+注意：不要使用`--production`参数，因为前端构建需要`@vue/cli-service`等开发依赖。如果使用`--production`参数，会导致前端构建失败，出现`sh: vue-cli-service: command not found`错误。但可以使用`--no-optional`、`--no-audit`、`--no-fund`等参数减少内存使用。
 
+### Docker镜像拉取问题
+
+如果在运行容器时遇到类似以下错误：
+
+```
+Unable to find image 'simpletrade:latest' locally
+docker: Error response from daemon: Get "https://registry-1.docker.io/v2/": net/http: request canceled while waiting for connection (Client.Timeout exceeded while awaiting headers).
+```
+
+这表示无法从 Docker Hub 拉取镜像，可能是网络连接问题或者构建失败。解决方法：
+
+1. 确保镜像构建成功：
+```bash
+# 检查本地镜像
+docker images | grep simpletrade
+```
+
+2. 如果镜像不存在，请重新构建：
+```bash
+./deploy/scripts/deploy_centos8_lowmem.sh --build
+```
+
+3. 确保阿里云镜像加速器配置正确：
+```bash
+cat /etc/docker/daemon.json
+```
+
+应该包含类似以下内容：
+```json
+{
+  "registry-mirrors": ["https://qoy9ouh4.mirror.aliyuncs.com"]
+}
+```
+
+我们已经在部署脚本中添加了镜像检查，确保在运行容器前镜像已经成功构建。
 ## CentOS 8.5 特有问题及解决方案
 
 ### SELinux 相关问题

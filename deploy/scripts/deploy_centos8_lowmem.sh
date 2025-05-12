@@ -419,6 +419,12 @@ run_container() {
     # 创建日志和数据目录
     mkdir -p "$LOG_DIR" "$DATA_DIR"
 
+    # 检查镜像是否存在
+    if ! docker images | grep -q "$DOCKER_IMAGE"; then
+        echo "错误: 未找到镜像 $DOCKER_IMAGE。构建可能失败。"
+        exit 1
+    fi
+
     # 运行容器，使用内存限制以适应低内存环境
     docker run -d --name "$CONTAINER_NAME" \
         -p 80:80 \

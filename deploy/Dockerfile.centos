@@ -41,8 +41,9 @@ COPY web-frontend/ /app/frontend-src/
 WORKDIR /app/frontend-src
 # 低内存环境优化（2核心2GB内存）
 # 分步执行安装和构建，减少内存压力
+# 注意：不使用--production参数，因为需要安装@vue/cli-service等开发依赖
 RUN npm config set cache /tmp/npm-cache && \
-    npm install --legacy-peer-deps --no-optional --production --no-audit --no-fund --prefer-offline && \
+    npm install --legacy-peer-deps --no-optional --no-audit --no-fund --prefer-offline && \
     rm -rf /tmp/npm-cache && \
     export NODE_OPTIONS="--max-old-space-size=1536" && \
     npm run build && \
