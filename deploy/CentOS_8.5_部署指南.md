@@ -24,7 +24,7 @@ deploy/
 ## 环境要求
 
 - **操作系统**: CentOS 8.5 64位
-- **最低配置**:
+- **最低配置**: 
   - CPU: 2核
   - 内存: 4GB
   - 磁盘: 20GB
@@ -239,6 +239,196 @@ RUN npm config set registry https://registry.npmmirror.com
 RUN pip3 config set global.index-url https://mirrors.aliyun.com/pypi/simple/
 ```
 
+## 常见问题及解决方案
+
+### 前端路由问题
+
+如果在构建前端时遇到类似以下错误：
+
+```
+This relative module was not found:
+* ../views/AIAnalysisView.vue in ./src/router/index.js
+```
+
+这是因为路由配置中引用了不存在的视图文件。直接修改前端路由文件，注释掉对应的路由配置：
+
+```bash
+# 编辑路由文件
+vi web-frontend/src/router/index.js
+
+# 注释掉如下代码
+# {
+#   path: '/ai-analysis',
+#   name: 'aiAnalysis',
+#   component: () => import(/* webpackChunkName: "ai" */ '../views/AIAnalysisView.vue')
+# },
+```
+
+我们已经在代码仓库中直接修改了这个文件，注释掉了对AIAnalysisView.vue的引用。如果您使用最新的代码，应该不会遇到这个问题。
+
+### Nginx配置问题
+
+如果您可以访问服务器，但收到404错误或者无法正确加载部署面板，可能是Nginx配置问题。特别是当错误日志中出现类似以下内容时：
+
+```
+open() "/usr/share/nginx/html/deploy/index.html" is not found (2: No such file or directory)
+```
+
+这表示Nginx正在错误的目录中查找文件。解决方法如下：
+
+1. 检查并修改Nginx配置：
+```bash
+# 进入容器
+docker exec -it simpletrade bash
+
+# 查看当前Nginx配置
+cat /etc/nginx/conf.d/default.conf
+
+# 编辑Nginx配置
+vi /etc/nginx/conf.d/default.conf
+```
+
+2. 确保配置文件中有正确的部署面板路径配置：
+```nginx
+location /deploy/ {
+    alias /app/panel/;
+    # 其他配置...
+}
+```
+
+3. 注意使用`alias`而不是`root`指令，因为：
+   - `alias`会将`/deploy/`替换为`/app/panel/`
+   - `root`会将`/deploy/`附加到指定目录后面
+
+4. 修改配置后，重新加载Nginx配置：
+```bash
+nginx -s reload
+```
+
+5. 如果修改配置不起作用，可以尝试创建符号链接：
+```bash
+mkdir -p /usr/share/nginx/html/deploy
+ln -sf /app/panel/* /usr/share/nginx/html/deploy/
+```
+
+6. 检查文件权限：
+```bash
+chmod -R 755 /app/panel/
+```
+
+7. 重启容器：
+```bash
+# 退出容器
+exit
+
+# 重启容器
+docker restart simpletrade
+```
+
+这些步骤应该能解决大多数Nginx配置相关的问题。
+
+### Python命令问题
+
+在CentOS 8.5中，安装的Python版本是`python39`，而不是默认的`python`。如果遇到类似以下错误：
+
+```
+/app/start.sh: line 58: python: command not found
+```
+
+有两种解决方法：
+
+1. 修改启动脚本，将`python`命令改为`python3.9`：
+```bash
+# 进入容器
+docker exec -it simpletrade bash
+
+# 编辑启动脚本
+vi /app/start.sh
+
+# 将所有的python命令改为python3.9
+# 例如：
+# python /app/panel/deploy.py & -> python3.9 /app/panel/deploy.py &
+# python -m simpletrade.main & -> python3.9 -m simpletrade.main &
+```
+
+2. 创建python符号链接：
+```bash
+# 进入容器
+docker exec -it simpletrade bash
+
+# 创建符号链接
+ln -sf /usr/bin/python3.9 /usr/bin/python
+ln -sf /usr/bin/pip3.9 /usr/bin/pip
+
+# 退出容器
+exit
+
+# 重启容器
+docker restart simpletrade
+```
+
+我们已经在低内存环境的Dockerfile中添加了符号链接创建的命令，并且修改了启动脚本使用`python3.9`命令。如果您使用最新的代码，应该不会遇到这个问题。
+
+### 低内存环境优化
+
+如果您的服务器内存有限（例如只有2GB内存），可以尝试以下优化方法：
+
+1. 在Dockerfile中使用更多的内存优化参数：
+```dockerfile
+RUN npm config set cache /tmp/npm-cache && \
+    npm install --legacy-peer-deps --no-optional --no-audit --no-fund --prefer-offline && \
+    rm -rf /tmp/npm-cache && \
+    export NODE_OPTIONS="--max-old-space-size=1024" && \
+    npm run build && \
+    rm -rf node_modules
+```
+
+2. 在运行容器时限制内存使用：
+```bash
+docker run -d --name simpletrade \
+    --memory="1024m" \
+    --memory-swap="1536m" \
+    ... \
+    simpletrade:latest
+```
+
+3. 在构建过程中清理临时文件和缓存：
+```bash
+# 清理Docker缓存
+docker system prune -af
+
+# 清理系统缓存
+sudo sh -c "sync && echo 3 > /proc/sys/vm/drop_caches"
+```
+
+4. 如果服务器没有交换分区，可以添加一个：
+```bash
+# 创建2GB的交换文件
+sudo dd if=/dev/zero of=/swapfile bs=1M count=2048
+sudo chmod 600 /swapfile
+sudo mkswap /swapfile
+sudo swapon /swapfile
+# 永久挂载交换文件
+echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+```
+
+### Node.js内存溢出问题
+
+如果在构建前端时遇到内存溢出错误，例如：
+```
+FATAL ERROR: Reached heap limit Allocation failed - JavaScript heap out of memory
+```
+
+可以尝试增加Node.js的堆内存限制：
+```dockerfile
+RUN npm install --legacy-peer-deps --no-optional --no-audit --no-fund --prefer-offline && \
+    export NODE_OPTIONS="--max-old-space-size=2048" && \
+    npm run build && \
+    ...
+```
+
+注意：不要使用`--production`参数，因为前端构建需要`@vue/cli-service`等开发依赖。但可以使用`--no-optional`、`--no-audit`、`--no-fund`等参数减少内存使用。
+
 ## CentOS 8.5 特有问题及解决方案
 
 ### SELinux 相关问题
@@ -274,14 +464,14 @@ sudo firewall-cmd --reload
 
 ### CentOS 8 存储库问题
 
-由于 CentOS 8 已经结束生命周期，默认存储库可能不可用。我们的 Dockerfile 使用了阿里云的 CentOS 8 镜像源，避免了连接官方存储库的问题。
+由于CentOS 8已经结束生命周期，默认存储库可能不可用。我们的Dockerfile使用了阿里云的CentOS 8镜像源，避免了连接官方存储库的问题。
 
-如果您需要手动配置 CentOS 8 的镜像源，可以执行以下命令：
+如果您需要手动配置CentOS 8的镜像源，可以执行以下命令：
 
 ```bash
 # 备份原始的repo文件
 sudo mkdir -p /etc/yum.repos.d/backup
-sudo cp /etc/yum.repos.d/CentOS-* /etc/yum.repos.d/backup/ 2>/dev/null || true
+sudo cp /etc/yum.repos.d/CentOS-* /etc/yum.repos.d/backup/
 
 # 移除原有的repo文件
 sudo rm -f /etc/yum.repos.d/CentOS-*.repo
@@ -331,7 +521,7 @@ gpgcheck=0
 gpgkey=https://mirrors.aliyun.com/centos/RPM-GPG-KEY-CentOS-Official
 REPO
 
-# 创建 EPEL 仓库文件
+# 创建EPEL仓库文件
 sudo cat > /etc/yum.repos.d/epel.repo << 'REPO'
 [epel]
 name=Extra Packages for Enterprise Linux $releasever - $basearch
@@ -424,243 +614,6 @@ docker restart simpletrade
 ./deploy/scripts/deploy_centos8.sh --run
 ```
 
-## 故障排除
-
-### 问题1: Docker安装失败
-
-**症状**：运行`centos_setup.sh`脚本时，Docker安装失败。
-
-**解决方案**：
-```bash
-# 手动安装Docker
-sudo dnf config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce.repo
-sudo dnf install -y --nobest docker-ce docker-ce-cli containerd.io
-sudo systemctl start docker
-sudo systemctl enable docker
-```
-
-### 问题2: 构建失败
-
-**症状**：运行`deploy_centos8.sh --build`时，构建失败。
-
-**解决方案**：
-- 检查构建日志：`cat /opt/simpletrade/deploy/logs/build_*.log`
-- 确保CentOS 8镜像可用：`docker images | grep centos`
-- 如果CentOS 8镜像不可用，可以尝试手动拉取：`docker pull centos:8`
-- 如果无法从Docker Hub拉取，请参考"基础镜像准备"部分
-
-
-**npm依赖冲突问题**：
-
-如果遇到npm依赖冲突错误，例如：
-```
-npm ERR! code ERESOLVE
-npm ERR! ERESOLVE could not resolve
-```
-
-可以尝试修改Dockerfile.centos文件，在npm install命令中添加`--legacy-peer-deps`参数：
-```dockerfile
-RUN npm install --legacy-peer-deps && \
-    npm run build && \
-    ...
-```
-
-这个参数告诉npm忽略对等依赖的检查，可以解决大多数依赖冲突问题。
-**Node.js内存溢出问题**：
-
-### 问题3: 容器无法启动
-
-如果在构建前端项目时遇到内存溢出错误，例如：
-```
-FATAL ERROR: Reached heap limit Allocation failed - JavaScript heap out of memory
-```
-
-可以尝试增加Node.js的内存限制：
-```dockerfile
-RUN npm install --legacy-peer-deps && \
-    export NODE_OPTIONS="--max-old-space-size=2048" && \
-    npm run build && \
-    ...
-```
-
-这会将Node.js的堆内存限制增加到2GB。如果服务器内存充足，可以考虑设置更高的值，例如`4096`（4GB）。
-
-另外，还可以尝试使用其他参数减少内存使用：
-```dockerfile
-RUN npm install --legacy-peer-deps --no-optional --no-audit --no-fund --prefer-offline && \
-    export NODE_OPTIONS="--max-old-space-size=2048" && \
-    npm run build && \
-    ...
-
-注意：不要使用`--production`参数，因为前端构建需要`@vue/cli-service`等开发依赖。
-**低内存环境优化**：
-
-如果您的服务器内存有限（例如只有2GB内存），可以尝试以下优化方法：
-
-1. 在Dockerfile中使用更多的内存优化参数：
-```dockerfile
-RUN npm config set cache /tmp/npm-cache && \
-    npm install --legacy-peer-deps --no-optional --production --no-audit --no-fund --prefer-offline && \
-    rm -rf /tmp/npm-cache && \
-    export NODE_OPTIONS="--max-old-space-size=1536" && \
-    npm run build && \
-    rm -rf node_modules
-```
-
-2. 在运行容器时限制内存使用：
-```bash
-docker run -d --name simpletrade \
-    --memory="1536m" \
-    --memory-swap="1536m" \
-    ... \
-    simpletrade:latest
-```
-
-3. 在构建过程中清理临时文件和缓存：
-```bash
-# 清理Docker缓存
-docker system prune -af
-
-# 清理系统缓存
-sudo sh -c "sync && echo 3 > /proc/sys/vm/drop_caches"
-```
-
-4. 如果服务器没有交换分区，可以添加一个：
-```bash
-# 创建2GB的交换文件
-sudo dd if=/dev/zero of=/swapfile bs=1M count=2048
-sudo chmod 600 /swapfile
-sudo mkswap /swapfile
-sudo swapon /swapfile
-# 永久挂载交换文件
-echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
-```
-
-### 前端路由问题
-
-如果在构建前端时遇到类似以下错误：
-
-```
-This relative module was not found:
-* ../views/AIAnalysisView.vue in ./src/router/index.js
-```
-
-这是因为路由配置中引用了不存在的视图文件。直接修改前端路由文件，注释掉对应的路由配置：
-
-```bash
-# 编辑路由文件
-vi web-frontend/src/router/index.js
-
-# 注释掉如下代码
-# {
-#   path: '/ai-analysis',
-#   name: 'aiAnalysis',
-#   component: () => import(/* webpackChunkName: "ai" */ '../views/AIAnalysisView.vue')
-# },
-```
-
-我们已经在代码仓库中直接修改了这个文件，注释掉了对AIAnalysisView.vue的引用。如果您使用最新的代码，应该不会遇到这个问题。
-### Python命令问题
-
-在CentOS 8.5中，安装的Python版本是`python39`，而不是默认的`python`。如果遇到类似以下错误：
-
-```
-/app/start.sh: line 58: python: command not found
-```
-
-有两种解决方法：
-
-1. 修改启动脚本，将`python`命令改为`python3.9`：
-```bash
-# 编辑启动脚本
-vi deploy/scripts/start.sh
-
-# 将所有的python命令改为python3.9
-```
-
-2. 创建python符号链接：
-```bash
-ln -sf /usr/bin/python3.9 /usr/bin/python
-ln -sf /usr/bin/pip3.9 /usr/bin/pip
-```
-
-我们已经在低内存环境的Dockerfile中添加了符号链接创建的命令，并且修改了启动脚本使用`python3.9`命令。如果您使用最新的代码，应该不会遇到这个问题。
-
-### 低内存环境专用脚本
-
-对于2核心2GB内存的低配置服务器，我们提供了一个专用的部署脚本：`deploy_centos8_lowmem.sh`。这个脚本包含了多种内存优化措施，可以在低内存环境中更可靠地运行。
-
-使用方法：
-
-```bash
-# 给脚本添加执行权限
-chmod +x deploy/scripts/deploy_centos8_lowmem.sh
-
-# 清理缓存并创建交换文件
-./deploy/scripts/deploy_centos8_lowmem.sh --clean --swap
-
-# 构建和运行
-./deploy/scripts/deploy_centos8_lowmem.sh --build --run
-```
-
-这个脚本的主要特点：
-
-1. 清理系统和Docker缓存，释放内存
-2. 创建交换文件，增加可用内存
-3. 使用优化的Dockerfile，减少内存使用
-4. 限制容器内存使用，避免耗尽系统资源
-5. 分步执行前端构建，减少内存压力
-
-如果您的服务器内存只有2GB，强烈建议使用这个脚本而不是标准的`deploy_centos8.sh`脚本。
-
-注意：不要使用`--production`参数，因为前端构建需要`@vue/cli-service`等开发依赖。但可以使用`--no-optional`、`--no-audit`、`--no-fund`等参数减少内存使用。
-
-**症状**：运行`deploy_centos8.sh --run`时，容器无法启动。
-
-**解决方案**：
-- 查看Docker错误日志：`docker logs simpletrade`
-- 检查SELinux状态：`getenforce`
-- 如果SELinux是问题，可以临时禁用：`sudo setenforce 0`
-- 手动运行容器，添加更多参数：
-  ```bash
-  docker run -d --name simpletrade \
-      -p 80:80 \
-      -v "$(pwd)/deploy/logs:/app/logs" \
-      -v "$(pwd)/data:/app/data" \
-      --security-opt label=disable \
-      --dns 8.8.8.8 \
-      --dns 114.114.114.114 \
-      simpletrade:latest
-  ```
-
-### 问题4: DNS解析问题
-
-**症状**：在构建或运行过程中遇到DNS解析错误，无法访问某些域名。
-
-**解决方案**：
-- 在运行容器时指定DNS服务器：
-  ```bash
-  docker run -d --name simpletrade \
-      --dns 8.8.8.8 \
-      --dns 114.114.114.114 \
-      ... \
-      simpletrade:latest
-  ```
-- 或者在容器内部手动添加hosts条目：
-  ```bash
-  docker exec -it simpletrade bash -c "echo '185.199.108.133 raw.github.com' >> /etc/hosts"
-  ```
-
-### 问题5: 无法访问应用
-
-**症状**：容器已启动，但无法通过浏览器访问应用。
-
-**解决方案**：
-- 检查容器是否正在运行：`docker ps | grep simpletrade`
-- 检查端口是否已开放：`sudo ss -tulpn | grep 80`
-- 检查防火墙设置：`sudo firewall-cmd --list-all`
-- 如果需要，开放HTTP端口：`sudo firewall-cmd --permanent --add-service=http && sudo firewall-cmd --reload`
-
 ## 结论
 
 通过本文档的指导，您应该能够在CentOS 8.5服务器上成功部署SimpleTrade应用，即使在网络受限的环境中也能优雅地完成部署。我们的方案使用本地CentOS 8镜像作为基础镜像，避免了对Docker Hub的依赖，同时保留了Docker的所有优势。
@@ -669,7 +622,7 @@ chmod +x deploy/scripts/deploy_centos8_lowmem.sh
 
 ---
 
-**文档版本**: 1.0
-**最后更新**: 2023年11月15日
-**适用环境**: CentOS 8.5 64位
+**文档版本**: 1.0  
+**最后更新**: 2023年11月15日  
+**适用环境**: CentOS 8.5 64位  
 **文档作者**: SimpleTrade团队
