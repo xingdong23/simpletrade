@@ -315,7 +315,10 @@ RUN dnf clean all && \
     dnf install -y nginx curl procps net-tools vim wget && \
     dnf module install -y nodejs:16 && \
     dnf install -y python39 python39-pip && \
-    dnf clean all
+    dnf clean all && \
+    # 创建python符号链接，确保兼容性
+    ln -sf /usr/bin/python3.9 /usr/bin/python && \
+    ln -sf /usr/bin/pip3.9 /usr/bin/pip
 
 # 配置npm和pip镜像源
 RUN npm config set registry https://registry.npmmirror.com && \

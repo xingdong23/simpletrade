@@ -55,12 +55,12 @@ chmod +x /app/deploy.sh
 
 # 启动部署API服务器
 echo "Starting deployment API server..."
-python /app/panel/deploy.py &
+python3.9 /app/panel/deploy.py &
 
 # 启动后端服务
 echo "Starting backend service..."
 cd /app/backend
-python -m simpletrade.main &
+python3.9 -m simpletrade.main &
 
 # 启动 Nginx
 echo "Starting Nginx..."

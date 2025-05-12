@@ -560,6 +560,31 @@ vi web-frontend/src/router/index.js
 ```
 
 我们已经在代码仓库中直接修改了这个文件，注释掉了对AIAnalysisView.vue的引用。如果您使用最新的代码，应该不会遇到这个问题。
+### Python命令问题
+
+在CentOS 8.5中，安装的Python版本是`python39`，而不是默认的`python`。如果遇到类似以下错误：
+
+```
+/app/start.sh: line 58: python: command not found
+```
+
+有两种解决方法：
+
+1. 修改启动脚本，将`python`命令改为`python3.9`：
+```bash
+# 编辑启动脚本
+vi deploy/scripts/start.sh
+
+# 将所有的python命令改为python3.9
+```
+
+2. 创建python符号链接：
+```bash
+ln -sf /usr/bin/python3.9 /usr/bin/python
+ln -sf /usr/bin/pip3.9 /usr/bin/pip
+```
+
+我们已经在低内存环境的Dockerfile中添加了符号链接创建的命令，并且修改了启动脚本使用`python3.9`命令。如果您使用最新的代码，应该不会遇到这个问题。
 
 ### 低内存环境专用脚本
 
