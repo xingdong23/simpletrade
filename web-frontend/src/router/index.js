@@ -31,11 +31,12 @@ const routes = [
     name: 'tradingCenter',
     component: () => import(/* webpackChunkName: "trading" */ '../views/TradingCenterView.vue')
   },
-  {
-    path: '/ai-analysis',
-    name: 'aiAnalysis',
-    component: () => import(/* webpackChunkName: "ai" */ '../views/AIAnalysisView.vue')
-  },
+  // 暂时注释掉AI分析路由，因为AIAnalysisView.vue文件可能不存在
+  // {
+  //   path: '/ai-analysis',
+  //   name: 'aiAnalysis',
+  //   component: () => import(/* webpackChunkName: "ai" */ '../views/AIAnalysisView.vue')
+  // },
   {
     path: '/user-center',
     name: 'userCenter',

@@ -545,15 +545,21 @@ This relative module was not found:
 * ../views/AIAnalysisView.vue in ./src/router/index.js
 ```
 
-这是因为路由配置中引用了不存在的视图文件。我们提供了一个修复脚本：
+这是因为路由配置中引用了不存在的视图文件。直接修改前端路由文件，注释掉对应的路由配置：
 
 ```bash
-chmod +x deploy/scripts/fix_frontend.sh
-./deploy/scripts/fix_frontend.sh --fix
+# 编辑路由文件
+vi web-frontend/src/router/index.js
+
+# 注释掉如下代码
+# {
+#   path: '/ai-analysis',
+#   name: 'aiAnalysis',
+#   component: () => import(/* webpackChunkName: "ai" */ '../views/AIAnalysisView.vue')
+# },
 ```
 
-这个脚本会自动注释掉路由配置中对缺失文件的引用。在低内存环境部署脚本中，我们已经集成了这个修复步骤。
-```
+我们已经在代码仓库中直接修改了这个文件，注释掉了对AIAnalysisView.vue的引用。如果您使用最新的代码，应该不会遇到这个问题。
 
 ### 低内存环境专用脚本
 
