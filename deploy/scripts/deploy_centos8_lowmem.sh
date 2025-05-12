@@ -286,6 +286,11 @@ build_image() {
     BUILD_LOG="$LOG_DIR/build_$(date +%Y%m%d_%H%M%S).log"
     echo "===== 构建开始 $(date) =====" | tee -a "$BUILD_LOG"
 
+    # 修复前端路由问题
+    echo "修复前端路由问题..."
+    chmod +x "$REPO_DIR/deploy/scripts/fix_frontend.sh"
+    "$REPO_DIR/deploy/scripts/fix_frontend.sh" --fix
+
     # 复制CentOS 8软件源配置脚本到构建上下文
     cp /tmp/configure_centos_repos.sh "$REPO_DIR/configure_centos_repos.sh"
 

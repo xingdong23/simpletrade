@@ -536,6 +536,25 @@ sudo swapon /swapfile
 echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
 ```
 
+### 前端路由问题
+
+如果在构建前端时遇到类似以下错误：
+
+```
+This relative module was not found:
+* ../views/AIAnalysisView.vue in ./src/router/index.js
+```
+
+这是因为路由配置中引用了不存在的视图文件。我们提供了一个修复脚本：
+
+```bash
+chmod +x deploy/scripts/fix_frontend.sh
+./deploy/scripts/fix_frontend.sh --fix
+```
+
+这个脚本会自动注释掉路由配置中对缺失文件的引用。在低内存环境部署脚本中，我们已经集成了这个修复步骤。
+```
+
 ### 低内存环境专用脚本
 
 对于2核心2GB内存的低配置服务器，我们提供了一个专用的部署脚本：`deploy_centos8_lowmem.sh`。这个脚本包含了多种内存优化措施，可以在低内存环境中更可靠地运行。
