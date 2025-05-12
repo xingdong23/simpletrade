@@ -449,6 +449,23 @@ sudo systemctl enable docker
 - 如果CentOS 8镜像不可用，可以尝试手动拉取：`docker pull centos:8`
 - 如果无法从Docker Hub拉取，请参考"基础镜像准备"部分
 
+
+**npm依赖冲突问题**：
+
+如果遇到npm依赖冲突错误，例如：
+```
+npm ERR! code ERESOLVE
+npm ERR! ERESOLVE could not resolve
+```
+
+可以尝试修改Dockerfile.centos文件，在npm install命令中添加`--legacy-peer-deps`参数：
+```dockerfile
+RUN npm install --legacy-peer-deps && \
+    npm run build && \
+    ...
+```
+
+这个参数告诉npm忽略对等依赖的检查，可以解决大多数依赖冲突问题。
 ### 问题3: 容器无法启动
 
 **症状**：运行`deploy_centos8.sh --run`时，容器无法启动。
