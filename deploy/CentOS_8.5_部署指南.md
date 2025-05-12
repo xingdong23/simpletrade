@@ -286,7 +286,15 @@ vi web-frontend/src/router/index.js
 open() "/usr/share/nginx/html/deploy/index.html" is not found (2: No such file or directory)
 ```
 
-这表示Nginx正在错误的目录中查找文件。解决方法如下：
+或者在浏览器控制台中看到类似以下错误：
+
+```
+GET http://your-server-ip/deploy/ 404 (Not Found)
+GET http://your-server-ip/deploy/nginx-logo.png 404 (Not Found)
+GET http://your-server-ip/deploy/poweredby.png 404 (Not Found)
+```
+
+这表示Nginx正在错误的目录中查找文件或者`/deploy/`路径配置不正确。解决方法如下：
 
 1. 检查并修改Nginx配置：
 ```bash
@@ -304,7 +312,10 @@ vi /etc/nginx/conf.d/default.conf
 ```nginx
 location /deploy/ {
     alias /app/panel/;
-    # 其他配置...
+    auth_basic "Restricted";
+    auth_basic_user_file /etc/nginx/.htpasswd;
+    index index.html;
+    try_files $uri $uri/ /deploy/index.html;
 }
 ```
 
@@ -312,23 +323,33 @@ location /deploy/ {
    - `alias`会将`/deploy/`替换为`/app/panel/`
    - `root`会将`/deploy/`附加到指定目录后面
 
-4. 修改配置后，重新加载Nginx配置：
+4. 添加`try_files`指令，确保单页应用路由正常工作
+
+5. 修改配置后，重新加载Nginx配置：
 ```bash
 nginx -s reload
 ```
 
-5. 如果修改配置不起作用，可以尝试创建符号链接：
+6. 检查部署面板文件是否存在：
 ```bash
+ls -la /app/panel/
+```
+
+7. 如果修改配置不起作用，系统会自动创建符号链接作为备用方案。这些命令已经添加到启动脚本中，每次容器启动时自动执行：
+```bash
+# 这些命令已经在启动脚本中自动执行
 mkdir -p /usr/share/nginx/html/deploy
 ln -sf /app/panel/* /usr/share/nginx/html/deploy/
 ```
 
-6. 检查文件权限：
+您不需要手动执行这些命令，除非您想要手动测试或排除故障。
+
+8. 检查文件权限：
 ```bash
 chmod -R 755 /app/panel/
 ```
 
-7. 重启容器：
+9. 重启容器：
 ```bash
 # 退出容器
 exit
@@ -337,7 +358,11 @@ exit
 docker restart simpletrade
 ```
 
-这些步骤应该能解决大多数Nginx配置相关的问题。
+这些步骤应该能解决大多数Nginx配置相关的问题。如果问题仍然存在，可以查看Nginx错误日志：
+
+```bash
+cat /var/log/nginx/error.log
+```
 
 ### Python命令问题
 

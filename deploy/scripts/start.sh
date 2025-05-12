@@ -69,6 +69,11 @@ python3.9 -m simpletrade.main > /app/logs/backend.log 2>&1 &
 ln -sf /var/log/nginx/access.log /app/logs/frontend_access.log
 ln -sf /var/log/nginx/error.log /app/logs/frontend_error.log
 
+# 创建部署面板的符号链接
+# 这是为了解决Nginx配置问题，确保/deploy/路径可访问
+mkdir -p /usr/share/nginx/html/deploy
+ln -sf /app/panel/* /usr/share/nginx/html/deploy/
+
 # 启动 Nginx
 echo "Starting Nginx..."
 nginx -g "daemon off;"
