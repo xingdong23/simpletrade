@@ -540,20 +540,40 @@ vi /etc/nginx/conf.d/default.conf
 
 2. 确保配置中包含以下内容：
 ```nginx
-# 部署API - 包括所有部署相关的API端点
-location ~ ^/api/(version|logs|deploy|branches) {
-    proxy_pass http://localhost:8080;
+# 部署API端点 - 明确列出每个端点以避免配置问题
+location /api/version {
+    proxy_pass http://localhost:8080/api/version;
     proxy_set_header Host $host;
     proxy_set_header X-Real-IP $remote_addr;
     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     proxy_set_header X-Forwarded-Proto $scheme;
-
-    # 简单的基本认证
-    auth_basic "Deployment API";
-    auth_basic_user_file /etc/nginx/.htpasswd;
 }
 
-# 后端API - 其他所有API请求
+location /api/logs {
+    proxy_pass http://localhost:8080/api/logs;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+}
+
+location /api/branches {
+    proxy_pass http://localhost:8080/api/branches;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+}
+
+location /api/deploy {
+    proxy_pass http://localhost:8080/api/deploy;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+}
+
+# 后端API - 处理其他所有API请求
 location /api/ {
     proxy_pass http://localhost:8003;
     proxy_set_header Host $host;
@@ -562,6 +582,8 @@ location /api/ {
     proxy_set_header X-Forwarded-Proto $scheme;
 }
 ```
+
+注意：我们使用了明确的端点匹配而不是正则表达式，因为在某些版本的Nginx中，正则表达式匹配可能不正常工作。
 
 3. 重新加载Nginx配置：
 ```bash
