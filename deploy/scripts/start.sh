@@ -53,14 +53,21 @@ EOF
 
 chmod +x /app/deploy.sh
 
+# 创建日志目录
+mkdir -p /app/logs
+
 # 启动部署API服务器
 echo "Starting deployment API server..."
-python3.9 /app/panel/deploy.py &
+python3.9 /app/panel/deploy.py > /app/logs/deploy_panel.log 2>&1 &
 
 # 启动后端服务
 echo "Starting backend service..."
 cd /app/backend
-python3.9 -m simpletrade.main &
+python3.9 -m simpletrade.main > /app/logs/backend.log 2>&1 &
+
+# 创建前端日志的符号链接
+ln -sf /var/log/nginx/access.log /app/logs/frontend_access.log
+ln -sf /var/log/nginx/error.log /app/logs/frontend_error.log
 
 # 启动 Nginx
 echo "Starting Nginx..."

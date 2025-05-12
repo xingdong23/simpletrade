@@ -24,7 +24,7 @@ deploy/
 ## 环境要求
 
 - **操作系统**: CentOS 8.5 64位
-- **最低配置**: 
+- **最低配置**:
   - CPU: 2核
   - 内存: 4GB
   - 磁盘: 20GB
@@ -580,17 +580,110 @@ git pull
 ./deploy/scripts/deploy_centos8.sh --build --run
 ```
 
-### 查看日志
+### 日志管理
 
+#### 日志文件位置
+
+在SimpleTrade容器中，日志文件位于以下位置：
+
+1. **前端日志（Nginx）**：
+   - 原始位置：`/var/log/nginx/access.log`和`/var/log/nginx/error.log`
+   - 符号链接：`/app/logs/frontend_access.log`和`/app/logs/frontend_error.log`
+
+2. **后端服务日志**：
+   - 后端日志：`/app/logs/backend.log`
+
+3. **部署系统日志**：
+   - 部署API日志：`/app/logs/deploy_panel.log`和`/app/logs/deploy_api.log`
+   - 构建日志：`/app/logs/build_*.log`
+
+#### 查看日志
+
+有多种方式可以查看日志：
+
+1. **使用部署脚本查看容器日志**：
 ```bash
-# 查看容器日志
 ./deploy/scripts/deploy_centos8.sh --logs
+```
 
-# 或者直接使用Docker命令
+2. **直接使用Docker命令查看容器标准输出**：
+```bash
+# 查看所有日志
 docker logs simpletrade
 
-# 查看部署日志
-ls -la /opt/simpletrade/deploy/logs/
+# 实时查看日志
+docker logs -f simpletrade
+
+# 查看最近100行日志
+docker logs --tail 100 simpletrade
+```
+
+3. **进入容器查看具体组件的日志文件**：
+```bash
+# 进入容器
+docker exec -it simpletrade bash
+
+# 查看前端访问日志
+tail -f /app/logs/frontend_access.log
+
+# 查看前端错误日志
+tail -f /app/logs/frontend_error.log
+
+# 查看后端日志
+tail -f /app/logs/backend.log
+
+# 查看部署面板日志
+tail -f /app/logs/deploy_panel.log
+
+# 查看部署API日志
+tail -f /app/logs/deploy_api.log
+
+# 查看最新的构建日志
+ls -t /app/logs/build_*.log | head -1 | xargs cat
+```
+
+#### 日志分析技巧
+
+1. **使用grep过滤日志**：
+```bash
+# 在日志中查找错误
+grep "ERROR" /app/logs/backend.log
+
+# 查找包含特定关键字的行及其前后5行
+grep -A 5 -B 5 "Exception" /app/logs/backend.log
+```
+
+2. **使用awk处理日志**：
+```bash
+# 统计HTTP状态码
+awk '{print $9}' /app/logs/frontend_access.log | sort | uniq -c | sort -rn
+```
+
+3. **使用sed提取信息**：
+```bash
+# 提取所有URL
+sed -n 's/.*GET \([^ ]*\) HTTP.*/\1/p' /app/logs/frontend_access.log
+```
+
+#### 日志轮转
+
+我们已经配置了日志轮转，防止日志文件过大。日志轮转配置文件位于容器内的`/etc/logrotate.d/simpletrade`，它会：
+
+- 每天轮转日志文件
+- 压缩旧的日志文件
+- 保留最近7天的日志
+
+如果需要手动运行日志轮转：
+
+```bash
+# 进入容器
+docker exec -it simpletrade bash
+
+# 手动运行日志轮转
+logrotate /etc/logrotate.d/simpletrade
+
+# 强制运行，即使条件不满足
+logrotate -f /etc/logrotate.d/simpletrade
 ```
 
 ### 备份数据
@@ -622,7 +715,7 @@ docker restart simpletrade
 
 ---
 
-**文档版本**: 1.0  
-**最后更新**: 2023年11月15日  
-**适用环境**: CentOS 8.5 64位  
+**文档版本**: 1.0
+**最后更新**: 2023年11月15日
+**适用环境**: CentOS 8.5 64位
 **文档作者**: SimpleTrade团队
