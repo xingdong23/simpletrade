@@ -534,6 +534,32 @@ sudo swapon /swapfile
 echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
 ```
 
+### 低内存环境专用脚本
+
+对于2核心2GB内存的低配置服务器，我们提供了一个专用的部署脚本：`deploy_centos8_lowmem.sh`。这个脚本包含了多种内存优化措施，可以在低内存环境中更可靠地运行。
+
+使用方法：
+
+```bash
+# 给脚本添加执行权限
+chmod +x deploy/scripts/deploy_centos8_lowmem.sh
+
+# 清理缓存并创建交换文件
+./deploy/scripts/deploy_centos8_lowmem.sh --clean --swap
+
+# 构建和运行
+./deploy/scripts/deploy_centos8_lowmem.sh --build --run
+```
+
+这个脚本的主要特点：
+
+1. 清理系统和Docker缓存，释放内存
+2. 创建交换文件，增加可用内存
+3. 使用优化的Dockerfile，减少内存使用
+4. 限制容器内存使用，避免耗尽系统资源
+5. 分步执行前端构建，减少内存压力
+
+如果您的服务器内存只有2GB，强烈建议使用这个脚本而不是标准的`deploy_centos8.sh`脚本。
 
 添加`--production`参数可以跳过开发依赖的安装，减少内存使用。
 
