@@ -77,6 +77,64 @@ class DeployHandler(BaseHTTPRequestHandler):
                 'deploy_time': deploy_time
             }
             self.wfile.write(json.dumps(response).encode())
+        elif self.path == '/api/branches':
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+
+            try:
+                # 更新远程分支信息
+                subprocess.run(['git', 'fetch'], 
+                              stdout=subprocess.PIPE, 
+                              stderr=subprocess.PIPE)
+                
+                # 获取所有分支（包括远程分支）
+                output = subprocess.check_output(['git', 'branch', '-a']).decode().strip()
+                
+                branches = []
+                for line in output.split('\n'):
+                    line = line.strip()
+                    # 处理本地分支
+                    if line.startswith('*'):
+                        # 当前分支，标记为活动
+                        branches.append({
+                            'name': line[2:].strip(),
+                            'active': True,
+                            'type': 'local'
+                        })
+                    elif not line.startswith('remotes/'):
+                        # 其他本地分支
+                        branches.append({
+                            'name': line.strip(),
+                            'active': False,
+                            'type': 'local'
+                        })
+                    else:
+                        # 远程分支，去除 'remotes/origin/' 前缀
+                        remote_branch = line.replace('remotes/origin/', '').strip()
+                        # 跳过HEAD引用和已经包含的分支
+                        if 'HEAD' not in remote_branch and not any(b['name'] == remote_branch for b in branches):
+                            branches.append({
+                                'name': remote_branch,
+                                'active': False,
+                                'type': 'remote'
+                            })
+                
+                # 按名称排序，但将main分支放在最前面
+                branches.sort(key=lambda x: (0 if x['name'] == 'main' else 1, x['name']))
+                
+                response = {
+                    'success': True,
+                    'branches': branches
+                }
+            except Exception as e:
+                logger.error(f"获取分支列表错误: {str(e)}")
+                response = {
+                    'success': False,
+                    'message': f'获取分支列表失败: {str(e)}'
+                }
+            
+            self.wfile.write(json.dumps(response).encode())
         elif self.path == '/api/logs':
             self.send_response(200)
             self.send_header('Content-type', 'application/json')
