@@ -84,13 +84,13 @@ class DeployHandler(BaseHTTPRequestHandler):
 
             try:
                 # 更新远程分支信息
-                subprocess.run(['git', 'fetch'], 
-                              stdout=subprocess.PIPE, 
+                subprocess.run(['git', 'fetch'],
+                              stdout=subprocess.PIPE,
                               stderr=subprocess.PIPE)
-                
+
                 # 获取所有分支（包括远程分支）
                 output = subprocess.check_output(['git', 'branch', '-a']).decode().strip()
-                
+
                 branches = []
                 for line in output.split('\n'):
                     line = line.strip()
@@ -119,10 +119,10 @@ class DeployHandler(BaseHTTPRequestHandler):
                                 'active': False,
                                 'type': 'remote'
                             })
-                
+
                 # 按名称排序，但将main分支放在最前面
                 branches.sort(key=lambda x: (0 if x['name'] == 'main' else 1, x['name']))
-                
+
                 response = {
                     'success': True,
                     'branches': branches
@@ -133,7 +133,7 @@ class DeployHandler(BaseHTTPRequestHandler):
                     'success': False,
                     'message': f'获取分支列表失败: {str(e)}'
                 }
-            
+
             self.wfile.write(json.dumps(response).encode())
         elif self.path == '/api/logs':
             self.send_response(200)
@@ -239,10 +239,18 @@ class DeployHandler(BaseHTTPRequestHandler):
                 logger.info(f"开始部署版本: {version}")
                 deploy_script = '/app/deploy.sh'
 
+                # 确保脚本存在且可执行
+                if not os.path.isfile(deploy_script) or not os.access(deploy_script, os.X_OK):
+                    logger.error(f"部署脚本不存在或不可执行: {deploy_script}")
+                    raise Exception(f"部署脚本不存在或不可执行: {deploy_script}")
+
                 # 异步执行部署脚本
-                subprocess.Popen([deploy_script, version],
+                process = subprocess.Popen([deploy_script, version],
                                 stdout=subprocess.PIPE,
                                 stderr=subprocess.STDOUT)
+
+                # 记录进程启动信息
+                logger.info(f"部署进程启动，进程 ID: {process.pid}")
 
                 self.send_response(200)
                 self.send_header('Content-type', 'application/json')
