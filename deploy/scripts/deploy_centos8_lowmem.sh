@@ -47,19 +47,19 @@ check_docker() {
 # 配置镜像加速器
 configure_mirror() {
     echo "检查镜像加速器配置..."
-    
+
     # 检查是否已配置镜像加速器
     if [ ! -f /etc/docker/daemon.json ] || ! grep -q "registry-mirrors" /etc/docker/daemon.json; then
         echo "未找到镜像加速器配置，正在配置阿里云镜像加速器..."
-        
+
         # 创建daemon.json文件
         sudo mkdir -p /etc/docker
-        
+
         # 如果文件已存在，先备份
         if [ -f /etc/docker/daemon.json ]; then
             sudo cp /etc/docker/daemon.json /etc/docker/daemon.json.bak
             echo "原有配置已备份为 /etc/docker/daemon.json.bak"
-            
+
             # 如果文件已存在但不包含 registry-mirrors，则添加
             if ! grep -q "registry-mirrors" /etc/docker/daemon.json; then
                 # 使用jq工具合并JSON（如果安装了jq）
@@ -84,21 +84,21 @@ EOF
 }
 EOF
         fi
-        
+
         # 重启Docker服务
         echo "重启Docker服务以应用镜像加速器配置..."
         sudo systemctl daemon-reload
         sudo systemctl restart docker
-        
+
         # 等待Docker服务重启
         sleep 3
-        
+
         # 检查Docker服务状态
         if ! systemctl is-active --quiet docker; then
             echo "错误: Docker服务重启失败。请手动检查配置。"
             exit 1
         fi
-        
+
         echo "阿里云镜像加速器配置成功。"
     else
         echo "镜像加速器已配置。"
@@ -108,7 +108,7 @@ EOF
 # 配置CentOS 8软件源
 configure_centos_repos() {
     echo "检查CentOS 8软件源配置..."
-    
+
     # 创建一个临时脚本来配置CentOS 8软件源
     cat > /tmp/configure_centos_repos.sh << 'EOF'
 #!/bin/bash
@@ -199,24 +199,24 @@ dnf makecache
 
 echo "CentOS 8软件源配置完成"
 EOF
-    
+
     chmod +x /tmp/configure_centos_repos.sh
-    
+
     echo "已创建CentOS 8软件源配置脚本。该脚本将在构建过程中使用。"
 }
 
 # 检查基础镜像是否已加载
 check_base_images() {
     echo "检查基础镜像..."
-    
+
     # 检查CentOS 8镜像
     if ! docker images | grep -q "centos.*8"; then
         echo "警告: 未找到CentOS 8镜像。"
         echo "将尝试使用阿里云镜像加速器拉取..."
-        
+
         # 先配置镜像加速器
         configure_mirror
-        
+
         # 尝试拉取CentOS 8镜像
         docker pull centos:8 || {
             echo "错误: 即使使用阿里云镜像加速器仍无法拉取CentOS 8镜像。"
@@ -226,7 +226,7 @@ check_base_images() {
     else
         echo "已找到CentOS 8镜像。"
     fi
-    
+
     # 配置CentOS 8软件源
     configure_centos_repos
 }
@@ -234,61 +234,61 @@ check_base_images() {
 # 清理系统缓存和Docker缓存
 clean_cache() {
     echo "清理系统缓存和Docker缓存..."
-    
+
     # 清理Docker缓存
     docker system prune -af
-    
+
     # 清理系统缓存
     sudo sh -c "sync && echo 3 > /proc/sys/vm/drop_caches"
-    
+
     echo "缓存清理完成。"
 }
 
 # 创建交换文件
 create_swap() {
     echo "检查交换空间..."
-    
+
     # 检查是否已有交换空间
     if [ "$(free | grep -i swap | awk '{print $2}')" -gt "0" ]; then
         echo "系统已有交换空间，无需创建。"
         return
     fi
-    
+
     echo "未检测到交换空间，创建2GB交换文件..."
-    
+
     # 创建2GB的交换文件
     sudo dd if=/dev/zero of=/swapfile bs=1M count=2048
     sudo chmod 600 /swapfile
     sudo mkswap /swapfile
     sudo swapon /swapfile
-    
+
     # 永久挂载交换文件
     if ! grep -q "/swapfile" /etc/fstab; then
         echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
     fi
-    
+
     echo "交换文件创建完成。"
 }
 
 # 构建Docker镜像
 build_image() {
     echo "构建Docker镜像..."
-    
+
     # 检查Docker和基础镜像
     check_docker
     configure_mirror
     check_base_images
-    
+
     # 创建日志目录
     mkdir -p "$LOG_DIR"
-    
+
     # 记录构建开始
     BUILD_LOG="$LOG_DIR/build_$(date +%Y%m%d_%H%M%S).log"
     echo "===== 构建开始 $(date) =====" | tee -a "$BUILD_LOG"
-    
+
     # 复制CentOS 8软件源配置脚本到构建上下文
     cp /tmp/configure_centos_repos.sh "$REPO_DIR/configure_centos_repos.sh"
-    
+
     # 创建低内存优化的Dockerfile
     cat > "$REPO_DIR/deploy/Dockerfile.lowmem" << 'EOF'
 # 使用CentOS 8作为基础镜像
@@ -319,7 +319,7 @@ RUN dnf clean all && \
 RUN npm config set registry https://registry.npmmirror.com && \
     pip3.9 config set global.index-url https://mirrors.aliyun.com/pypi/simple/ && \
     pip3.9 config set install.trusted-host mirrors.aliyun.com
-    
+
 # 配置网络设置
 # 注意：在Docker中，/etc/resolv.conf是只读的，无法直接修改
 # 我们在配置脚本中已经添加了hosts条目来解决一些DNS问题
@@ -333,8 +333,9 @@ COPY web-frontend/ /app/frontend-src/
 # 构建前端（低内存环境优化）
 WORKDIR /app/frontend-src
 # 分步执行，减少内存使用
+# 注意：不使用--production参数，因为需要安装@vue/cli-service等开发依赖
 RUN npm config set cache /tmp/npm-cache && \
-    npm install --legacy-peer-deps --no-optional --production --no-audit --no-fund --prefer-offline && \
+    npm install --legacy-peer-deps --no-optional --no-audit --no-fund --prefer-offline && \
     rm -rf /tmp/npm-cache && \
     export NODE_OPTIONS="--max-old-space-size=1024" && \
     npm run build && \
@@ -367,16 +368,16 @@ EXPOSE 80
 # 启动服务
 CMD ["/app/start.sh"]
 EOF
-    
+
     # 构建Docker镜像
     cd "$REPO_DIR"
     docker build -t "$DOCKER_IMAGE:latest" \
         --build-arg CONFIGURE_REPOS_SCRIPT=./configure_centos_repos.sh \
         -f deploy/Dockerfile.lowmem . 2>&1 | tee -a "$BUILD_LOG"
-        
+
     # 清理临时文件
     rm -f "$REPO_DIR/configure_centos_repos.sh"
-    
+
     # 检查构建结果
     if [ ${PIPESTATUS[0]} -eq 0 ]; then
         echo "===== 构建成功 $(date) =====" | tee -a "$BUILD_LOG"
@@ -392,27 +393,27 @@ EOF
 # 运行Docker容器
 run_container() {
     echo "运行Docker容器..."
-    
+
     # 检查Docker
     check_docker
-    
+
     # 检查镜像是否存在
     if ! docker images | grep -q "$DOCKER_IMAGE"; then
         echo "错误: 未找到镜像 $DOCKER_IMAGE。请先构建镜像。"
         echo "  $0 --build"
         exit 1
     fi
-    
+
     # 检查容器是否已存在
     if docker ps -a | grep -q "$CONTAINER_NAME"; then
         echo "容器已存在，先停止并删除..."
         docker stop "$CONTAINER_NAME" > /dev/null 2>&1
         docker rm "$CONTAINER_NAME" > /dev/null 2>&1
     fi
-    
+
     # 创建日志和数据目录
     mkdir -p "$LOG_DIR" "$DATA_DIR"
-    
+
     # 运行容器，使用内存限制以适应低内存环境
     docker run -d --name "$CONTAINER_NAME" \
         -p 80:80 \
@@ -425,12 +426,12 @@ run_container() {
         --memory-swap="1536m" \
         --memory-swappiness=60 \
         "$DOCKER_IMAGE:latest"
-    
+
     # 检查运行结果
     if [ $? -eq 0 ]; then
         # 获取服务器IP地址
         SERVER_IP=$(hostname -I | awk '{print $1}')
-        
+
         echo "Docker容器启动成功!"
         echo "访问地址: http://$SERVER_IP"
         echo "部署面板: http://$SERVER_IP/deploy/"
@@ -447,19 +448,19 @@ run_container() {
 # 停止Docker容器
 stop_container() {
     echo "停止Docker容器..."
-    
+
     # 检查Docker
     check_docker
-    
+
     # 检查容器是否存在
     if ! docker ps -a | grep -q "$CONTAINER_NAME"; then
         echo "容器 $CONTAINER_NAME 不存在。"
         exit 0
     fi
-    
+
     # 停止容器
     docker stop "$CONTAINER_NAME"
-    
+
     if [ $? -eq 0 ]; then
         echo "Docker容器已停止!"
     else
@@ -471,24 +472,24 @@ stop_container() {
 # 删除Docker容器
 delete_container() {
     echo "删除Docker容器..."
-    
+
     # 检查Docker
     check_docker
-    
+
     # 检查容器是否存在
     if ! docker ps -a | grep -q "$CONTAINER_NAME"; then
         echo "容器 $CONTAINER_NAME 不存在。"
         exit 0
     fi
-    
+
     # 停止容器（如果正在运行）
     if docker ps | grep -q "$CONTAINER_NAME"; then
         docker stop "$CONTAINER_NAME" > /dev/null 2>&1
     fi
-    
+
     # 删除容器
     docker rm "$CONTAINER_NAME"
-    
+
     if [ $? -eq 0 ]; then
         echo "Docker容器已删除!"
     else
@@ -500,16 +501,16 @@ delete_container() {
 # 查看容器日志
 view_logs() {
     echo "查看容器日志..."
-    
+
     # 检查Docker
     check_docker
-    
+
     # 检查容器是否存在
     if ! docker ps -a | grep -q "$CONTAINER_NAME"; then
         echo "容器 $CONTAINER_NAME 不存在。"
         exit 1
     fi
-    
+
     # 查看日志
     docker logs -f "$CONTAINER_NAME"
 }

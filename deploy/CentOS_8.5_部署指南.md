@@ -485,12 +485,14 @@ RUN npm install --legacy-peer-deps && \
 
 这会将Node.js的堆内存限制增加到2GB。如果服务器内存充足，可以考虑设置更高的值，例如`4096`（4GB）。
 
-另外，还可以尝试在构建时使用生产模式的优化：
+另外，还可以尝试使用其他参数减少内存使用：
 ```dockerfile
-RUN npm install --legacy-peer-deps --production && \
+RUN npm install --legacy-peer-deps --no-optional --no-audit --no-fund --prefer-offline && \
     export NODE_OPTIONS="--max-old-space-size=2048" && \
     npm run build && \
     ...
+
+注意：不要使用`--production`参数，因为前端构建需要`@vue/cli-service`等开发依赖。
 **低内存环境优化**：
 
 如果您的服务器内存有限（例如只有2GB内存），可以尝试以下优化方法：
@@ -561,7 +563,7 @@ chmod +x deploy/scripts/deploy_centos8_lowmem.sh
 
 如果您的服务器内存只有2GB，强烈建议使用这个脚本而不是标准的`deploy_centos8.sh`脚本。
 
-添加`--production`参数可以跳过开发依赖的安装，减少内存使用。
+注意：不要使用`--production`参数，因为前端构建需要`@vue/cli-service`等开发依赖。但可以使用`--no-optional`、`--no-audit`、`--no-fund`等参数减少内存使用。
 
 **症状**：运行`deploy_centos8.sh --run`时，容器无法启动。
 
