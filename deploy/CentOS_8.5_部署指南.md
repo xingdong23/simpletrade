@@ -466,7 +466,34 @@ RUN npm install --legacy-peer-deps && \
 ```
 
 这个参数告诉npm忽略对等依赖的检查，可以解决大多数依赖冲突问题。
+**Node.js内存溢出问题**：
+
 ### 问题3: 容器无法启动
+
+如果在构建前端项目时遇到内存溢出错误，例如：
+```
+FATAL ERROR: Reached heap limit Allocation failed - JavaScript heap out of memory
+```
+
+可以尝试增加Node.js的内存限制：
+```dockerfile
+RUN npm install --legacy-peer-deps && \
+    export NODE_OPTIONS="--max-old-space-size=2048" && \
+    npm run build && \
+    ...
+```
+
+这会将Node.js的堆内存限制增加到2GB。如果服务器内存充足，可以考虑设置更高的值，例如`4096`（4GB）。
+
+另外，还可以尝试在构建时使用生产模式的优化：
+```dockerfile
+RUN npm install --legacy-peer-deps --production && \
+    export NODE_OPTIONS="--max-old-space-size=2048" && \
+    npm run build && \
+    ...
+```
+
+添加`--production`参数可以跳过开发依赖的安装，减少内存使用。
 
 **症状**：运行`deploy_centos8.sh --run`时，容器无法启动。
 

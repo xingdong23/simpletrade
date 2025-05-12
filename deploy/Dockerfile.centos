@@ -39,7 +39,10 @@ COPY web-frontend/ /app/frontend-src/
 
 # 构建前端
 WORKDIR /app/frontend-src
-RUN npm install --legacy-peer-deps && \
+# 增加Node.js内存限制并使用--legacy-peer-deps解决依赖冲突
+# 使用--production跳过开发依赖，减少内存使用
+RUN npm install --legacy-peer-deps --no-optional && \
+    export NODE_OPTIONS="--max-old-space-size=4096" && \
     npm run build && \
     cp -r dist/* /app/frontend/ && \
     rm -rf /app/frontend-src
