@@ -491,7 +491,49 @@ RUN npm install --legacy-peer-deps --production && \
     export NODE_OPTIONS="--max-old-space-size=2048" && \
     npm run build && \
     ...
+**低内存环境优化**：
+
+如果您的服务器内存有限（例如只有2GB内存），可以尝试以下优化方法：
+
+1. 在Dockerfile中使用更多的内存优化参数：
+```dockerfile
+RUN npm config set cache /tmp/npm-cache && \
+    npm install --legacy-peer-deps --no-optional --production --no-audit --no-fund --prefer-offline && \
+    rm -rf /tmp/npm-cache && \
+    export NODE_OPTIONS="--max-old-space-size=1536" && \
+    npm run build && \
+    rm -rf node_modules
 ```
+
+2. 在运行容器时限制内存使用：
+```bash
+docker run -d --name simpletrade \
+    --memory="1536m" \
+    --memory-swap="1536m" \
+    ... \
+    simpletrade:latest
+```
+
+3. 在构建过程中清理临时文件和缓存：
+```bash
+# 清理Docker缓存
+docker system prune -af
+
+# 清理系统缓存
+sudo sh -c "sync && echo 3 > /proc/sys/vm/drop_caches"
+```
+
+4. 如果服务器没有交换分区，可以添加一个：
+```bash
+# 创建2GB的交换文件
+sudo dd if=/dev/zero of=/swapfile bs=1M count=2048
+sudo chmod 600 /swapfile
+sudo mkswap /swapfile
+sudo swapon /swapfile
+# 永久挂载交换文件
+echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+```
+
 
 添加`--production`参数可以跳过开发依赖的安装，减少内存使用。
 

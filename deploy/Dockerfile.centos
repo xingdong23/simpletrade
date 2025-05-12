@@ -39,12 +39,16 @@ COPY web-frontend/ /app/frontend-src/
 
 # 构建前端
 WORKDIR /app/frontend-src
-# 增加Node.js内存限制并使用--legacy-peer-deps解决依赖冲突
-# 使用--production跳过开发依赖，减少内存使用
-RUN npm install --legacy-peer-deps --no-optional && \
-    export NODE_OPTIONS="--max-old-space-size=4096" && \
+# 低内存环境优化（2核心2GB内存）
+# 分步执行安装和构建，减少内存压力
+RUN npm config set cache /tmp/npm-cache && \
+    npm install --legacy-peer-deps --no-optional --production --no-audit --no-fund --prefer-offline && \
+    rm -rf /tmp/npm-cache && \
+    export NODE_OPTIONS="--max-old-space-size=1536" && \
     npm run build && \
+    mkdir -p /app/frontend && \
     cp -r dist/* /app/frontend/ && \
+    rm -rf node_modules && \
     rm -rf /app/frontend-src
 
 # 复制后端代码

@@ -296,7 +296,7 @@ run_container() {
     # 创建日志和数据目录
     mkdir -p "$LOG_DIR" "$DATA_DIR"
 
-    # 运行容器
+    # 运行容器，使用内存限制以适应低内存环境
     docker run -d --name "$CONTAINER_NAME" \
         -p 80:80 \
         -v "$LOG_DIR:/app/logs" \
@@ -304,6 +304,8 @@ run_container() {
         --security-opt label=disable \
         --dns 8.8.8.8 \
         --dns 114.114.114.114 \
+        --memory="1536m" \
+        --memory-swap="1536m" \
         "$DOCKER_IMAGE:latest"
 
     # 检查运行结果
