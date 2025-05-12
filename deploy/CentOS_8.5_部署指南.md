@@ -516,9 +516,71 @@ curl http://localhost:8080/api/branches
 ```bash
 ./deploy/scripts/deploy_centos8_lowmem.sh --build --run
 ```
+### API访问错误
 
-这个问题的根本原因是部署API服务器需要使用Git命令来获取分支列表，但在容器中没有安装Git。我们已经更新了Dockerfile，确保在构建镜像时安装Git。
+如果在部署面板中遇到类似以下错误：
+
 ```
+Failed to load resource: the server responded with a status of 404 (Not Found)
+SyntaxError: Unexpected token '<', "<!DOCTYPE "... is not valid JSON
+```
+
+这表示部署面板无法正确访问API端点（如`/api/version`、`/api/logs`、`/api/branches`等）。这通常是由于Nginx配置中的API代理设置不正确导致的。
+
+**解决方法**：
+
+1. 修改Nginx配置：
+```bash
+# 进入容器
+docker exec -it simpletrade bash
+
+# 编辑Nginx配置
+vi /etc/nginx/conf.d/default.conf
+```
+
+2. 确保配置中包含以下内容：
+```nginx
+# 部署API - 包括所有部署相关的API端点
+location ~ ^/api/(version|logs|deploy|branches) {
+    proxy_pass http://localhost:8080;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+
+    # 简单的基本认证
+    auth_basic "Deployment API";
+    auth_basic_user_file /etc/nginx/.htpasswd;
+}
+
+# 后端API - 其他所有API请求
+location /api/ {
+    proxy_pass http://localhost:8003;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+}
+```
+
+3. 重新加载Nginx配置：
+```bash
+nginx -s reload
+```
+
+4. 确保部署API服务器正在运行：
+```bash
+ps aux | grep deploy.py
+```
+
+5. 测试API是否可访问：
+```bash
+curl http://localhost:8080/api/version
+curl http://localhost:8080/api/logs
+curl http://localhost:8080/api/branches
+```
+
+我们已经更新了Nginx配置文件，确保所有部署API端点都能正确代理。重新构建镜像时，这个问题将不再出现。
 
 应该包含类似以下内容：
 ```json
