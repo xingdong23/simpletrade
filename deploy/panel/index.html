@@ -70,29 +70,25 @@
                         <h5 class="mb-0">部署新版本</h5>
                     </div>
                     <div class="card-body">
-                        <div class="mb-4">
-                            <div class="form-group mb-3">
-                                <label for="branch-select" class="form-label">选择分支</label>
-                                <select class="form-select" id="branch-select">
-                                    <option value="" disabled selected>加载分支列表中...</option>
-                                </select>
-                                <div class="form-text">选择要部署的分支，将自动拉取该分支的最新代码</div>
-                            </div>
-                            <button id="one-click-deploy" class="btn btn-primary btn-lg w-100" disabled>
-                                <i class="bi bi-rocket-takeoff"></i> 一键部署选定分支
-                            </button>
-                        </div>
-                        <hr>
                         <form id="deploy-form">
                             <div class="mb-3">
-                                <label for="version" class="form-label">自定义版本部署</label>
-                                <input type="text" class="form-control" id="version" placeholder="例如: v1.0.0, commit-hash">
-                                <div class="form-text">输入要部署的版本标识，可以是标签名或提交哈希</div>
+                                <label for="branch" class="form-label">分支名称</label>
+                                <input type="text" class="form-control" id="branch" placeholder="例如: main, develop, feature/new-feature">
+                                <div class="form-text">输入要部署的分支名称，将自动拉取该分支的最新代码</div>
                             </div>
-                            <button type="submit" class="btn btn-success">
-                                <i class="bi bi-cloud-upload"></i> 开始部署
+                            <button type="submit" class="btn btn-primary btn-lg w-100">
+                                <i class="bi bi-rocket-takeoff"></i> 一键部署
                             </button>
                         </form>
+                        <hr>
+                        <div class="mb-3">
+                            <label for="version" class="form-label">高级选项：自定义版本部署</label>
+                            <input type="text" class="form-control" id="version" placeholder="例如: v1.0.0, commit-hash">
+                            <div class="form-text">输入要部署的版本标识，可以是标签名或提交哈希</div>
+                        </div>
+                        <button id="custom-deploy" class="btn btn-success">
+                            <i class="bi bi-cloud-upload"></i> 部署自定义版本
+                        </button>
                     </div>
                 </div>
             </div>
@@ -297,85 +293,29 @@
                 fetchLogContent(this.value);
             });
 
-            // 加载分支列表
-            function loadBranches() {
-                fetch('/api/branches')
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            const branchSelect = document.getElementById('branch-select');
-                            // 清空当前选项
-                            branchSelect.innerHTML = '';
+            // 部署表单提交事件 - 分支部署
+            document.getElementById('deploy-form').addEventListener('submit', function(e) {
+                e.preventDefault();
 
-                            // 添加选择提示
-                            const defaultOption = document.createElement('option');
-                            defaultOption.value = '';
-                            defaultOption.textContent = '请选择要部署的分支';
-                            defaultOption.disabled = true;
-                            defaultOption.selected = true;
-                            branchSelect.appendChild(defaultOption);
-
-                            // 添加分支选项
-                            data.branches.forEach(branch => {
-                                const option = document.createElement('option');
-                                option.value = branch.name;
-
-                                // 标记当前活动分支
-                                let branchText = branch.name;
-                                if (branch.active) {
-                                    branchText += ' (当前分支)';
-                                    option.selected = true;
-                                }
-
-                                // 标记远程分支
-                                if (branch.type === 'remote') {
-                                    branchText += ' (远程)';
-                                }
-
-                                option.textContent = branchText;
-                                branchSelect.appendChild(option);
-                            });
-
-                            // 启用一键部署按钮
-                            document.getElementById('one-click-deploy').disabled = false;
-                        } else {
-                            alert('加载分支列表失败: ' + data.message);
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error:', error);
-                        alert('加载分支列表时发生错误');
-                    });
-            }
-
-            // 页面加载时加载分支列表
-            loadBranches();
-
-            // 一键部署按钮事件
-            document.getElementById('one-click-deploy').addEventListener('click', function() {
-                const branchSelect = document.getElementById('branch-select');
-                const selectedBranch = branchSelect.value;
-
-                if (!selectedBranch) {
-                    alert('请选择要部署的分支');
+                const branch = document.getElementById('branch').value.trim();
+                if (!branch) {
+                    alert('请输入分支名称');
                     return;
                 }
 
-                document.getElementById('deploy-version').textContent = selectedBranch;
+                document.getElementById('deploy-version').textContent = branch;
 
                 const deployModal = new bootstrap.Modal(document.getElementById('deployModal'));
                 deployModal.show();
 
                 document.getElementById('confirm-deploy').onclick = function() {
                     deployModal.hide();
-                    deployVersion(selectedBranch);
+                    deployVersion(branch);
                 };
             });
 
-            // 部署表单提交事件
-            document.getElementById('deploy-form').addEventListener('submit', function(e) {
-                e.preventDefault();
-
+            // 自定义部署按钮事件
+            document.getElementById('custom-deploy').addEventListener('click', function() {
                 const version = document.getElementById('version').value.trim();
                 if (!version) {
                     alert('请输入版本标识');

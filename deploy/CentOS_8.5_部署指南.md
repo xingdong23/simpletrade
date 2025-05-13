@@ -161,18 +161,18 @@ chmod +x deploy/scripts/deploy_centos8.sh
 
 1. 查看当前版本信息
 
-2. **选择分支并一键部署**（推荐）：
-   - 从下拉菜单中选择要部署的分支
-   - 点击"一键部署选定分支"按钮
+2. **手动输入分支名称并部署**（推荐）：
+   - 输入要部署的分支名称（例如：main、develop、feature/new-feature）
+   - 点击"一键部署"按钮
    - 确认部署
    - 等待部署完成
    - 查看部署日志
 
-   这是最简单的部署方式，只需选择分支，系统会自动拉取该分支的最新代码并部署。分支列表会自动加载所有本地和远程分支。
+   这是最简单的部署方式，只需输入分支名称，系统会自动拉取该分支的最新代码并部署。
 
 3. 自定义版本部署（高级选项）：
    - 输入要部署的版本标识（标签名或提交哈希）
-   - 点击"开始部署"按钮
+   - 点击"部署自定义版本"按钮
    - 确认部署
    - 等待部署完成
    - 查看部署日志
@@ -516,102 +516,6 @@ curl http://localhost:8080/api/branches
 ```bash
 ./deploy/scripts/deploy_centos8_lowmem.sh --build --run
 ```
-### API访问错误
-
-如果在部署面板中遇到类似以下错误：
-
-```
-Failed to load resource: the server responded with a status of 404 (Not Found)
-SyntaxError: Unexpected token '<', "<!DOCTYPE "... is not valid JSON
-```
-
-这表示部署面板无法正确访问API端点（如`/api/version`、`/api/logs`、`/api/branches`等）。这通常是由于Nginx配置中的API代理设置不正确导致的。
-
-**解决方法**：
-
-1. 修改Nginx配置：
-```bash
-# 进入容器
-docker exec -it simpletrade bash
-
-# 编辑Nginx配置
-vi /etc/nginx/conf.d/default.conf
-```
-
-2. 确保配置中包含以下内容：
-```nginx
-# 部署API端点 - 明确列出每个端点以避免配置问题
-location /api/version {
-    proxy_pass http://localhost:8080/api/version;
-    proxy_set_header Host $host;
-    proxy_set_header X-Real-IP $remote_addr;
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    proxy_set_header X-Forwarded-Proto $scheme;
-}
-
-location /api/logs {
-    proxy_pass http://localhost:8080/api/logs;
-    proxy_set_header Host $host;
-    proxy_set_header X-Real-IP $remote_addr;
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    proxy_set_header X-Forwarded-Proto $scheme;
-}
-
-location /api/branches {
-    proxy_pass http://localhost:8080/api/branches;
-    proxy_set_header Host $host;
-    proxy_set_header X-Real-IP $remote_addr;
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    proxy_set_header X-Forwarded-Proto $scheme;
-}
-
-location /api/deploy {
-    proxy_pass http://localhost:8080/api/deploy;
-    proxy_set_header Host $host;
-    proxy_set_header X-Real-IP $remote_addr;
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    proxy_set_header X-Forwarded-Proto $scheme;
-}
-
-# 后端API - 处理其他所有API请求
-location /api/ {
-    proxy_pass http://localhost:8003;
-    proxy_set_header Host $host;
-    proxy_set_header X-Real-IP $remote_addr;
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    proxy_set_header X-Forwarded-Proto $scheme;
-}
-```
-
-注意：我们使用了明确的端点匹配而不是正则表达式，因为在某些版本的Nginx中，正则表达式匹配可能不正常工作。
-
-3. 重新加载Nginx配置：
-```bash
-nginx -s reload
-```
-
-4. 确保部署API服务器正在运行：
-```bash
-ps aux | grep deploy.py
-```
-
-5. 测试API是否可访问：
-```bash
-curl http://localhost:8080/api/version
-curl http://localhost:8080/api/logs
-curl http://localhost:8080/api/branches
-```
-
-我们已经更新了Nginx配置文件，确保所有部署API端点都能正确代理。重新构建镜像时，这个问题将不再出现。
-
-应该包含类似以下内容：
-```json
-{
-  "registry-mirrors": ["https://qoy9ouh4.mirror.aliyuncs.com"]
-}
-```
-
-我们已经在部署脚本中添加了镜像检查，确保在运行容器前镜像已经成功构建。
 ## CentOS 8.5 特有问题及解决方案
 
 ### SELinux 相关问题
