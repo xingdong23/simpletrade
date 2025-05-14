@@ -2,11 +2,18 @@
 SimpleTrade - 一个简单的交易系统
 """
 
+# 修复numpy.NaN问题
+import numpy as np
+import sys
+
+# 如果numpy没有NaN属性，添加它
+if not hasattr(np, 'NaN'):
+    np.NaN = np.nan
+
 # 设置版本号
 __version__ = "0.1.0"
 
 # 添加vnpy源码路径
-import sys
 from pathlib import Path
 
 # 添加vnpy源码目录到Python路径

@@ -353,9 +353,19 @@ RUN npm config set cache /tmp/npm-cache && \
 COPY simpletrade/ /app/backend/simpletrade/
 COPY setup.py requirements.txt /app/backend/
 
+# 复制vnpy源码
+COPY vnpy_custom/ /app/backend/vnpy_custom/
+
 # 安装后端依赖
 WORKDIR /app/backend
+# 安装系统依赖
+RUN dnf install -y gcc gcc-c++ make cmake python39-devel wget
+
+# 安装Python依赖
 RUN pip3.9 install --no-cache-dir -r requirements.txt
+
+# 安装TA-Lib替代品
+RUN pip3.9 install --no-cache-dir pandas-ta ta finta
 
 # 复制部署面板
 COPY deploy/panel/ /app/panel/

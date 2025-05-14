@@ -25,12 +25,6 @@ if vendors_path.exists() and str(vendors_path) not in sys.path:
     sys.path.insert(0, str(vendors_path))
     print(f"[INFO] Added vendors path to sys.path: {vendors_path}")
 
-# 添加vnpy源码目录到Python路径
-vnpy_custom_dir = project_root / "vnpy_custom"
-if vnpy_custom_dir.exists() and str(vnpy_custom_dir) not in sys.path:
-    sys.path.insert(0, str(vnpy_custom_dir))
-    print(f"[INFO] Added vnpy_custom to sys.path: {vnpy_custom_dir}")
-
 # 导入配置
 from simpletrade.config.settings import API_CONFIG, DATA_SYNC_CONFIG
 
