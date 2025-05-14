@@ -13,12 +13,23 @@ import threading
 import uvicorn
 import asyncio
 
-# 添加 vendors 目录到 Python 路径
+# 添加项目根目录到Python路径
 project_root = Path(__file__).parent.parent.absolute()
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
+    print(f"[INFO] Added project root to sys.path: {project_root}")
+
+# 添加 vendors 目录到 Python 路径
 vendors_path = project_root / "vendors"
 if vendors_path.exists() and str(vendors_path) not in sys.path:
     sys.path.insert(0, str(vendors_path))
     print(f"[INFO] Added vendors path to sys.path: {vendors_path}")
+
+# 添加vnpy源码目录到Python路径
+vnpy_custom_dir = project_root / "vnpy_custom"
+if vnpy_custom_dir.exists() and str(vnpy_custom_dir) not in sys.path:
+    sys.path.insert(0, str(vnpy_custom_dir))
+    print(f"[INFO] Added vnpy_custom to sys.path: {vnpy_custom_dir}")
 
 # 导入配置
 from simpletrade.config.settings import API_CONFIG, DATA_SYNC_CONFIG
@@ -31,7 +42,7 @@ log_level_str = os.environ.get("SIMPLETRADE_LOG_LEVEL", "INFO").upper()
 log_level = getattr(logging, log_level_str, logging.INFO)
 
 logging.basicConfig(
-    level=log_level, 
+    level=log_level,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[logging.StreamHandler()]
 )
@@ -41,7 +52,7 @@ logger.info(f"Logging configured with level: {log_level_str}")
 
 def run_api_server(host: str, port: int, app_instance):
     """运行 API 服务器
-    
+
     Args:
         host: 主机地址
         port: 端口号
@@ -50,7 +61,7 @@ def run_api_server(host: str, port: int, app_instance):
     if not app_instance:
         logger.error("Cannot start API server: FastAPI app instance not found.")
         return
-        
+
     logger.info(f"Starting API server on http://{host}:{port}")
     try:
         uvicorn.run(app_instance, host=host, port=port, log_level="info")
@@ -61,7 +72,7 @@ def run_api_server(host: str, port: int, app_instance):
 
 def start_data_sync(db_instance, periodic=False):
     """启动数据同步服务
-    
+
     Args:
         db_instance: 数据库实例
         periodic: 是否周期性运行
@@ -71,11 +82,11 @@ def start_data_sync(db_instance, periodic=False):
     except ImportError as e:
         logger.error(f"Failed to import data sync components: {e}")
         return
-        
+
     if not db_instance:
         logger.error("Cannot start data sync: database instance not available.")
         return
-        
+
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     try:
@@ -95,7 +106,7 @@ def start_data_sync(db_instance, periodic=False):
 
 def start_api_server(main_engine, event_engine):
     """启动API服务器
-    
+
     Args:
         main_engine: 主引擎实例
         event_engine: 事件引擎实例
@@ -107,16 +118,16 @@ def start_api_server(main_engine, event_engine):
     try:
         # 导入API相关模块
         from simpletrade.core.server import app as fastapi_app, configure_server
-        
+
         # 配置API服务器
         if main_engine and event_engine and fastapi_app and configure_server:
             configure_server(main_engine=main_engine, event_engine=event_engine)
             logger.info("API server configured successfully.")
-            
+
             # 启动API服务器线程
             api_host = API_CONFIG.get("HOST", "0.0.0.0")
             api_port = int(API_CONFIG.get("PORT", 8003))
-            
+
             api_thread = threading.Thread(
                 target=run_api_server,
                 args=(api_host, api_port, fastapi_app),
@@ -138,25 +149,25 @@ def start_api_server(main_engine, event_engine):
 
 def start_data_sync_service(db_instance):
     """启动数据同步服务
-    
+
     Args:
         db_instance: 数据库实例
     """
     if not DATA_SYNC_CONFIG.get("ENABLED", True):
         logger.info("Data sync service disabled in configuration. Skipping start.")
         return None
-        
+
     if not db_instance:
         logger.error("Cannot start data sync service: database instance not available.")
         return None
-        
+
     try:
         # 检查是否启用同步周期
         run_periodic = DATA_SYNC_CONFIG.get("PERIODIC_SYNC", False)
-        
+
         # 是否在启动时同步
         sync_on_startup = DATA_SYNC_CONFIG.get("SYNC_ON_STARTUP", True)
-        
+
         if sync_on_startup or run_periodic:
             # 创建并启动数据同步线程
             sync_thread = threading.Thread(
@@ -165,17 +176,17 @@ def start_data_sync_service(db_instance):
                 daemon=True
             )
             sync_thread.start()
-            
+
             if run_periodic:
                 logger.info("Periodic data synchronization service thread started.")
             else:
                 logger.info("One-time data synchronization service thread started.")
-                
+
             return sync_thread
         else:
             logger.info("Data synchronization on startup disabled. Skipping initial sync.")
             return None
-            
+
     except Exception as e:
         logger.error(f"Error starting data sync service: {e}", exc_info=True)
         return None
@@ -201,14 +212,14 @@ def main():
 
         # 2. 启动API服务器（如果配置启用）
         start_api_server(main_engine, event_engine)
-        
+
         # 3. 启动数据同步服务（如果配置启用）
         start_data_sync_service(db_instance)
-        
+
         # 4. 主循环保持程序运行
         logger.info("SimpleTrade is running. Press Ctrl+C to shut down.")
         keep_running()
-        
+
     except Exception as e:
         logger.critical(f"FATAL ERROR during SimpleTrade startup: {e}", exc_info=True)
         sys.exit(1)
