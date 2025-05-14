@@ -91,9 +91,7 @@ RUN mkdir -p /app/logs && \
 
 # 复制脚本
 COPY deploy/scripts/start.sh /app/
-COPY deploy/scripts/deploy.sh /app/
-RUN chmod +x /app/start.sh && \
-    chmod +x /app/deploy.sh
+RUN chmod +x /app/start.sh
 
 WORKDIR /app
 EXPOSE 80
