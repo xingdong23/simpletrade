@@ -58,7 +58,12 @@ COPY setup.py requirements.txt /app/backend/
 
 # 安装后端依赖
 WORKDIR /app/backend
+# 安装系统依赖
+RUN dnf install -y gcc gcc-c++ make cmake python39-devel
+# 安装Python依赖
 RUN pip3 install --no-cache-dir -r requirements.txt
+# 安装vnpy
+RUN pip3 install --no-cache-dir vnpy
 
 # 复制部署面板
 COPY deploy/panel/ /app/panel/

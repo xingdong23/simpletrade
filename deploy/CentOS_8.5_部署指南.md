@@ -518,6 +518,39 @@ curl http://localhost:8080/api/branches
 ```
 ## CentOS 8.5 特有问题及解决方案
 
+### 后端依赖问题
+
+如果后端服务启动失败，可能是缺少一些依赖库。特别是当日志中出现类似以下错误时：
+
+```
+ModuleNotFoundError: No module named 'vnpy'
+```
+
+这表示缺少`vnpy`库，这是一个交易相关的Python库。解决方法如下：
+
+1. 在容器中安装系统依赖：
+```bash
+# 进入容器
+docker exec -it simpletrade bash
+
+# 安装系统依赖
+dnf install -y gcc gcc-c++ make cmake python39-devel
+```
+
+2. 安装vnpy库：
+```bash
+# 在容器内
+pip3 install vnpy
+```
+
+3. 重启后端服务：
+```bash
+# 在容器内
+cd /app/backend
+python3.9 -m simpletrade.main > /app/logs/backend.log 2>&1 &
+```
+
+我们已经更新了Dockerfile，确保在构建镜像时安装vnpy库。如果您使用最新的代码，应该不会遇到这个问题。
 ### SELinux 相关问题
 
 如果遇到权限问题，可能是由于SELinux的限制：
