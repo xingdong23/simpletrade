@@ -367,6 +367,9 @@ RUN pip3.9 install --no-cache-dir -r requirements.txt
 # 安装TA-Lib替代品
 RUN pip3.9 install --no-cache-dir pandas-ta ta finta
 
+# 使用vnpy_custom目录中的vnpy源码
+# 不需要安装vnpy包或创建mock模块
+
 # 复制部署面板
 COPY deploy/panel/ /app/panel/
 
