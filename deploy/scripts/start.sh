@@ -56,6 +56,10 @@ chmod +x /app/deploy.sh
 # 创建日志目录
 mkdir -p /app/logs
 
+# 删除ta-lib相关文件
+echo "Removing ta-lib related files..."
+rm -rf /app/logs/ta-lib /app/logs/ta-lib-0.4.0-src.tar.gz
+
 # 启动部署API服务器
 echo "Starting deployment API server..."
 python3.9 /app/panel/deploy.py > /app/logs/deploy_panel.log 2>&1 &

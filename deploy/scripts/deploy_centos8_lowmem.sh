@@ -351,10 +351,8 @@ RUN npm config set cache /tmp/npm-cache && \
 
 # 复制后端代码
 COPY simpletrade/ /app/backend/simpletrade/
-COPY setup.py requirements.txt /app/backend/
-
-# 复制vnpy源码
 COPY vnpy_custom/ /app/backend/vnpy_custom/
+COPY setup.py requirements.txt /app/backend/
 
 # 安装后端依赖
 WORKDIR /app/backend
