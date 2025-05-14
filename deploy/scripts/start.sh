@@ -60,6 +60,10 @@ mkdir -p /app/logs
 echo "Starting deployment API server..."
 python3.9 /app/panel/deploy.py > /app/logs/deploy_panel.log 2>&1 &
 
+# 启动部署处理服务器
+echo "Starting deployment handler server..."
+python3.9 /app/panel/deploy_handler.py > /app/logs/deploy_handler.log 2>&1 &
+
 # 启动后端服务
 echo "Starting backend service..."
 cd /app/backend
