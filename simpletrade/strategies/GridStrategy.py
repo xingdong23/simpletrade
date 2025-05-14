@@ -12,7 +12,16 @@
 4. 反转信号：基于价格反弹/回落的买入/卖出信号
 """
 
-from vnpy_ctastrategy.template import CtaTemplate
+# 添加vnpy源码路径
+import sys
+from pathlib import Path
+
+# 添加vnpy源码目录到Python路径
+VNPY_CUSTOM_DIR = Path(__file__).parent.parent.parent / "vnpy_custom"
+if VNPY_CUSTOM_DIR.exists() and str(VNPY_CUSTOM_DIR) not in sys.path:
+    sys.path.insert(0, str(VNPY_CUSTOM_DIR))
+
+from vnpy.app.cta_strategy.template import CtaTemplate
 from vnpy.trader.object import BarData, TickData, OrderData, TradeData
 from vnpy.trader.constant import Direction, Offset
 from vnpy.trader.utility import ArrayManager

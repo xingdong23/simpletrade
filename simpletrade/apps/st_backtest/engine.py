@@ -8,19 +8,28 @@ import logging
 from abc import ABC, abstractmethod
 from typing import Dict, Any, List, Type, Optional
 
+# 添加vnpy源码路径
+import sys
+from pathlib import Path
+
+# 添加vnpy源码目录到Python路径
+VNPY_CUSTOM_DIR = Path(__file__).parent.parent.parent.parent / "vnpy_custom"
+if VNPY_CUSTOM_DIR.exists() and str(VNPY_CUSTOM_DIR) not in sys.path:
+    sys.path.insert(0, str(VNPY_CUSTOM_DIR))
+
 import pandas as pd
 from vnpy.trader.constant import Interval, Exchange
-from vnpy_ctastrategy.backtesting import BacktestingEngine as CTABacktestingEngine
+from vnpy.app.cta_strategy.backtesting import BacktestingEngine as CTABacktestingEngine
 
 from simpletrade.core.app import STBaseEngine
 
 # 尝试导入其他策略类型的回测引擎
 try:
-    from vnpy_optionmaster.backtesting import BacktestingEngine as OptionBacktestingEngine
+    from vnpy.app.option_master.backtesting import BacktestingEngine as OptionBacktestingEngine
     HAS_OPTION_ENGINE = True
 except ImportError:
     HAS_OPTION_ENGINE = False
-    logging.warning("vnpy_optionmaster not found. Option strategy backtesting won't be available.")
+    logging.warning("vnpy.app.option_master not found. Option strategy backtesting won't be available.")
 
 logger = logging.getLogger("simpletrade.apps.st_backtest.engine")
 

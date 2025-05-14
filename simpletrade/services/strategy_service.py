@@ -4,6 +4,18 @@
 提供策略的加载、初始化、启动、停止等功能。
 """
 
+
+# 添加vnpy源码路径
+import sys
+from pathlib import Path
+
+# 添加vnpy源码目录到Python路径
+VNPY_CUSTOM_DIR = Path(__file__).parent
+while VNPY_CUSTOM_DIR.name != "simpletrade" and VNPY_CUSTOM_DIR != VNPY_CUSTOM_DIR.parent:
+    VNPY_CUSTOM_DIR = VNPY_CUSTOM_DIR.parent
+VNPY_CUSTOM_DIR = VNPY_CUSTOM_DIR.parent / "vnpy_custom"
+if VNPY_CUSTOM_DIR.exists() and str(VNPY_CUSTOM_DIR) not in sys.path:
+    sys.path.insert(0, str(VNPY_CUSTOM_DIR))
 import logging
 from typing import Dict, List, Optional, Any, Union
 from sqlalchemy.orm import Session, joinedload
@@ -13,7 +25,7 @@ from simpletrade.core.engine import STMainEngine
 from simpletrade.api.deps import get_db
 from simpletrade.models.database import Strategy, UserStrategy
 from simpletrade.strategies import get_strategy_class, get_strategy_class_names, get_strategy_class_details
-from vnpy_ctastrategy.template import CtaTemplate
+from vnpy.app.cta_strategy.template import CtaTemplate
 
 logger = logging.getLogger("simpletrade.services.strategy_service")
 

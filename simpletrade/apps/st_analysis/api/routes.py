@@ -2,6 +2,18 @@
 SimpleTrade分析应用API路由
 """
 
+
+# 添加vnpy源码路径
+import sys
+from pathlib import Path
+
+# 添加vnpy源码目录到Python路径
+VNPY_CUSTOM_DIR = Path(__file__).parent
+while VNPY_CUSTOM_DIR.name != "simpletrade" and VNPY_CUSTOM_DIR != VNPY_CUSTOM_DIR.parent:
+    VNPY_CUSTOM_DIR = VNPY_CUSTOM_DIR.parent
+VNPY_CUSTOM_DIR = VNPY_CUSTOM_DIR.parent / "vnpy_custom"
+if VNPY_CUSTOM_DIR.exists() and str(VNPY_CUSTOM_DIR) not in sys.path:
+    sys.path.insert(0, str(VNPY_CUSTOM_DIR))
 import logging
 from typing import List, Dict, Any, Optional
 from datetime import datetime

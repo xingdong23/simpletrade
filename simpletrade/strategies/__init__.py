@@ -5,6 +5,18 @@
 支持动态发现和注册策略。
 """
 
+
+# 添加vnpy源码路径
+import sys
+from pathlib import Path
+
+# 添加vnpy源码目录到Python路径
+VNPY_CUSTOM_DIR = Path(__file__).parent
+while VNPY_CUSTOM_DIR.name != "simpletrade" and VNPY_CUSTOM_DIR != VNPY_CUSTOM_DIR.parent:
+    VNPY_CUSTOM_DIR = VNPY_CUSTOM_DIR.parent
+VNPY_CUSTOM_DIR = VNPY_CUSTOM_DIR.parent / "vnpy_custom"
+if VNPY_CUSTOM_DIR.exists() and str(VNPY_CUSTOM_DIR) not in sys.path:
+    sys.path.insert(0, str(VNPY_CUSTOM_DIR))
 import os
 import importlib
 import inspect
@@ -16,7 +28,7 @@ from vnpy_ctastrategy.strategies.atr_rsi_strategy import AtrRsiStrategy
 from vnpy_ctastrategy.strategies.boll_channel_strategy import BollChannelStrategy
 from vnpy_ctastrategy.strategies.double_ma_strategy import DoubleMaStrategy
 from vnpy_ctastrategy.strategies.turtle_signal_strategy import TurtleSignalStrategy
-from vnpy_ctastrategy.template import CtaTemplate
+from vnpy.app.cta_strategy.template import CtaTemplate
 
 # 导入自定义策略
 # 如果有自定义策略，可以在这里导入

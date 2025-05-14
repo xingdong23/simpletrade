@@ -4,6 +4,18 @@ SimpleTrade数据管理引擎
 扩展vnpy_datamanager的功能，提供数据管理功能，并添加API接口和消息指令处理。
 """
 
+
+# 添加vnpy源码路径
+import sys
+from pathlib import Path
+
+# 添加vnpy源码目录到Python路径
+VNPY_CUSTOM_DIR = Path(__file__).parent
+while VNPY_CUSTOM_DIR.name != "simpletrade" and VNPY_CUSTOM_DIR != VNPY_CUSTOM_DIR.parent:
+    VNPY_CUSTOM_DIR = VNPY_CUSTOM_DIR.parent
+VNPY_CUSTOM_DIR = VNPY_CUSTOM_DIR.parent / "vnpy_custom"
+if VNPY_CUSTOM_DIR.exists() and str(VNPY_CUSTOM_DIR) not in sys.path:
+    sys.path.insert(0, str(VNPY_CUSTOM_DIR))
 import os
 import sys
 from datetime import datetime

@@ -526,7 +526,7 @@ curl http://localhost:8080/api/branches
 ModuleNotFoundError: No module named 'vnpy'
 ```
 
-这表示缺少`vnpy`库，这是一个交易相关的Python库。解决方法如下：
+这表示缺少`vnpy`库，这是一个交易相关的Python库。安装`vnpy`需要先安装TA-Lib库。解决方法如下：
 
 1. 在容器中安装系统依赖：
 ```bash
@@ -534,23 +534,128 @@ ModuleNotFoundError: No module named 'vnpy'
 docker exec -it simpletrade bash
 
 # 安装系统依赖
-dnf install -y gcc gcc-c++ make cmake python39-devel
+dnf install -y gcc gcc-c++ make cmake python39-devel wget
 ```
 
-2. 安装vnpy库：
+2. 安装TA-Lib替代品：
+
+由于TA-Lib安装复杂，我们可以使用以下替代品：
+
 ```bash
-# 在容器内
+# 安装多个替代库
+pip3 install pandas-ta ta finta
+```
+
+这些库提供了类似的功能，但安装更简单，因为它们是纯 Python 实现，不需要编译C库。
+
+**使用示例**：
+
+```python
+# 使用 pandas-ta
+import pandas as pd
+import pandas_ta as ta
+
+# 创建DataFrame
+df = pd.DataFrame()
+# 添加指标
+df.ta.sma(length=10, append=True)
+df.ta.ema(length=10, append=True)
+df.ta.macd(append=True)
+
+# 使用 ta 库
+from ta import add_all_ta_features
+from ta.trend import MACD, SMAIndicator
+
+# 添加所有指标
+df = add_all_ta_features(df, open="open", high="high", low="low", close="close", volume="volume")
+
+# 使用 finta
+from finta import TA
+ema = TA.EMA(df, 10)
+rsi = TA.RSI(df)
+macd = TA.MACD(df)
+```
+
+如果您仍然需要安装原始TA-Lib，请按照以下步骤操作：
+
+```bash
+# 下载TA-Lib源码
+wget http://prdownloads.sourceforge.net/ta-lib/ta-lib-0.4.0-src.tar.gz
+
+# 解压
+tar -xzf ta-lib-0.4.0-src.tar.gz
+
+# 编译安装
+cd ta-lib/
+./configure
+make
+make install
+
+# 确保库文件被正确链接
+ldconfig
+
+# 设置环境变量
+export TA_LIBRARY_PATH=/usr/local/lib
+export TA_INCLUDE_PATH=/usr/local/include
+
+# 安装Python包
+pip3 install --global-option=build_ext --global-option="-L/usr/local/lib" --global-option="-I/usr/local/include" ta-lib
+```
+
+5. 安装vnpy库：
+```bash
 pip3 install vnpy
 ```
 
-3. 重启后端服务：
+6. 重启后端服务：
 ```bash
-# 在容器内
 cd /app/backend
 python3.9 -m simpletrade.main > /app/logs/backend.log 2>&1 &
 ```
 
-我们已经更新了Dockerfile，确保在构建镜像时安装vnpy库。如果您使用最新的代码，应该不会遇到这个问题。
+我们已经更新了Dockerfile，确保在构建镜像时安装TA-Lib和vnpy库。如果您使用最新的代码，应该不会遇到这个问题。
+
+如果安装仍然有问题，可以尝试创建一个模拟的vnpy模块：
+
+```bash
+# 创建一个模拟的vnpy模块
+mkdir -p /app/backend/mock_vnpy/event
+touch /app/backend/mock_vnpy/__init__.py
+touch /app/backend/mock_vnpy/event/__init__.py
+
+# 创建EventEngine类
+cat > /app/backend/mock_vnpy/event/__init__.py << 'EOF'
+class EventEngine:
+    def __init__(self):
+        self.handlers = {}
+        print("Mock EventEngine initialized")
+
+    def register(self, event_type, handler):
+        if event_type not in self.handlers:
+            self.handlers[event_type] = []
+        self.handlers[event_type].append(handler)
+        return True
+
+    def unregister(self, event_type, handler):
+        if event_type in self.handlers:
+            if handler in self.handlers[event_type]:
+                self.handlers[event_type].remove(handler)
+            if not self.handlers[event_type]:
+                del self.handlers[event_type]
+        return True
+
+    def start(self):
+        print("Mock EventEngine started")
+        return True
+
+    def stop(self):
+        print("Mock EventEngine stopped")
+        return True
+EOF
+
+# 修改导入语句
+sed -i 's/from vnpy.event import EventEngine/from mock_vnpy.event import EventEngine/' /app/backend/simpletrade/core/initialization.py
+```
 ### 部署表单提交问题
 
 如果在部署面板中点击“一键部署”按钮后遇到404错误，可能是Nginx配置中缺少对`/deploy/submit`路径的处理。错误日志可能类似于：

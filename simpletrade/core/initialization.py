@@ -1,3 +1,15 @@
+
+# 添加vnpy源码路径
+import sys
+from pathlib import Path
+
+# 添加vnpy源码目录到Python路径
+VNPY_CUSTOM_DIR = Path(__file__).parent
+while VNPY_CUSTOM_DIR.name != "simpletrade" and VNPY_CUSTOM_DIR != VNPY_CUSTOM_DIR.parent:
+    VNPY_CUSTOM_DIR = VNPY_CUSTOM_DIR.parent
+VNPY_CUSTOM_DIR = VNPY_CUSTOM_DIR.parent / "vnpy_custom"
+if VNPY_CUSTOM_DIR.exists() and str(VNPY_CUSTOM_DIR) not in sys.path:
+    sys.path.insert(0, str(VNPY_CUSTOM_DIR))
 import logging
 import json
 from pathlib import Path
@@ -45,7 +57,7 @@ except ImportError as e:
 
 # Import VnPy built-in Apps (might require vnpy installation)
 try:
-    from vnpy_ctastrategy import CtaStrategyApp # Import CtaStrategyApp
+    from vnpy.app.cta_strategy import CtaStrategyApp # Import CtaStrategyApp
     logger.info("CtaStrategyApp imported successfully.")
 except ImportError:
     logger.warning("Could not import CtaStrategyApp (might be intended to load by name).")

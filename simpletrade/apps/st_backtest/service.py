@@ -4,6 +4,18 @@ SimpleTrade回测服务
 提供策略回测服务功能。
 """
 
+
+# 添加vnpy源码路径
+import sys
+from pathlib import Path
+
+# 添加vnpy源码目录到Python路径
+VNPY_CUSTOM_DIR = Path(__file__).parent
+while VNPY_CUSTOM_DIR.name != "simpletrade" and VNPY_CUSTOM_DIR != VNPY_CUSTOM_DIR.parent:
+    VNPY_CUSTOM_DIR = VNPY_CUSTOM_DIR.parent
+VNPY_CUSTOM_DIR = VNPY_CUSTOM_DIR.parent / "vnpy_custom"
+if VNPY_CUSTOM_DIR.exists() and str(VNPY_CUSTOM_DIR) not in sys.path:
+    sys.path.insert(0, str(VNPY_CUSTOM_DIR))
 import logging
 import traceback
 import json
@@ -13,7 +25,7 @@ from typing import List, Optional, Dict, Any, Tuple
 import pandas as pd
 import numpy as np
 
-from vnpy_ctastrategy.backtesting import BacktestingMode
+from vnpy.app.cta_strategy.backtesting import BacktestingMode
 
 from simpletrade.config.database import SessionLocal
 from simpletrade.models.database import Strategy, BacktestRecord

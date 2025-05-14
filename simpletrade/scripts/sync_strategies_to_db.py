@@ -27,7 +27,7 @@ from simpletrade.strategies import (
     get_strategy_category,
     get_strategy_description
 )
-from vnpy_ctastrategy.template import CtaTemplate
+from vnpy.app.cta_strategy.template import CtaTemplate
 
 # 配置日志
 logging.basicConfig(
