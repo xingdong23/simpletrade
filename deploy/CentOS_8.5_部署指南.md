@@ -553,8 +553,6 @@ python3.9 -m simpletrade.main > /app/logs/backend.log 2>&1 &
 我们已经更新了Dockerfile，确保在构建镜像时安装vnpy库。如果您使用最新的代码，应该不会遇到这个问题。
 ### 部署表单提交问题
 
-### SELinux 相关问题
-
 如果在部署面板中点击“一键部署”按钮后遇到404错误，可能是Nginx配置中缺少对`/deploy/submit`路径的处理。错误日志可能类似于：
 
 ```
@@ -596,6 +594,8 @@ python3.9 /app/panel/deploy_handler.py > /app/logs/deploy_handler.log 2>&1 &
 ```
 
 我们已经更新了Nginx配置和启动脚本，确保部署表单提交可以正常工作。如果您使用最新的代码，应该不会遇到这个问题。
+
+### SELinux 相关问题
 
 如果遇到权限问题，可能是由于SELinux的限制：
 
