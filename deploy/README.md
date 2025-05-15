@@ -13,7 +13,7 @@
 sudo ./scripts/centos_setup.sh --all
 
 # 构建和运行应用
-./scripts/deploy_centos8.sh --build --run
+./scripts/deploy_centos8_lowmem.sh --build --run
 ```
 
 ## 目录结构
@@ -29,6 +29,6 @@ deploy/
 │   └── index.html                     # 部署面板Web界面
 └── scripts/                           # 脚本
     ├── centos_setup.sh                # CentOS环境设置脚本
-    ├── deploy_centos8.sh              # 优雅部署脚本
+    ├── deploy_centos8_lowmem.sh        # 低内存环境优化部署脚本
     └── start.sh                       # 容器启动脚本
 ```

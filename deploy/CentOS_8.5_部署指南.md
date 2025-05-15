@@ -17,7 +17,7 @@ deploy/
 │   └── index.html                     # 部署面板Web界面
 └── scripts/                           # 脚本
     ├── centos_setup.sh                # CentOS环境设置脚本
-    ├── deploy_centos8.sh              # 优雅部署脚本
+    ├── deploy_centos8_lowmem.sh       # 低内存环境优化部署脚本
     └── start.sh                       # 容器启动脚本
 ```
 
@@ -26,7 +26,7 @@ deploy/
 - **操作系统**: CentOS 8.5 64位
 - **最低配置**:
   - CPU: 2核
-  - 内存: 4GB
+  - 内存: 2GB
   - 磁盘: 20GB
 - **网络**: 开放80端口(HTTP)和22端口(SSH)
 - **特殊情况**: 可能无法正常访问Docker Hub
@@ -50,12 +50,14 @@ sudo mkdir -p /opt/simpletrade
 # 设置目录权限
 sudo chown -R $(whoami):$(whoami) /opt/simpletrade
 
-# 进入工作目录
-cd /opt/simpletrade
+# 克隆代码仓库
+git clone https://github.com/yourusername/simpletrade.git /opt/simpletrade
 
-# 克隆代码仓库（使用您的实际仓库地址）
-git clone https://github.com/yourusername/simpletrade.git .
+# 进入项目目录
+cd /opt/simpletrade
 ```
+
+### 步骤2: 设置CentOS环境
 
 运行环境设置脚本，安装Docker和其他必要软件：
 
@@ -67,23 +69,23 @@ chmod +x deploy/scripts/centos_setup.sh
 sudo ./deploy/scripts/centos_setup.sh --all
 ```
 
-### 步骤2: 部署应用
+### 步骤3: 部署应用
 
 使用优雅部署脚本构建和运行应用：
 
 ```bash
 # 给脚本添加执行权限
-chmod +x deploy/scripts/deploy_centos8.sh
+chmod +x deploy/scripts/deploy_centos8_lowmem.sh
 
 # 构建和运行
-./deploy/scripts/deploy_centos8.sh --build --run
+./deploy/scripts/deploy_centos8_lowmem.sh --build --run
 ```
 
-### 步骤3: 访问应用
+### 步骤4: 访问应用
 
-部署完成后，您可以通过服务器IP地址访问应用：
+部署完成后，您可以通过以下URL访问应用：
 
-- **前端应用**: http://your-server-ip/
+- **前端应用**: http://your-server-ip
 - **部署面板**: http://your-server-ip/deploy/
   - 用户名: admin
   - 密码: admin123
@@ -92,899 +94,191 @@ chmod +x deploy/scripts/deploy_centos8.sh
 
 ### 环境设置脚本 (centos_setup.sh)
 
-此脚本用于设置CentOS 8.5环境，包括：
-
-- 安装Docker和必要的依赖
-- 配置SELinux以允许Docker容器运行
-- 配置防火墙开放HTTP端口
-- 安装Git和其他有用的工具
-
-使用方法：
+此脚本用于在CentOS 8.5环境中设置必要的软件和配置：
 
 ```bash
+# 安装Docker和其他必要软件
+./deploy/scripts/centos_setup.sh --install
+
+# 配置SELinux以允许Docker
+./deploy/scripts/centos_setup.sh --selinux
+
+# 配置防火墙以开放HTTP端口
+./deploy/scripts/centos_setup.sh --firewall
+
+# 执行所有操作
 ./deploy/scripts/centos_setup.sh --all
 ```
 
-或者使用特定选项：
+### 低内存环境优化部署脚本 (deploy_centos8_lowmem.sh)
 
-```bash
-# 只安装Docker
-./deploy/scripts/centos_setup.sh --install
-
-# 只配置SELinux
-./deploy/scripts/centos_setup.sh --selinux
-
-# 只配置防火墙
-./deploy/scripts/centos_setup.sh --firewall
-```
-
-### 优雅部署脚本 (deploy_centos8.sh)
-
-此脚本用于构建和运行Docker容器，特别优化用于网络受限的环境：
-
-- 使用本地CentOS 8镜像作为基础镜像
-- 在单个阶段中完成所有构建步骤
-- 添加SELinux兼容参数
-- 创建必要的数据和日志目录
-
-使用方法：
+此脚本专为低内存环境（2核2GB）优化，提供了构建、运行、停止和删除Docker容器的功能：
 
 ```bash
 # 构建Docker镜像
-./deploy/scripts/deploy_centos8.sh --build
+./deploy/scripts/deploy_centos8_lowmem.sh --build
 
 # 运行Docker容器
-./deploy/scripts/deploy_centos8.sh --run
+./deploy/scripts/deploy_centos8_lowmem.sh --run
 
 # 停止Docker容器
-./deploy/scripts/deploy_centos8.sh --stop
+./deploy/scripts/deploy_centos8_lowmem.sh --stop
 
 # 删除Docker容器
-./deploy/scripts/deploy_centos8.sh --delete
+./deploy/scripts/deploy_centos8_lowmem.sh --delete
 
 # 查看容器日志
-./deploy/scripts/deploy_centos8.sh --logs
+./deploy/scripts/deploy_centos8_lowmem.sh --logs
+
+# 清理系统缓存和Docker缓存
+./deploy/scripts/deploy_centos8_lowmem.sh --clean
+
+# 创建交换文件（如果没有）
+./deploy/scripts/deploy_centos8_lowmem.sh --swap
 ```
 
-### Dockerfile.centos
+## 常见问题
 
-此Dockerfile专为CentOS 8.5环境优化，使用CentOS 8作为基础镜像，避免从Docker Hub拉取外部镜像。它在单个阶段中完成所有构建步骤，包括：
+### 1. Docker镜像构建失败
 
-- 配置CentOS 8的存储库（因为CentOS 8已经EOL）
-- 安装Node.js、Python和其他必要的软件
-- 构建前端和后端
-- 配置Nginx和启动脚本
+如果在构建Docker镜像时遇到问题，可能是由于以下原因：
 
-### 部署面板
+- **内存不足**: 在低内存环境中，构建过程可能会失败。尝试清理系统缓存并创建交换文件：
 
-部署面板是一个简单的Web界面，用于管理应用的部署。通过部署面板，您可以：
+  ```bash
+  # 清理系统缓存
+  ./deploy/scripts/deploy_centos8_lowmem.sh --clean
 
-1. 查看当前版本信息
+  # 创建交换文件
+  ./deploy/scripts/deploy_centos8_lowmem.sh --swap
 
-2. **手动输入分支名称并部署**（推荐）：
-   - 输入要部署的分支名称（例如：main、develop、feature/new-feature）
-   - 点击"一键部署"按钮
-   - 确认部署
-   - 等待部署完成
-   - 查看部署日志
+  # 重新构建
+  ./deploy/scripts/deploy_centos8_lowmem.sh --build
+  ```
 
-   这是最简单的部署方式，只需输入分支名称，系统会自动拉取该分支的最新代码并部署。
+- **网络问题**: 如果无法访问Docker Hub，构建可能会失败。确保已配置Docker镜像加速器：
 
-3. 自定义版本部署（高级选项）：
-   - 输入要部署的版本标识（标签名或提交哈希）
-   - 点击"部署自定义版本"按钮
-   - 确认部署
-   - 等待部署完成
-   - 查看部署日志
+  ```bash
+  # 查看构建日志
+  ./deploy/scripts/deploy_centos8_lowmem.sh --logs
+  ```
 
-   这种方式适用于需要部署特定标签或提交的高级用户。
+### 2. 容器启动失败
 
-## 网络受限环境的特殊处理
-
-### 使用阿里云镜像加速器
-
-在网络受限环境中，您可能无法直接从Docker Hub拉取镜像。我们的部署脚本已集成了阿里云镜像加速器的配置，可以显著提高镜像拉取速度。
-
-脚本会自动执行以下操作：
+如果容器无法正常启动，请检查日志：
 
 ```bash
-# 创建daemon.json文件
-sudo mkdir -p /etc/docker
-sudo tee /etc/docker/daemon.json <<-'EOF'
-{
-  "registry-mirrors": ["https://qoy9ouh4.mirror.aliyuncs.com"]
-}
-EOF
-sudo systemctl daemon-reload
-sudo systemctl restart docker
+# 查看容器日志
+./deploy/scripts/deploy_centos8_lowmem.sh --logs
 ```
 
-如果您想手动配置阿里云镜像加速器，可以执行上述命令。
+### 3. 无法访问应用
 
-在大多数情况下，使用阿里云镜像加速器应该能够成功拉取CentOS 8镜像。如果仍然无法拉取，可以尝试以下方法：
+如果无法通过浏览器访问应用，请检查：
 
-### 基础镜像准备
-
-如果使用阿里云镜像加速器仍然无法拉取镜像，您可以手动准备镜像并导入到服务器。
-
-如果您的环境中没有CentOS 8镜像，您可以在可访问互联网的环境中准备镜像：
-
-1. 在可访问互联网的环境中拉取镜像：
-   ```bash
-   docker pull centos:8
-   ```
-
-2. 将镜像保存为tar文件：
-   ```bash
-   docker save -o centos8.tar centos:8
-   ```
-
-3. 将tar文件传输到服务器：
-   ```bash
-   scp centos8.tar user@your-server-ip:/path/to/save
-   ```
-
-4. 在服务器上加载镜像：
-   ```bash
-   docker load -i /path/to/save/centos8.tar
-   ```
-
-### npm和pip镜像源配置
-
-如果npm或pip安装过程中遇到网络问题，可以配置国内镜像源：
+- **防火墙设置**: 确保80端口已开放
+- **容器状态**: 确保容器正在运行
+- **Nginx配置**: 检查Nginx配置是否正确
 
 ```bash
-# 配置npm使用淘宝镜像
-npm config set registry https://registry.npmmirror.com
+# 检查容器状态
+docker ps
 
-# 配置pip使用阿里云镜像
-pip config set global.index-url https://mirrors.aliyun.com/pypi/simple/
+# 停止并重新启动容器
+./deploy/scripts/deploy_centos8_lowmem.sh --stop
+./deploy/scripts/deploy_centos8_lowmem.sh --run
 ```
 
-您可以修改`Dockerfile.centos`文件，添加这些配置：
+## 更新应用
 
-```dockerfile
-# 配置npm镜像
-RUN npm config set registry https://registry.npmmirror.com
-
-# 配置pip镜像
-RUN pip3 config set global.index-url https://mirrors.aliyun.com/pypi/simple/
-```
-
-## 常见问题及解决方案
-
-### 前端路由问题
-
-如果在构建前端时遇到类似以下错误：
-
-```
-This relative module was not found:
-* ../views/AIAnalysisView.vue in ./src/router/index.js
-```
-
-这是因为路由配置中引用了不存在的视图文件。直接修改前端路由文件，注释掉对应的路由配置：
+要更新应用，请按照以下步骤操作：
 
 ```bash
-# 编辑路由文件
-vi web-frontend/src/router/index.js
-
-# 注释掉如下代码
-# {
-#   path: '/ai-analysis',
-#   name: 'aiAnalysis',
-#   component: () => import(/* webpackChunkName: "ai" */ '../views/AIAnalysisView.vue')
-# },
-```
-
-我们已经在代码仓库中直接修改了这个文件，注释掉了对AIAnalysisView.vue的引用。如果您使用最新的代码，应该不会遇到这个问题。
-
-### Nginx配置问题
-
-如果您可以访问服务器，但收到404错误或者无法正确加载部署面板，可能是Nginx配置问题。特别是当错误日志中出现类似以下内容时：
-
-```
-open() "/usr/share/nginx/html/deploy/index.html" is not found (2: No such file or directory)
-```
-
-或者在浏览器控制台中看到类似以下错误：
-
-```
-GET http://your-server-ip/deploy/ 404 (Not Found)
-GET http://your-server-ip/deploy/nginx-logo.png 404 (Not Found)
-GET http://your-server-ip/deploy/poweredby.png 404 (Not Found)
-```
-
-这表示Nginx正在错误的目录中查找文件或者`/deploy/`路径配置不正确。解决方法如下：
-
-1. 检查并修改Nginx配置：
-```bash
-# 进入容器
-docker exec -it simpletrade bash
-
-# 查看当前Nginx配置
-cat /etc/nginx/conf.d/default.conf
-
-# 编辑Nginx配置
-vi /etc/nginx/conf.d/default.conf
-```
-
-2. 确保配置文件中有正确的部署面板路径配置：
-```nginx
-location /deploy/ {
-    alias /app/panel/;
-    auth_basic "Restricted";
-    auth_basic_user_file /etc/nginx/.htpasswd;
-    index index.html;
-    try_files $uri $uri/ /deploy/index.html;
-}
-```
-
-3. 注意使用`alias`而不是`root`指令，因为：
-   - `alias`会将`/deploy/`替换为`/app/panel/`
-   - `root`会将`/deploy/`附加到指定目录后面
-
-4. 添加`try_files`指令，确保单页应用路由正常工作
-
-5. 修改配置后，重新加载Nginx配置：
-```bash
-nginx -s reload
-```
-
-6. 检查部署面板文件是否存在：
-```bash
-ls -la /app/panel/
-```
-
-7. 如果修改配置不起作用，系统会自动创建符号链接作为备用方案。这些命令已经添加到启动脚本中，每次容器启动时自动执行：
-```bash
-# 这些命令已经在启动脚本中自动执行
-mkdir -p /usr/share/nginx/html/deploy
-ln -sf /app/panel/* /usr/share/nginx/html/deploy/
-```
-
-您不需要手动执行这些命令，除非您想要手动测试或排除故障。
-
-8. 检查文件权限：
-```bash
-chmod -R 755 /app/panel/
-```
-
-9. 重启容器：
-```bash
-# 退出容器
-exit
-
-# 重启容器
-docker restart simpletrade
-```
-
-这些步骤应该能解决大多数Nginx配置相关的问题。如果问题仍然存在，可以查看Nginx错误日志：
-
-```bash
-cat /var/log/nginx/error.log
-```
-
-### Python命令问题
-
-在CentOS 8.5中，安装的Python版本是`python39`，而不是默认的`python`。如果遇到类似以下错误：
-
-```
-/app/start.sh: line 58: python: command not found
-```
-
-有两种解决方法：
-
-1. 修改启动脚本，将`python`命令改为`python3.9`：
-```bash
-# 进入容器
-docker exec -it simpletrade bash
-
-# 编辑启动脚本
-vi /app/start.sh
-
-# 将所有的python命令改为python3.9
-# 例如：
-# python /app/panel/deploy.py & -> python3.9 /app/panel/deploy.py &
-# python -m simpletrade.main & -> python3.9 -m simpletrade.main &
-```
-
-2. 创建python符号链接：
-```bash
-# 进入容器
-docker exec -it simpletrade bash
-
-# 创建符号链接
-ln -sf /usr/bin/python3.9 /usr/bin/python
-ln -sf /usr/bin/pip3.9 /usr/bin/pip
-
-# 退出容器
-exit
-
-# 重启容器
-docker restart simpletrade
-```
-
-我们已经在低内存环境的Dockerfile中添加了符号链接创建的命令，并且修改了启动脚本使用`python3.9`命令。如果您使用最新的代码，应该不会遇到这个问题。
-
-### 低内存环境优化
-
-如果您的服务器内存有限（例如只有2GB内存），可以尝试以下优化方法：
-
-1. 在Dockerfile中使用更多的内存优化参数：
-```dockerfile
-RUN npm config set cache /tmp/npm-cache && \
-    npm install --legacy-peer-deps --no-optional --no-audit --no-fund --prefer-offline && \
-    rm -rf /tmp/npm-cache && \
-    export NODE_OPTIONS="--max-old-space-size=1024" && \
-    npm run build && \
-    rm -rf node_modules
-```
-
-2. 在运行容器时限制内存使用：
-```bash
-docker run -d --name simpletrade \
-    --memory="1024m" \
-    --memory-swap="1536m" \
-    ... \
-    simpletrade:latest
-```
-
-3. 在构建过程中清理临时文件和缓存：
-```bash
-# 清理Docker缓存
-docker system prune -af
-
-# 清理系统缓存
-sudo sh -c "sync && echo 3 > /proc/sys/vm/drop_caches"
-```
-
-4. 如果服务器没有交换分区，可以添加一个：
-```bash
-# 创建2GB的交换文件
-sudo dd if=/dev/zero of=/swapfile bs=1M count=2048
-sudo chmod 600 /swapfile
-sudo mkswap /swapfile
-sudo swapon /swapfile
-# 永久挂载交换文件
-echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
-```
-
-### Node.js内存溢出问题
-
-如果在构建前端时遇到内存溢出错误，例如：
-```
-FATAL ERROR: Reached heap limit Allocation failed - JavaScript heap out of memory
-```
-
-可以尝试增加Node.js的堆内存限制：
-```dockerfile
-RUN npm install --legacy-peer-deps --no-optional --no-audit --no-fund --prefer-offline && \
-    export NODE_OPTIONS="--max-old-space-size=2048" && \
-    npm run build && \
-    ...
-```
-
-注意：不要使用`--production`参数，因为前端构建需要`@vue/cli-service`等开发依赖。如果使用`--production`参数，会导致前端构建失败，出现`sh: vue-cli-service: command not found`错误。但可以使用`--no-optional`、`--no-audit`、`--no-fund`等参数减少内存使用。
-
-### Docker镜像拉取问题
-
-如果在运行容器时遇到类似以下错误：
-
-```
-Unable to find image 'simpletrade:latest' locally
-docker: Error response from daemon: Get "https://registry-1.docker.io/v2/": net/http: request canceled while waiting for connection (Client.Timeout exceeded while awaiting headers).
-```
-
-这表示无法从 Docker Hub 拉取镜像，可能是网络连接问题或者构建失败。解决方法：
-
-1. 确保镜像构建成功：
-```bash
-# 检查本地镜像
-docker images | grep simpletrade
-```
-
-2. 如果镜像不存在，请重新构建：
-```bash
-./deploy/scripts/deploy_centos8_lowmem.sh --build
-```
-
-3. 确保阿里云镜像加速器配置正确：
-```bash
-cat /etc/docker/daemon.json
-```
-
-### 加载分支列表错误
-
-如果在部署面板中看到"加载分支列表时发生错误"，可能是因为容器中没有安装Git。部署API服务器需要Git来获取分支列表。
-
-**解决方法**：
-
-1. 在容器中安装Git：
-```bash
-# 进入容器
-docker exec -it simpletrade bash
-
-# 安装Git
-dnf install -y git
-
-# 测试是否可以获取分支列表
-curl http://localhost:8080/api/branches
-```
-
-2. 重新构建镜像（推荐）：
-我们已经更新了Dockerfile，确保在构建镜像时安装Git。只需重新构建镜像即可：
-```bash
-./deploy/scripts/deploy_centos8_lowmem.sh --build --run
-```
-## CentOS 8.5 特有问题及解决方案
-
-### 后端依赖问题
-
-如果后端服务启动失败，可能是缺少一些依赖库。特别是当日志中出现类似以下错误时：
-
-```
-ModuleNotFoundError: No module named 'vnpy'
-```
-
-这表示缺少`vnpy`库，这是一个交易相关的Python库。安装`vnpy`需要先安装TA-Lib库。解决方法如下：
-
-1. 在容器中安装系统依赖：
-```bash
-# 进入容器
-docker exec -it simpletrade bash
-
-# 安装系统依赖
-dnf install -y gcc gcc-c++ make cmake python39-devel wget
-```
-
-2. 安装TA-Lib替代品：
-
-由于TA-Lib安装复杂，我们可以使用以下替代品：
-
-```bash
-# 安装多个替代库
-pip3 install pandas-ta ta finta
-```
-
-这些库提供了类似的功能，但安装更简单，因为它们是纯 Python 实现，不需要编译C库。
-
-**使用示例**：
-
-```python
-# 使用 pandas-ta
-import pandas as pd
-import pandas_ta as ta
-
-# 创建DataFrame
-df = pd.DataFrame()
-# 添加指标
-df.ta.sma(length=10, append=True)
-df.ta.ema(length=10, append=True)
-df.ta.macd(append=True)
-
-# 使用 ta 库
-from ta import add_all_ta_features
-from ta.trend import MACD, SMAIndicator
-
-# 添加所有指标
-df = add_all_ta_features(df, open="open", high="high", low="low", close="close", volume="volume")
-
-# 使用 finta
-from finta import TA
-ema = TA.EMA(df, 10)
-rsi = TA.RSI(df)
-macd = TA.MACD(df)
-```
-
-如果您仍然需要安装原始TA-Lib，请按照以下步骤操作：
-
-```bash
-# 下载TA-Lib源码
-wget http://prdownloads.sourceforge.net/ta-lib/ta-lib-0.4.0-src.tar.gz
-
-# 解压
-tar -xzf ta-lib-0.4.0-src.tar.gz
-
-# 编译安装
-cd ta-lib/
-./configure
-make
-make install
-
-# 确保库文件被正确链接
-ldconfig
-
-# 设置环境变量
-export TA_LIBRARY_PATH=/usr/local/lib
-export TA_INCLUDE_PATH=/usr/local/include
-
-# 安装Python包
-pip3 install --global-option=build_ext --global-option="-L/usr/local/lib" --global-option="-I/usr/local/include" ta-lib
-```
-
-5. 安装vnpy库：
-```bash
-pip3 install vnpy
-```
-
-6. 重启后端服务：
-```bash
-cd /app/backend
-python3.9 -m simpletrade.main > /app/logs/backend.log 2>&1 &
-```
-
-我们已经更新了Dockerfile，确保在构建镜像时安装TA-Lib和vnpy库。如果您使用最新的代码，应该不会遇到这个问题。
-
-如果安装仍然有问题，可以尝试创建一个模拟的vnpy模块：
-
-```bash
-# 创建一个模拟的vnpy模块
-mkdir -p /app/backend/mock_vnpy/event
-touch /app/backend/mock_vnpy/__init__.py
-touch /app/backend/mock_vnpy/event/__init__.py
-
-# 创建EventEngine类
-cat > /app/backend/mock_vnpy/event/__init__.py << 'EOF'
-class EventEngine:
-    def __init__(self):
-        self.handlers = {}
-        print("Mock EventEngine initialized")
-
-    def register(self, event_type, handler):
-        if event_type not in self.handlers:
-            self.handlers[event_type] = []
-        self.handlers[event_type].append(handler)
-        return True
-
-    def unregister(self, event_type, handler):
-        if event_type in self.handlers:
-            if handler in self.handlers[event_type]:
-                self.handlers[event_type].remove(handler)
-            if not self.handlers[event_type]:
-                del self.handlers[event_type]
-        return True
-
-    def start(self):
-        print("Mock EventEngine started")
-        return True
-
-    def stop(self):
-        print("Mock EventEngine stopped")
-        return True
-EOF
-
-# 修改导入语句
-sed -i 's/from vnpy.event import EventEngine/from mock_vnpy.event import EventEngine/' /app/backend/simpletrade/core/initialization.py
-```
-### 部署表单提交问题
-
-如果在部署面板中点击“一键部署”按钮后遇到404错误，可能是Nginx配置中缺少对`/deploy/submit`路径的处理。错误日志可能类似于：
-
-```
-open() "/usr/share/nginx/html/deploy/submit" failed (2: No such file or directory)
-```
-
-解决方法如下：
-
-1. 修改Nginx配置：
-```bash
-# 进入容器
-docker exec -it simpletrade bash
-
-# 编辑Nginx配置
-vi /etc/nginx/conf.d/default.conf
-```
-
-2. 添加以下配置：
-```nginx
-# 部署表单提交
-location = /deploy/submit {
-    proxy_pass http://localhost:8081/deploy/submit;
-    proxy_set_header Host $host;
-    proxy_set_header X-Real-IP $remote_addr;
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    proxy_set_header X-Forwarded-Proto $scheme;
-}
-```
-
-3. 重启Nginx：
-```bash
-nginx -s reload
-```
-
-4. 启动部署处理服务器：
-```bash
-cd /app
-python3.9 /app/panel/deploy_handler.py > /app/logs/deploy_handler.log 2>&1 &
-```
-
-我们已经更新了Nginx配置和启动脚本，确保部署表单提交可以正常工作。如果您使用最新的代码，应该不会遇到这个问题。
-
-### SELinux 相关问题
-
-如果遇到权限问题，可能是由于SELinux的限制：
-
-```bash
-# 查看SELinux状态
-getenforce
-
-# 临时禁用SELinux
-sudo setenforce 0
-
-# 永久禁用SELinux（需要重启）
-sudo sed -i 's/^SELINUX=enforcing$/SELINUX=disabled/' /etc/selinux/config
-sudo reboot
-```
-
-### 防火墙配置
-
-确保防火墙已开放HTTP端口：
-
-```bash
-# 查看防火墙状态
-sudo systemctl status firewalld
-
-# 开放HTTP端口
-sudo firewall-cmd --permanent --add-service=http
-
-# 重新加载防火墙配置
-sudo firewall-cmd --reload
-```
-
-### CentOS 8 存储库问题
-
-由于CentOS 8已经结束生命周期，默认存储库可能不可用。我们的Dockerfile使用了阿里云的CentOS 8镜像源，避免了连接官方存储库的问题。
-
-如果您需要手动配置CentOS 8的镜像源，可以执行以下命令：
-
-```bash
-# 备份原始的repo文件
-sudo mkdir -p /etc/yum.repos.d/backup
-sudo cp /etc/yum.repos.d/CentOS-* /etc/yum.repos.d/backup/
-
-# 移除原有的repo文件
-sudo rm -f /etc/yum.repos.d/CentOS-*.repo
-
-# 创建新的Base仓库文件
-sudo cat > /etc/yum.repos.d/CentOS-Base.repo << 'REPO'
-[base]
-name=CentOS-$releasever - Base - mirrors.aliyun.com
-failovermethod=priority
-baseurl=https://mirrors.aliyun.com/centos-vault/8.5.2111/BaseOS/x86_64/os/
-gpgcheck=0
-gpgkey=https://mirrors.aliyun.com/centos/RPM-GPG-KEY-CentOS-Official
-
-[updates]
-name=CentOS-$releasever - Updates - mirrors.aliyun.com
-failovermethod=priority
-baseurl=https://mirrors.aliyun.com/centos-vault/8.5.2111/BaseOS/x86_64/os/
-gpgcheck=0
-gpgkey=https://mirrors.aliyun.com/centos/RPM-GPG-KEY-CentOS-Official
-
-[extras]
-name=CentOS-$releasever - Extras - mirrors.aliyun.com
-failovermethod=priority
-baseurl=https://mirrors.aliyun.com/centos-vault/8.5.2111/extras/x86_64/os/
-gpgcheck=0
-gpgkey=https://mirrors.aliyun.com/centos/RPM-GPG-KEY-CentOS-Official
-
-[centosplus]
-name=CentOS-$releasever - Plus - mirrors.aliyun.com
-failovermethod=priority
-baseurl=https://mirrors.aliyun.com/centos-vault/8.5.2111/centosplus/x86_64/os/
-gpgcheck=0
-gpgkey=https://mirrors.aliyun.com/centos/RPM-GPG-KEY-CentOS-Official
-
-[PowerTools]
-name=CentOS-$releasever - PowerTools - mirrors.aliyun.com
-failovermethod=priority
-baseurl=https://mirrors.aliyun.com/centos-vault/8.5.2111/PowerTools/x86_64/os/
-gpgcheck=0
-gpgkey=https://mirrors.aliyun.com/centos/RPM-GPG-KEY-CentOS-Official
-
-[AppStream]
-name=CentOS-$releasever - AppStream - mirrors.aliyun.com
-failovermethod=priority
-baseurl=https://mirrors.aliyun.com/centos-vault/8.5.2111/AppStream/x86_64/os/
-gpgcheck=0
-gpgkey=https://mirrors.aliyun.com/centos/RPM-GPG-KEY-CentOS-Official
-REPO
-
-# 创建EPEL仓库文件
-sudo cat > /etc/yum.repos.d/epel.repo << 'REPO'
-[epel]
-name=Extra Packages for Enterprise Linux $releasever - $basearch
-baseurl=https://mirrors.aliyun.com/epel/8/Everything/x86_64/
-enabled=1
-gpgcheck=0
-gpgkey=https://mirrors.aliyun.com/epel/RPM-GPG-KEY-EPEL-8
-
-[epel-debuginfo]
-name=Extra Packages for Enterprise Linux $releasever - $basearch - Debug
-baseurl=https://mirrors.aliyun.com/epel/8/Everything/x86_64/debug/
-enabled=0
-gpgcheck=0
-gpgkey=https://mirrors.aliyun.com/epel/RPM-GPG-KEY-EPEL-8
-
-[epel-source]
-name=Extra Packages for Enterprise Linux $releasever - $basearch - Source
-baseurl=https://mirrors.aliyun.com/epel/8/Everything/source/tree/
-enabled=0
-gpgcheck=0
-gpgkey=https://mirrors.aliyun.com/epel/RPM-GPG-KEY-EPEL-8
-REPO
-
-# 清理缓存并重新生成
-sudo dnf clean all
-sudo dnf makecache
-```
-
-这将完全替换原有的软件源配置，使用阿里云的镜像源，并且禁用了mirrorlist，直接使用baseurl，避免了DNS解析问题。
-
-### 系统限制调整
-
-如果遇到"too many open files"等系统限制问题：
-
-```bash
-# 增加文件描述符限制
-echo "* soft nofile 65536" | sudo tee -a /etc/security/limits.conf
-echo "* hard nofile 65536" | sudo tee -a /etc/security/limits.conf
-
-# 应用更改（需要重新登录）
-sudo sysctl -p
-```
-
-## 维护操作
-
-### 更新应用
-
-要更新应用，只需拉取最新代码并重新部署：
-
-```bash
-# 拉取最新代码
+# 进入项目目录
 cd /opt/simpletrade
+
+# 拉取最新代码
 git pull
 
-# 重新构建和运行
-./deploy/scripts/deploy_centos8.sh --build --run
+# 重新构建并运行
+./deploy/scripts/deploy_centos8_lowmem.sh --build --run
 ```
 
-### 日志管理
-
-#### 日志文件位置
-
-在SimpleTrade容器中，日志文件位于以下位置：
-
-1. **前端日志（Nginx）**：
-   - 原始位置：`/var/log/nginx/access.log`和`/var/log/nginx/error.log`
-   - 符号链接：`/app/logs/frontend_access.log`和`/app/logs/frontend_error.log`
-
-2. **后端服务日志**：
-   - 后端日志：`/app/logs/backend.log`
-
-3. **部署系统日志**：
-   - 部署API日志：`/app/logs/deploy_panel.log`和`/app/logs/deploy_api.log`
-   - 构建日志：`/app/logs/build_*.log`
-
-#### 查看日志
-
-有多种方式可以查看日志：
-
-1. **使用部署脚本查看容器日志**：
-```bash
-./deploy/scripts/deploy_centos8.sh --logs
-```
-
-2. **直接使用Docker命令查看容器标准输出**：
-```bash
-# 查看所有日志
-docker logs simpletrade
-
-# 实时查看日志
-docker logs -f simpletrade
-
-# 查看最近100行日志
-docker logs --tail 100 simpletrade
-```
-
-3. **进入容器查看具体组件的日志文件**：
-```bash
-# 进入容器
-docker exec -it simpletrade bash
-
-# 查看前端访问日志
-tail -f /app/logs/frontend_access.log
-
-# 查看前端错误日志
-tail -f /app/logs/frontend_error.log
-
-# 查看后端日志
-tail -f /app/logs/backend.log
-
-# 查看部署面板日志
-tail -f /app/logs/deploy_panel.log
-
-# 查看部署API日志
-tail -f /app/logs/deploy_api.log
-
-# 查看最新的构建日志
-ls -t /app/logs/build_*.log | head -1 | xargs cat
-```
-
-#### 日志分析技巧
-
-1. **使用grep过滤日志**：
-```bash
-# 在日志中查找错误
-grep "ERROR" /app/logs/backend.log
-
-# 查找包含特定关键字的行及其前后5行
-grep -A 5 -B 5 "Exception" /app/logs/backend.log
-```
-
-2. **使用awk处理日志**：
-```bash
-# 统计HTTP状态码
-awk '{print $9}' /app/logs/frontend_access.log | sort | uniq -c | sort -rn
-```
-
-3. **使用sed提取信息**：
-```bash
-# 提取所有URL
-sed -n 's/.*GET \([^ ]*\) HTTP.*/\1/p' /app/logs/frontend_access.log
-```
-
-#### 日志轮转
-
-我们已经配置了日志轮转，防止日志文件过大。日志轮转配置文件位于容器内的`/etc/logrotate.d/simpletrade`，它会：
-
-- 每天轮转日志文件
-- 压缩旧的日志文件
-- 保留最近7天的日志
-
-如果需要手动运行日志轮转：
-
-```bash
-# 进入容器
-docker exec -it simpletrade bash
-
-# 手动运行日志轮转
-logrotate /etc/logrotate.d/simpletrade
-
-# 强制运行，即使条件不满足
-logrotate -f /etc/logrotate.d/simpletrade
-```
+## 备份和恢复
 
 ### 备份数据
 
 ```bash
 # 备份数据目录
-sudo cp -r /opt/simpletrade/data /opt/simpletrade/data_backup_$(date +%Y%m%d)
-
-# 备份日志目录
-sudo cp -r /opt/simpletrade/deploy/logs /opt/simpletrade/logs_backup_$(date +%Y%m%d)
+tar -czvf simpletrade_data_backup.tar.gz /opt/simpletrade/data
 ```
 
-### 重启服务
+### 恢复数据
 
 ```bash
-# 重启容器
-docker restart simpletrade
-
-# 或者使用脚本停止后再运行
-./deploy/scripts/deploy_centos8.sh --stop
-./deploy/scripts/deploy_centos8.sh --run
+# 恢复数据目录
+tar -xzvf simpletrade_data_backup.tar.gz -C /
 ```
 
-## 结论
+## 低内存环境优化
 
-通过本文档的指导，您应该能够在CentOS 8.5服务器上成功部署SimpleTrade应用，即使在网络受限的环境中也能优雅地完成部署。我们的方案使用本地CentOS 8镜像作为基础镜像，避免了对Docker Hub的依赖，同时保留了Docker的所有优势。
+对于2核2GB内存的服务器，我们进行了以下优化：
 
-如果您在部署过程中遇到任何问题，请参考故障排除部分或联系技术支持团队获取帮助。
+1. **使用轻量级的Docker镜像**：基于CentOS 8的最小化镜像
+2. **优化Node.js构建过程**：限制内存使用，避免OOM错误
+3. **添加交换文件支持**：在内存不足时使用磁盘空间作为虚拟内存
+4. **清理系统缓存**：定期清理系统缓存，释放内存
 
----
+## 安全建议
 
-**文档版本**: 1.0
-**最后更新**: 2023年11月15日
-**适用环境**: CentOS 8.5 64位
-**文档作者**: SimpleTrade团队
+1. **更改默认密码**：部署后立即更改部署面板的默认密码
+2. **使用HTTPS**：在生产环境中，建议配置HTTPS
+3. **限制SSH访问**：只允许特定IP地址通过SSH连接
+4. **定期更新**：保持系统和应用的更新
+
+## 故障排除
+
+### 检查Docker状态
+
+```bash
+# 检查Docker服务状态
+systemctl status docker
+
+# 重启Docker服务
+systemctl restart docker
+```
+
+### 检查容器状态
+
+```bash
+# 列出所有容器
+docker ps -a
+
+# 查看容器日志
+docker logs simpletrade
+```
+
+### 检查磁盘空间
+
+```bash
+# 检查磁盘使用情况
+df -h
+
+# 清理Docker缓存
+docker system prune -a
+```
+
+### 检查内存使用情况
+
+```bash
+# 检查内存使用情况
+free -h
+
+# 清理系统缓存
+echo 3 > /proc/sys/vm/drop_caches
+```
+
+## 参考资料
+
+- [Docker官方文档](https://docs.docker.com/)
+- [CentOS 8.5文档](https://docs.centos.org/en-US/8-docs/)
