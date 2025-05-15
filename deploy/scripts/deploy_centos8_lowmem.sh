@@ -312,22 +312,26 @@ RUN chmod +x /tmp/configure_centos_repos.sh && \
 RUN dnf clean all && \
     dnf makecache && \
     dnf install -y epel-release && \
-    dnf install -y nginx curl procps net-tools vim wget git && \
+    dnf install -y nginx curl procps net-tools vim wget git gcc gcc-c++ make zlib-devel bzip2 bzip2-devel readline-devel sqlite sqlite-devel openssl-devel tk-devel libffi-devel xz-devel && \
     dnf module install -y nodejs:16 && \
-    dnf -y install centos-release-scl && \
     dnf clean all
 
-# 安装Python 3.10 (使用SCL源)
-RUN dnf -y install rh-python310 rh-python310-python-devel rh-python310-python-pip && \
-    echo 'source scl_source enable rh-python310' > /etc/profile.d/python310.sh && \
-    chmod +x /etc/profile.d/python310.sh && \
-    echo 'source /etc/profile.d/python310.sh' >> /root/.bashrc && \
+# 从源码安装Python 3.10 (简化版本)
+RUN cd /tmp && \
+    wget https://www.python.org/ftp/python/3.10.0/Python-3.10.0.tgz && \
+    tar -xf Python-3.10.0.tgz && \
+    cd Python-3.10.0 && \
+    ./configure --enable-shared && \
+    make -j$(nproc) && \
+    make altinstall && \
+    ldconfig && \
     # 创建python符号链接，确保兼容性
-    ln -sf /opt/rh/rh-python310/root/usr/bin/python /usr/bin/python3 && \
-    ln -sf /opt/rh/rh-python310/root/usr/bin/pip /usr/bin/pip3 && \
+    ln -sf /usr/local/bin/python3.10 /usr/bin/python3 && \
+    ln -sf /usr/local/bin/pip3.10 /usr/bin/pip3 && \
     ln -sf /usr/bin/python3 /usr/bin/python && \
     ln -sf /usr/bin/pip3 /usr/bin/pip && \
-    source /etc/profile.d/python310.sh
+    # 清理安装文件
+    rm -rf /tmp/Python-3.10.0*
 
 # 配置npm和pip镜像源
 RUN npm config set registry https://registry.npmmirror.com && \
