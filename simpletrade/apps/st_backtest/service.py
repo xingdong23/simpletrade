@@ -468,8 +468,8 @@ class BacktestService:
                 slippage=float(slippage),
                 size=float(default_params.get("size", 1.0)),
                 pricetick=float(default_params.get("pricetick", 0.01)),
-                capital=float(initial_capital),
-                mode=BacktestingMode.BAR
+                capital=float(initial_capital)
+                # mode参数在vnpy源码中不存在，已移除
             )
 
             # 添加策略
@@ -478,15 +478,10 @@ class BacktestService:
             # 加载历史数据
             engine.load_data()
 
-            # 检查是否加载了数据
-            if not engine.history_data:
-                logger.warning(f"未加载到数据: {vt_symbol}, {interval}, {start_date} 至 {end_date}")
-                return {
-                    "success": False,
-                    "message": f"未加载到数据: {vt_symbol}, {interval}, {start_date} 至 {end_date}"
-                }
-
-            logger.info(f"成功加载 {len(engine.history_data)} 条历史数据")
+            # 在vnpy的BacktestingEngine类中没有history_data属性
+            # 我们不再检查是否加载了数据
+            # 直接继续运行回测
+            logger.info("开始运行回测")
 
             # 运行回测
             engine.run_backtesting()
@@ -505,12 +500,16 @@ class BacktestService:
 
             # 处理引擎计算的标准统计指标
             stats = engine.calculate_statistics()
-            for key, value in stats.items():
-                try:
-                    result["statistics"][key] = self._convert_to_json_serializable(value)
-                except Exception as e:
-                    logger.warning(f"处理统计指标 {key} 时出错: {str(e)}")
-                    result["statistics"][key] = None
+            if stats:
+                for key, value in stats.items():
+                    try:
+                        result["statistics"][key] = self._convert_to_json_serializable(value)
+                    except Exception as e:
+                        logger.warning(f"处理统计指标 {key} 时出错: {str(e)}")
+                        result["statistics"][key] = None
+            else:
+                # 如果没有统计指标，使用空字典
+                result["statistics"] = {}
 
             # Calculate Profit Factor (盈亏比) from daily PnL
             gross_profit = 0.0

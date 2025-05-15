@@ -316,22 +316,13 @@ RUN dnf clean all && \
     dnf module install -y nodejs:16 && \
     dnf clean all
 
-# 从源码安装Python 3.10 (简化版本)
-RUN cd /tmp && \
-    wget https://www.python.org/ftp/python/3.10.0/Python-3.10.0.tgz && \
-    tar -xf Python-3.10.0.tgz && \
-    cd Python-3.10.0 && \
-    ./configure --enable-shared && \
-    make -j$(nproc) && \
-    make altinstall && \
-    ldconfig && \
+# 安装Python 3.9 (使用系统软件包)
+RUN dnf install -y python39 python39-pip python39-devel && \
     # 创建python符号链接，确保兼容性
-    ln -sf /usr/local/bin/python3.10 /usr/bin/python3 && \
-    ln -sf /usr/local/bin/pip3.10 /usr/bin/pip3 && \
+    ln -sf /usr/bin/python3.9 /usr/bin/python3 && \
+    ln -sf /usr/bin/pip3.9 /usr/bin/pip3 && \
     ln -sf /usr/bin/python3 /usr/bin/python && \
-    ln -sf /usr/bin/pip3 /usr/bin/pip && \
-    # 清理安装文件
-    rm -rf /tmp/Python-3.10.0*
+    ln -sf /usr/bin/pip3 /usr/bin/pip
 
 # 配置npm和pip镜像源
 RUN npm config set registry https://registry.npmmirror.com && \

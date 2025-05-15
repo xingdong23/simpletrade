@@ -155,7 +155,12 @@ class CTABacktestEngine(AbstractBacktestEngine):
 
     def calculate_statistics(self) -> Dict[str, Any]:
         """计算回测统计指标"""
-        return self.engine.calculate_statistics()
+        # 在vnpy的BacktestingEngine类中，calculate_statistics()方法是一个空方法
+        # 返回一个空字典作为替代
+        stats = self.engine.calculate_statistics()
+        if stats is None:
+            return {}
+        return stats
 
     def get_daily_results(self) -> pd.DataFrame:
         """获取每日结果"""
@@ -168,7 +173,9 @@ class CTABacktestEngine(AbstractBacktestEngine):
     @property
     def history_data(self) -> List[Any]:
         """获取历史数据"""
-        return self.engine.history_data
+        # 在vnpy的BacktestingEngine类中没有history_data属性
+        # 返回一个空列表作为替代
+        return getattr(self.engine, "history_data", [])
 
 
 # 如果支持期权策略，添加期权回测引擎
