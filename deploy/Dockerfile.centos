@@ -21,14 +21,15 @@ RUN dnf clean all && \
     dnf module install -y nodejs:16 && \
     dnf clean all
 
-# 安装Python 3.10 (使用SCL仓库)
-RUN dnf install -y dnf-plugins-core && \
-    dnf install -y https://repo.ius.io/ius-release-el8.rpm && \
-    dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm && \
-    dnf config-manager --set-enabled powertools || dnf config-manager --set-enabled PowerTools || true && \
-    dnf install -y python3.10 python3.10-devel python3.10-pip && \
-    ln -sf /usr/bin/python3.10 /usr/bin/python3 && \
-    ln -sf /usr/bin/pip3.10 /usr/bin/pip3
+# 安装Python 3.10 (使用SCL源)
+RUN dnf -y install centos-release-scl epel-release && \
+    dnf -y install rh-python310 rh-python310-python-devel rh-python310-python-pip && \
+    echo 'source scl_source enable rh-python310' > /etc/profile.d/python310.sh && \
+    chmod +x /etc/profile.d/python310.sh && \
+    echo 'source /etc/profile.d/python310.sh' >> /root/.bashrc && \
+    ln -sf /opt/rh/rh-python310/root/usr/bin/python /usr/bin/python3 && \
+    ln -sf /opt/rh/rh-python310/root/usr/bin/pip /usr/bin/pip3 && \
+    source /etc/profile.d/python310.sh
 
 # 配置npm和pip镜像源
 RUN npm config set registry https://registry.npmmirror.com && \
