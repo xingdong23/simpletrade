@@ -19,22 +19,16 @@ RUN dnf clean all && \
     dnf install -y epel-release && \
     dnf install -y nginx curl procps net-tools vim wget logrotate git && \
     dnf module install -y nodejs:16 && \
-    dnf install -y gcc gcc-c++ make zlib-devel bzip2 bzip2-devel readline-devel sqlite sqlite-devel \
-        openssl-devel tk-devel libffi-devel xz-devel && \
     dnf clean all
 
-# 安装Python 3.10
-RUN cd /tmp && \
-    curl -O https://www.python.org/ftp/python/3.10.0/Python-3.10.0.tgz && \
-    tar -xzf Python-3.10.0.tgz && \
-    cd Python-3.10.0 && \
-    ./configure --enable-optimizations && \
-    make -j $(nproc) && \
-    make altinstall && \
-    ln -sf /usr/local/bin/python3.10 /usr/local/bin/python3 && \
-    ln -sf /usr/local/bin/pip3.10 /usr/local/bin/pip3 && \
-    cd /tmp && \
-    rm -rf Python-3.10.0 Python-3.10.0.tgz
+# 安装Python 3.10 (使用SCL仓库)
+RUN dnf install -y dnf-plugins-core && \
+    dnf install -y https://repo.ius.io/ius-release-el8.rpm && \
+    dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm && \
+    dnf config-manager --set-enabled powertools || dnf config-manager --set-enabled PowerTools || true && \
+    dnf install -y python3.10 python3.10-devel python3.10-pip && \
+    ln -sf /usr/bin/python3.10 /usr/bin/python3 && \
+    ln -sf /usr/bin/pip3.10 /usr/bin/pip3
 
 # 配置npm和pip镜像源
 RUN npm config set registry https://registry.npmmirror.com && \
@@ -77,7 +71,7 @@ RUN ls -la /app/backend/vnpy_custom || echo "Warning: vnpy_custom directory does
 # 安装后端依赖
 WORKDIR /app/backend
 # 安装系统依赖
-RUN dnf install -y gcc gcc-c++ make cmake python39-devel wget
+RUN dnf install -y gcc gcc-c++ make cmake wget
 
 # 安装Python依赖
 RUN pip3 install --no-cache-dir -r requirements.txt
