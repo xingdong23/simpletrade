@@ -62,11 +62,11 @@ rm -rf /app/logs/ta-lib /app/logs/ta-lib-0.4.0-src.tar.gz
 
 # 启动部署API服务器
 echo "Starting deployment API server..."
-python3.9 /app/panel/deploy.py > /app/logs/deploy_panel.log 2>&1 &
+python3 /app/panel/deploy.py > /app/logs/deploy_panel.log 2>&1 &
 
 # 启动部署处理服务器
 echo "Starting deployment handler server..."
-python3.9 /app/panel/deploy_handler.py > /app/logs/deploy_handler.log 2>&1 &
+python3 /app/panel/deploy_handler.py > /app/logs/deploy_handler.log 2>&1 &
 
 # 启动后端服务
 echo "Starting backend service..."
@@ -115,7 +115,7 @@ EOF
 
 # 启动后端服务
 echo "Starting backend service..."
-python3.9 -m simpletrade.main > /app/logs/backend.log 2>&1 &
+python3 -m simpletrade.main > /app/logs/backend.log 2>&1 &
 
 # 创建前端日志的符号链接
 ln -sf /var/log/nginx/access.log /app/logs/frontend_access.log
