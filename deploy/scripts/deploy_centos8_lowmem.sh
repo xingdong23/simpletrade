@@ -314,16 +314,25 @@ RUN dnf clean all && \
     dnf install -y epel-release && \
     dnf install -y nginx curl procps net-tools vim wget git && \
     dnf module install -y nodejs:16 && \
-    dnf install -y python39 python39-pip && \
-    dnf clean all && \
+    dnf -y install centos-release-scl && \
+    dnf clean all
+
+# 安装Python 3.10 (使用SCL源)
+RUN dnf -y install rh-python310 rh-python310-python-devel rh-python310-python-pip && \
+    echo 'source scl_source enable rh-python310' > /etc/profile.d/python310.sh && \
+    chmod +x /etc/profile.d/python310.sh && \
+    echo 'source /etc/profile.d/python310.sh' >> /root/.bashrc && \
     # 创建python符号链接，确保兼容性
-    ln -sf /usr/bin/python3.9 /usr/bin/python && \
-    ln -sf /usr/bin/pip3.9 /usr/bin/pip
+    ln -sf /opt/rh/rh-python310/root/usr/bin/python /usr/bin/python3 && \
+    ln -sf /opt/rh/rh-python310/root/usr/bin/pip /usr/bin/pip3 && \
+    ln -sf /usr/bin/python3 /usr/bin/python && \
+    ln -sf /usr/bin/pip3 /usr/bin/pip && \
+    source /etc/profile.d/python310.sh
 
 # 配置npm和pip镜像源
 RUN npm config set registry https://registry.npmmirror.com && \
-    pip3.9 config set global.index-url https://mirrors.aliyun.com/pypi/simple/ && \
-    pip3.9 config set install.trusted-host mirrors.aliyun.com
+    pip3 config set global.index-url https://mirrors.aliyun.com/pypi/simple/ && \
+    pip3 config set install.trusted-host mirrors.aliyun.com
 
 # 配置网络设置
 # 注意：在Docker中，/etc/resolv.conf是只读的，无法直接修改
