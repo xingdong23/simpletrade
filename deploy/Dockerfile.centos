@@ -57,8 +57,8 @@ COPY simpletrade/ /app/backend/simpletrade/
 COPY vnpy_custom/ /app/backend/vnpy_custom/
 COPY setup.py requirements.txt /app/backend/
 
-# 确保vnpy_custom目录存在
-RUN ls -la /app/backend/vnpy_custom || mkdir -p /app/backend/vnpy_custom/vnpy/event /app/backend/vnpy_custom/vnpy/trader
+# 检查vnpy_custom目录是否存在
+RUN ls -la /app/backend/vnpy_custom || echo "Warning: vnpy_custom directory does not exist!"
 
 # 安装后端依赖
 WORKDIR /app/backend

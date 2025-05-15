@@ -14,9 +14,9 @@ import logging
 import json
 from pathlib import Path
 
-from vnpy.event import EventEngine
-from vnpy.trader.setting import SETTINGS # Needed for reading config for connect
-from vnpy.trader.gateway import BaseGateway
+from vnpy_custom.vnpy.event import EventEngine
+from vnpy_custom.vnpy.trader.setting import SETTINGS # Needed for reading config for connect
+from vnpy_custom.vnpy.trader.gateway import BaseGateway
 
 # --- Import project specific config ---
 from simpletrade.config.settings import DB_CONFIG, API_CONFIG, LOG_CONFIG # Import needed configs
@@ -68,14 +68,14 @@ def _configure_vnpy_settings():
     try:
         # Database Configuration
         logger.debug("Applying database settings...")
-        SETTINGS["database.name"] = "mysql"
+        SETTINGS["database.driver"] = "mysql"  # 使用database.driver而不是database.name
         SETTINGS["database.host"] = DB_CONFIG["DB_HOST"]
         SETTINGS["database.port"] = int(DB_CONFIG["DB_PORT"])
         SETTINGS["database.database"] = DB_CONFIG["DB_NAME"]
         SETTINGS["database.user"] = DB_CONFIG["DB_USER"]
         SETTINGS["database.password"] = DB_CONFIG["DB_PASSWORD"]
         logger.info("Database settings applied (using mysql).")
-        logger.debug(f"  DB Name: {SETTINGS.get('database.name')}")
+        logger.debug(f"  DB Driver: {SETTINGS.get('database.driver')}")
         logger.debug(f"  DB Host: {SETTINGS.get('database.host')}")
         # Add more debug logs if needed, avoid logging password
 
