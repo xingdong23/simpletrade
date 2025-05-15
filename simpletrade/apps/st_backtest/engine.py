@@ -164,11 +164,37 @@ class CTABacktestEngine(AbstractBacktestEngine):
 
     def get_daily_results(self) -> pd.DataFrame:
         """获取每日结果"""
-        return pd.DataFrame(self.engine.get_daily_results()).fillna(0.0)
+        # 在vnpy的BacktestingEngine类中，get_daily_results()方法可能不存在或者返回None
+        try:
+            daily_results = self.engine.get_daily_results()
+            if daily_results is None:
+                return pd.DataFrame()
+            return pd.DataFrame(daily_results).fillna(0.0)
+        except AttributeError:
+            # 如果方法不存在，返回空DataFrame
+            return pd.DataFrame()
+        except Exception as e:
+            import logging
+            logger = logging.getLogger("simpletrade.apps.st_backtest.engine")
+            logger.warning(f"获取每日结果时出错: {e}")
+            return pd.DataFrame()
 
     def get_all_trades(self) -> List[Any]:
         """获取所有交易记录"""
-        return self.engine.get_all_trades()
+        # 在vnpy的BacktestingEngine类中，get_all_trades()方法可能不存在或者返回None
+        try:
+            trades = self.engine.get_all_trades()
+            if trades is None:
+                return []
+            return trades
+        except AttributeError:
+            # 如果方法不存在，返回空列表
+            return []
+        except Exception as e:
+            import logging
+            logger = logging.getLogger("simpletrade.apps.st_backtest.engine")
+            logger.warning(f"获取交易记录时出错: {e}")
+            return []
 
     @property
     def history_data(self) -> List[Any]:
