@@ -314,54 +314,28 @@ RUN dnf clean all && \
     dnf install -y epel-release && \
     dnf install -y nginx curl procps net-tools vim wget git gcc gcc-c++ make zlib-devel bzip2 bzip2-devel readline-devel sqlite sqlite-devel openssl-devel tk-devel libffi-devel xz-devel && \
     dnf module install -y nodejs:16 && \
-    dnf clean all
+    dnf clean all && \
+    # 安装Python 3.10
+    dnf install -y python3.10 python3.10-devel python3.10-pip && \
+    # 创建虚拟环境
+    python3.10 -m venv /opt/venv
 
-# 首先备份并替换系统Python链接
-RUN mv /usr/bin/python3 /usr/bin/python3.9-backup && \
-    mv /usr/bin/pip3 /usr/bin/pip3-backup && \
-    mv /usr/bin/python /usr/bin/python-backup 2>/dev/null || true && \
-    mv /usr/bin/pip /usr/bin/pip-backup 2>/dev/null || true
+# 配置环境
+ENV VIRTUAL_ENV=/opt/venv
+ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
-# 使用Miniconda安装Python 3.10（使用清华镜像源）
-RUN yum install -y bzip2 wget && \
-    cd /tmp && \
-    # 使用清华镜像源下载Miniconda
-    wget https://mirrors.tuna.tsinghua.edu.cn/anaconda/miniconda/Miniconda3-py310_23.3.1-0-Linux-x86_64.sh -O miniconda.sh && \
-    bash miniconda.sh -b -p /opt/conda && \
-    rm -f miniconda.sh && \
-    # 配置conda使用清华镜像源
-    /opt/conda/bin/conda config --add channels https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/free/ && \
-    /opt/conda/bin/conda config --add channels https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/main/ && \
-    /opt/conda/bin/conda config --set show_channel_urls yes && \
-    # 初始化conda
-    /opt/conda/bin/conda init bash && \
-    /opt/conda/bin/conda config --set always_yes yes --set changeps1 no && \
-    # 更新conda（使用国内镜像）
-    /opt/conda/bin/conda update -n base -c https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/main/ conda && \
-    # 配置pip使用国内镜像
-    mkdir -p /root/.pip && \
+# 配置pip使用国内镜像
+RUN mkdir -p /root/.pip && \
     echo '[global]' > /root/.pip/pip.conf && \
     echo 'index-url = https://pypi.tuna.tsinghua.edu.cn/simple' >> /root/.pip/pip.conf && \
     echo 'trusted-host = pypi.tuna.tsinghua.edu.cn' >> /root/.pip/pip.conf && \
-    # 使用update-alternatives设置Python
-    update-alternatives --install /usr/bin/python python /opt/conda/bin/python3.10 1 && \
-    update-alternatives --install /usr/bin/python3 python3 /opt/conda/bin/python3.10 1 && \
-    update-alternatives --install /usr/bin/pip pip /opt/conda/bin/pip3.10 1 && \
-    update-alternatives --install /usr/bin/pip3 pip3 /opt/conda/bin/pip3.10 1 && \
-    # 设置环境变量
-    echo 'export PATH="/opt/conda/bin:$PATH"' > /etc/profile.d/conda.sh && \
-    echo 'export CONDA_PREFIX=/opt/conda' >> /etc/profile.d/conda.sh && \
-    echo 'export CONDA_DEFAULT_ENV=base' >> /etc/profile.d/conda.sh && \
-    echo 'export PATH="/opt/conda/bin:$PATH"' >> /root/.bashrc && \
-    echo 'source /opt/conda/etc/profile.d/conda.sh' >> /root/.bashrc && \
-    chmod +x /etc/profile.d/conda.sh && \
-    # 更新pip（使用国内镜像）
-    /opt/conda/bin/python -m pip install --upgrade pip -i https://pypi.tuna.tsinghua.edu.cn/simple && \
+    # 更新pip
+    python -m pip install --upgrade pip && \
     # 验证安装
     echo "Python version:" && \
-    /opt/conda/bin/python --version && \
+    python --version && \
     echo "Python3 version:" && \
-    /opt/conda/bin/python3 --version && \
+    python3 --version && \
     echo "Python path:" && \
     which python && \
     echo "Python3 path:" && \
