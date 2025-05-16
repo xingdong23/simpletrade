@@ -316,13 +316,19 @@ RUN dnf clean all && \
     dnf module install -y nodejs:16 && \
     dnf clean all
 
-# 安装Python 3.9 (使用系统软件包)
-RUN dnf install -y python39 python39-pip python39-devel && \
-    # 创建python符号链接，确保兼容性
-    ln -sf /usr/bin/python3.9 /usr/bin/python3 && \
-    ln -sf /usr/bin/pip3.9 /usr/bin/pip3 && \
+# 使用Miniconda安装Python 3.10
+RUN cd /tmp && \
+    wget https://repo.anaconda.com/miniconda/Miniconda3-py310_23.3.1-0-Linux-x86_64.sh -O miniconda.sh && \
+    bash miniconda.sh -b -p /opt/conda && \
+    rm miniconda.sh && \
+    /opt/conda/bin/conda clean -tipsy && \
+    ln -sf /opt/conda/bin/python /usr/bin/python3 && \
+    ln -sf /opt/conda/bin/pip /usr/bin/pip3 && \
     ln -sf /usr/bin/python3 /usr/bin/python && \
-    ln -sf /usr/bin/pip3 /usr/bin/pip
+    ln -sf /usr/bin/pip3 /usr/bin/pip && \
+    echo 'export PATH="/opt/conda/bin:$PATH"' > /etc/profile.d/conda.sh && \
+    chmod +x /etc/profile.d/conda.sh && \
+    /opt/conda/bin/python -m pip install --upgrade pip
 
 # 配置npm和pip镜像源
 RUN npm config set registry https://registry.npmmirror.com && \

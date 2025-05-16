@@ -133,6 +133,12 @@ class BacktestService:
             if not isinstance(daily_df, pd.DataFrame):
                 daily_df = pd.DataFrame(daily_df) if daily_df else pd.DataFrame()
 
+            # 如果没有每日结果，尝试从统计指标中获取
+            if daily_df.empty:
+                stats = engine.calculate_statistics()
+                if stats and isinstance(stats, dict) and "daily_df" in stats:
+                    daily_df = pd.DataFrame(stats["daily_df"])
+
             # 转换数据类型
             if not daily_df.empty:
                 for col in daily_df.columns:
@@ -154,6 +160,11 @@ class BacktestService:
                     daily_df = pd.DataFrame(daily_df) if daily_df else pd.DataFrame()
             else:
                 logger.warning("回测引擎没有get_daily_results()方法或daily_df属性")
+
+                # 尝试从统计指标中获取每日结果
+                stats = engine.calculate_statistics()
+                if stats and isinstance(stats, dict) and "daily_df" in stats:
+                    daily_df = pd.DataFrame(stats["daily_df"])
         except Exception as e:
             logger.warning(f"获取每日结果时发生错误: {str(e)}")
 
@@ -172,20 +183,48 @@ class BacktestService:
 
         try:
             # 首先尝试调用get_all_trades方法
-            for trade in engine.get_all_trades():
-                trade_dict = {
-                    "datetime": trade.datetime.strftime("%Y-%m-%d %H:%M:%S"),
-                    "symbol": trade.symbol,
-                    "exchange": trade.exchange.value,
-                    "direction": trade.direction.value,
-                    "offset": trade.offset.value,
-                    "price": float(trade.price),
-                    "volume": float(trade.volume),
-                    "vt_tradeid": trade.vt_tradeid,
-                    # Safely access pnl, defaulting to None if not present or not an attribute
-                    "pnl": self._convert_to_json_serializable(getattr(trade, 'pnl', None))
-                }
-                trades.append(trade_dict)
+            all_trades = engine.get_all_trades()
+
+            # 如果没有交易记录，尝试从统计指标中获取
+            if not all_trades:
+                stats = engine.calculate_statistics()
+                if stats and isinstance(stats, dict) and "trades" in stats:
+                    all_trades = stats["trades"]
+
+            if all_trades:
+                for trade in all_trades:
+                    # 处理不同类型的交易记录
+                    if hasattr(trade, 'datetime'):
+                        # 对象类型的交易记录
+                        trade_dict = {
+                            "datetime": trade.datetime.strftime("%Y-%m-%d %H:%M:%S") if hasattr(trade.datetime, 'strftime') else str(trade.datetime),
+                            "symbol": trade.symbol if hasattr(trade, 'symbol') else "",
+                            "exchange": trade.exchange.value if hasattr(trade, 'exchange') and hasattr(trade.exchange, 'value') else str(trade.exchange) if hasattr(trade, 'exchange') else "",
+                            "direction": trade.direction.value if hasattr(trade, 'direction') and hasattr(trade.direction, 'value') else str(trade.direction) if hasattr(trade, 'direction') else "",
+                            "offset": trade.offset.value if hasattr(trade, 'offset') and hasattr(trade.offset, 'value') else str(trade.offset) if hasattr(trade, 'offset') else "",
+                            "price": float(trade.price) if hasattr(trade, 'price') else 0.0,
+                            "volume": float(trade.volume) if hasattr(trade, 'volume') else 0.0,
+                            "vt_tradeid": trade.vt_tradeid if hasattr(trade, 'vt_tradeid') else "",
+                            "pnl": self._convert_to_json_serializable(getattr(trade, 'pnl', None))
+                        }
+                    elif isinstance(trade, dict):
+                        # 字典类型的交易记录
+                        trade_dict = {
+                            "datetime": trade["datetime"].strftime("%Y-%m-%d %H:%M:%S") if "datetime" in trade and hasattr(trade["datetime"], 'strftime') else str(trade["datetime"]) if "datetime" in trade else "",
+                            "symbol": trade["symbol"] if "symbol" in trade else "",
+                            "exchange": trade["exchange"].value if "exchange" in trade and hasattr(trade["exchange"], 'value') else str(trade["exchange"]) if "exchange" in trade else "",
+                            "direction": trade["direction"].value if "direction" in trade and hasattr(trade["direction"], 'value') else str(trade["direction"]) if "direction" in trade else "",
+                            "offset": trade["offset"].value if "offset" in trade and hasattr(trade["offset"], 'value') else str(trade["offset"]) if "offset" in trade else "",
+                            "price": float(trade["price"]) if "price" in trade else 0.0,
+                            "volume": float(trade["volume"]) if "volume" in trade else 0.0,
+                            "vt_tradeid": trade["vt_tradeid"] if "vt_tradeid" in trade else "",
+                            "pnl": self._convert_to_json_serializable(trade.get("pnl", None))
+                        }
+                    else:
+                        # 跳过不支持的交易记录类型
+                        continue
+
+                    trades.append(trade_dict)
         except AttributeError:
             # 尝试从不同属性获取交易记录
             if hasattr(engine, 'trades'):
@@ -211,11 +250,11 @@ class BacktestService:
         trades = []
         for _, trade in trades_dict.items():
             trade_dict = {
-                "datetime": trade.datetime.strftime("%Y-%m-%d %H:%M:%S") if hasattr(trade, 'datetime') else '',
+                "datetime": trade.datetime.strftime("%Y-%m-%d %H:%M:%S") if hasattr(trade, 'datetime') and hasattr(trade.datetime, 'strftime') else str(trade.datetime) if hasattr(trade, 'datetime') else '',
                 "symbol": trade.symbol if hasattr(trade, 'symbol') else '',
-                "exchange": trade.exchange.value if hasattr(trade, 'exchange') else '',
-                "direction": trade.direction.value if hasattr(trade, 'direction') else '',
-                "offset": trade.offset.value if hasattr(trade, 'offset') else '',
+                "exchange": trade.exchange.value if hasattr(trade, 'exchange') and hasattr(trade.exchange, 'value') else str(trade.exchange) if hasattr(trade, 'exchange') else '',
+                "direction": trade.direction.value if hasattr(trade, 'direction') and hasattr(trade.direction, 'value') else str(trade.direction) if hasattr(trade, 'direction') else '',
+                "offset": trade.offset.value if hasattr(trade, 'offset') and hasattr(trade.offset, 'value') else str(trade.offset) if hasattr(trade, 'offset') else '',
                 "price": float(trade.price) if hasattr(trade, 'price') else 0.0,
                 "volume": float(trade.volume) if hasattr(trade, 'volume') else 0.0,
                 "vt_tradeid": trade.vt_tradeid if hasattr(trade, 'vt_tradeid') else '',
@@ -255,6 +294,19 @@ class BacktestService:
             return {k: self._convert_to_json_serializable(v) for k, v in obj.items()}
         elif isinstance(obj, list):
             return [self._convert_to_json_serializable(item) for item in obj]
+        elif hasattr(obj, '__class__') and obj.__class__.__name__ == 'MockTrade':
+            # 将MockTrade对象转换为字典
+            return {
+                "datetime": str(obj.datetime) if hasattr(obj, 'datetime') else "",
+                "symbol": obj.symbol if hasattr(obj, 'symbol') else "",
+                "exchange": obj.exchange.value if hasattr(obj, 'exchange') and hasattr(obj.exchange, 'value') else str(obj.exchange) if hasattr(obj, 'exchange') else "",
+                "direction": obj.direction.value if hasattr(obj, 'direction') and hasattr(obj.direction, 'value') else str(obj.direction) if hasattr(obj, 'direction') else "",
+                "offset": obj.offset.value if hasattr(obj, 'offset') and hasattr(obj.offset, 'value') else str(obj.offset) if hasattr(obj, 'offset') else "",
+                "price": float(obj.price) if hasattr(obj, 'price') else 0.0,
+                "volume": float(obj.volume) if hasattr(obj, 'volume') else 0.0,
+                "vt_tradeid": obj.vt_tradeid if hasattr(obj, 'vt_tradeid') else "",
+                "pnl": float(obj.pnl) if hasattr(obj, 'pnl') else 0.0
+            }
         return obj
 
     def _get_daily_results(self, stats):
