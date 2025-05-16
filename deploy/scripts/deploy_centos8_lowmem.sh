@@ -316,8 +316,11 @@ RUN dnf clean all && \
     dnf module install -y nodejs:16 && \
     dnf clean all
 
-# 首先移除系统自带的Python 3.9链接（如果存在）
-RUN rm -f /usr/bin/python3 /usr/bin/pip3 /usr/bin/python /usr/bin/pip
+# 首先备份并替换系统Python链接
+RUN mv /usr/bin/python3 /usr/bin/python3.9-backup && \
+    mv /usr/bin/pip3 /usr/bin/pip3-backup && \
+    mv /usr/bin/python /usr/bin/python-backup 2>/dev/null || true && \
+    mv /usr/bin/pip /usr/bin/pip-backup 2>/dev/null || true
 
 # 使用Miniconda安装Python 3.10（使用清华镜像源）
 RUN yum install -y bzip2 wget && \
@@ -343,8 +346,15 @@ RUN yum install -y bzip2 wget && \
     # 创建符号链接（强制覆盖）
     ln -sf /opt/conda/bin/python3.10 /usr/bin/python3 && \
     ln -sf /opt/conda/bin/pip3.10 /usr/bin/pip3 && \
-    ln -sf /usr/bin/python3 /usr/bin/python && \
-    ln -sf /usr/bin/pip3 /usr/bin/pip && \
+    ln -sf /opt/conda/bin/python3.10 /usr/bin/python && \
+    ln -sf /opt/conda/bin/pip3.10 /usr/bin/pip && \
+    # 确保/usr/local/bin在PATH中靠前
+    echo 'export PATH="/usr/local/bin:/opt/conda/bin:$PATH"' > /etc/profile.d/conda.sh && \
+    # 创建替代命令
+    update-alternatives --install /usr/bin/python3 python3 /opt/conda/bin/python3.10 1 && \
+    update-alternatives --install /usr/bin/python python /opt/conda/bin/python3.10 1 && \
+    update-alternatives --set python3 /opt/conda/bin/python3.10 && \
+    update-alternatives --set python /opt/conda/bin/python3.10 && \
     # 设置环境变量
     echo 'export PATH="/opt/conda/bin:$PATH"' > /etc/profile.d/conda.sh && \
     echo 'export CONDA_PREFIX=/opt/conda' >> /etc/profile.d/conda.sh && \
