@@ -316,13 +316,16 @@ RUN dnf clean all && \
     dnf module install -y nodejs:16 && \
     dnf clean all
 
+# 首先移除系统自带的Python 3.9链接（如果存在）
+RUN rm -f /usr/bin/python3 /usr/bin/pip3 /usr/bin/python /usr/bin/pip
+
 # 使用Miniconda安装Python 3.10（使用清华镜像源）
 RUN yum install -y bzip2 wget && \
     cd /tmp && \
     # 使用清华镜像源下载Miniconda
     wget https://mirrors.tuna.tsinghua.edu.cn/anaconda/miniconda/Miniconda3-py310_23.3.1-0-Linux-x86_64.sh -O miniconda.sh && \
     bash miniconda.sh -b -p /opt/conda && \
-    rm miniconda.sh && \
+    rm -f miniconda.sh && \
     # 配置conda使用清华镜像源
     /opt/conda/bin/conda config --add channels https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/free/ && \
     /opt/conda/bin/conda config --add channels https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/main/ && \
@@ -337,7 +340,7 @@ RUN yum install -y bzip2 wget && \
     echo '[global]' > /root/.pip/pip.conf && \
     echo 'index-url = https://pypi.tuna.tsinghua.edu.cn/simple' >> /root/.pip/pip.conf && \
     echo 'trusted-host = pypi.tuna.tsinghua.edu.cn' >> /root/.pip/pip.conf && \
-    # 创建符号链接
+    # 创建符号链接（强制覆盖）
     ln -sf /opt/conda/bin/python3.10 /usr/bin/python3 && \
     ln -sf /opt/conda/bin/pip3.10 /usr/bin/pip3 && \
     ln -sf /usr/bin/python3 /usr/bin/python && \
@@ -346,13 +349,23 @@ RUN yum install -y bzip2 wget && \
     echo 'export PATH="/opt/conda/bin:$PATH"' > /etc/profile.d/conda.sh && \
     echo 'export CONDA_PREFIX=/opt/conda' >> /etc/profile.d/conda.sh && \
     echo 'export CONDA_DEFAULT_ENV=base' >> /etc/profile.d/conda.sh && \
+    echo 'export PATH="/opt/conda/bin:$PATH"' >> /root/.bashrc && \
     echo 'source /opt/conda/etc/profile.d/conda.sh' >> /root/.bashrc && \
     chmod +x /etc/profile.d/conda.sh && \
     # 更新pip（使用国内镜像）
     /opt/conda/bin/python -m pip install --upgrade pip -i https://pypi.tuna.tsinghua.edu.cn/simple && \
     # 验证安装
+    echo "Python version:" && \
     /opt/conda/bin/python --version && \
-    which python
+    echo "Python3 version:" && \
+    /opt/conda/bin/python3 --version && \
+    echo "Python path:" && \
+    which python && \
+    echo "Python3 path:" && \
+    which python3 && \
+    # 列出所有Python可执行文件
+    echo "All Python executables:" && \
+    ls -la /usr/bin/python* /opt/conda/bin/python*
 
 # 配置npm和pip镜像源
 RUN npm config set registry https://registry.npmmirror.com && \
