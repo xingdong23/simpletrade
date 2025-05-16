@@ -351,16 +351,48 @@ RUN mkdir -p /root/.pip && \
     echo 'index-url = https://pypi.tuna.tsinghua.edu.cn/simple' >> /root/.pip/pip.conf && \
     echo 'trusted-host = pypi.tuna.tsinghua.edu.cn' >> /root/.pip/pip.conf
 
-# 安装系统构建依赖和Python包
-RUN dnf install -y python3-devel && \
-    # 升级pip
-    pip3 install --upgrade pip setuptools wheel && \
-    # 安装必要的Python依赖
-    pip3 install numpy pandas scipy matplotlib scikit-learn && \
-    # 安装Web框架和服务器
-    pip3 install fastapi uvicorn[standard] && \
+# 安装系统构建依赖
+RUN dnf install -y python3-devel gcc-c++ make git patch && \
+    # 安装数据库客户端
+    dnf install -y mysql-devel postgresql-devel && \
+    # 安装其他编译依赖
+    dnf install -y libffi-devel openssl-devel bzip2-devel readline-devel \
+    sqlite-devel xz-devel tk-devel libxml2-devel libxslt-devel && \
+    dnf clean all
+
+# 安装Python依赖
+RUN pip3 install --upgrade pip setuptools wheel && \
+    # 基础科学计算
+    pip3 install numpy==1.24.3 pandas==2.0.2 scipy==1.10.1 matplotlib==3.7.1 scikit-learn==1.2.2 && \
+    # 量化交易相关
+    pip3 install pandas-ta==0.3.14b0 ta==0.10.2 ta-lib==0.4.27 && \
+    # Web框架和服务器
+    pip3 install fastapi==0.95.1 uvicorn[standard]==0.21.1 python-multipart==0.0.6 && \
+    # 数据库
+    pip3 install sqlalchemy==2.0.12 pymysql==1.0.3 psycopg2-binary==2.9.6 redis==4.5.4 && \
+    # 异步和网络
+    pip3 install aiohttp==3.8.4 requests==2.28.2 websockets==10.4 && \
+    # 实用工具
+    pip3 install python-dateutil==2.8.2 pytz==2023.3 tqdm==4.65.0 loguru==0.7.0 && \
+    # 数据存储
+    pip3 install pyarrow==12.0.0 h5py==3.8.0 pyyaml==6.0 && \
     # 清理缓存
     rm -rf /root/.cache/pip/* /tmp/* /var/tmp/*
+
+# 安装vnpy和qlib
+RUN pip3 install --no-deps vnpy==3.5.3 && \
+    pip3 install pyqlib==0.9.1.99 && \
+    # 安装TA-Lib
+    cd /tmp && \
+    wget http://prdownloads.sourceforge.net/ta-lib/ta-lib-0.4.0-src.tar.gz && \
+    tar -xzf ta-lib-0.4.0-src.tar.gz && \
+    cd ta-lib/ && \
+    ./configure --prefix=/usr && \
+    make && make install && \
+    cd .. && rm -rf ta-lib* && \
+    pip3 install TA-Lib==0.4.27 && \
+    # 清理
+    rm -rf /tmp/* /var/tmp/*
 
 # 验证安装
 RUN echo "Python version:" && \
