@@ -308,28 +308,35 @@ RUN chmod +x /tmp/configure_centos_repos.sh && \
     /tmp/configure_centos_repos.sh && \
     rm -f /tmp/configure_centos_repos.sh
 
-# 安装必要的软件
+# 安装必要的软件和依赖
 RUN dnf clean all && \
     dnf makecache && \
     dnf install -y epel-release && \
-    # 添加Remi仓库
-    dnf install -y https://rpms.remirepo.net/enterprise/remi-release-8.rpm && \
     # 安装基础开发工具
-    dnf install -y nginx curl procps net-tools vim wget git gcc gcc-c++ make zlib-devel bzip2 bzip2-devel readline-devel sqlite sqlite-devel openssl-devel tk-devel libffi-devel xz-devel && \
+    dnf install -y nginx curl procps net-tools vim wget git gcc gcc-c++ make zlib-devel bzip2 bzip2-devel readline-devel sqlite sqlite-devel openssl-devel tk-devel libffi-devel xz-devel \
+    bzip2-devel readline-devel sqlite-devel openssl-devel \
+    xz-devel libffi-devel wget tar make && \
     dnf module install -y nodejs:16 && \
-    dnf clean all && \
-    # 启用Remi仓库并安装Python 3.10
-    dnf module enable -y python310 && \
-    dnf install -y python3.10 python3.10-devel python3.10-pip && \
-    # 创建符号链接
-    ln -sf /usr/bin/python3.10 /usr/bin/python3 && \
-    ln -sf /usr/bin/pip3.10 /usr/bin/pip3 && \
+    dnf clean all
+
+# 安装pyenv和Python 3.10
+RUN git clone https://gitee.com/mirrors/pyenv.git ~/.pyenv && \
+    echo 'export PYENV_ROOT="$HOME/.pyenv"' >> ~/.bashrc && \
+    echo 'export PATH="$PYENV_ROOT/bin:$PATH"' >> ~/.bashrc && \
+    echo 'eval "$(pyenv init -)"' >> ~/.bashrc && \
+    source ~/.bashrc && \
+    # 使用国内镜像加速下载
+    export PYTHON_BUILD_MIRROR_URL_SKIP_CHECKSUM=1 && \
+    export PYTHON_BUILD_MIRROR_URL="https://mirrors.huaweicloud.com/python/" && \
+    # 安装Python 3.10.0
+    ~/.pyenv/bin/pyenv install 3.10.0 && \
+    ~/.pyenv/bin/pyenv global 3.10.0 && \
     # 创建虚拟环境
-    python3.10 -m venv /opt/venv
+    ~/.pyenv/versions/3.10.0/bin/python -m venv /opt/venv
 
 # 配置环境
 ENV VIRTUAL_ENV=/opt/venv
-ENV PATH="$VIRTUAL_ENV/bin:$PATH"
+ENV PATH="/root/.pyenv/versions/3.10.0/bin:$VIRTUAL_ENV/bin:$PATH"
 
 # 配置pip使用国内镜像
 RUN mkdir -p /root/.pip && \
