@@ -312,14 +312,15 @@ RUN chmod +x /tmp/configure_centos_repos.sh && \
 RUN dnf clean all && \
     dnf makecache && \
     dnf install -y epel-release && \
-    # 添加IUS仓库
-    dnf install -y https://repo.ius.io/ius-release-el8.rpm && \
+    # 添加Remi仓库
+    dnf install -y https://rpms.remirepo.net/enterprise/remi-release-8.rpm && \
     # 安装基础开发工具
     dnf install -y nginx curl procps net-tools vim wget git gcc gcc-c++ make zlib-devel bzip2 bzip2-devel readline-devel sqlite sqlite-devel openssl-devel tk-devel libffi-devel xz-devel && \
     dnf module install -y nodejs:16 && \
     dnf clean all && \
-    # 安装Python 3.10
-    dnf install -y python310 python310-devel python310-pip && \
+    # 启用Remi仓库并安装Python 3.10
+    dnf module enable -y python310 && \
+    dnf install -y python3.10 python3.10-devel python3.10-pip && \
     # 创建符号链接
     ln -sf /usr/bin/python3.10 /usr/bin/python3 && \
     ln -sf /usr/bin/pip3.10 /usr/bin/pip3 && \
