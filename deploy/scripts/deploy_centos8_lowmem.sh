@@ -312,22 +312,23 @@ RUN chmod +x /tmp/configure_centos_repos.sh && \
 RUN dnf clean all && \
     dnf makecache && \
     dnf install -y epel-release && \
-    # 添加SCL仓库
-    dnf install -y centos-release-scl && \
-    # 安装基础开发工具和Python 3.10
+    # 添加IUS仓库
+    dnf install -y https://repo.ius.io/ius-release-el8.rpm && \
+    # 安装基础开发工具
     dnf install -y nginx curl procps net-tools vim wget git gcc gcc-c++ make zlib-devel bzip2 bzip2-devel readline-devel sqlite sqlite-devel openssl-devel tk-devel libffi-devel xz-devel && \
     dnf module install -y nodejs:16 && \
     dnf clean all && \
     # 安装Python 3.10
-    dnf install -y rh-python310 rh-python310-python-devel && \
+    dnf install -y python310 python310-devel python310-pip && \
+    # 创建符号链接
+    ln -sf /usr/bin/python3.10 /usr/bin/python3 && \
+    ln -sf /usr/bin/pip3.10 /usr/bin/pip3 && \
     # 创建虚拟环境
-    /opt/rh/rh-python310/root/usr/bin/python3.10 -m venv /opt/venv
+    python3.10 -m venv /opt/venv
 
 # 配置环境
 ENV VIRTUAL_ENV=/opt/venv
-ENV PATH="/opt/rh/rh-python310/root/usr/bin:$VIRTUAL_ENV/bin:$PATH"
-ENV LD_LIBRARY_PATH="/opt/rh/rh-python310/root/usr/lib64:$LD_LIBRARY_PATH"
-ENV PKG_CONFIG_PATH="/opt/rh/rh-python310/root/usr/lib64/pkgconfig"
+ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
 # 配置pip使用国内镜像
 RUN mkdir -p /root/.pip && \
