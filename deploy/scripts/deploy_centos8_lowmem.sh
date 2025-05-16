@@ -316,16 +316,27 @@ RUN dnf clean all && \
     dnf module install -y nodejs:16 && \
     dnf clean all
 
-# 使用Miniconda安装Python 3.10
+# 使用Miniconda安装Python 3.10（使用清华镜像源）
 RUN yum install -y bzip2 wget && \
     cd /tmp && \
-    wget --no-check-certificate https://repo.anaconda.com/miniconda/Miniconda3-py310_23.3.1-0-Linux-x86_64.sh -O miniconda.sh && \
+    # 使用清华镜像源下载Miniconda
+    wget https://mirrors.tuna.tsinghua.edu.cn/anaconda/miniconda/Miniconda3-py310_23.3.1-0-Linux-x86_64.sh -O miniconda.sh && \
     bash miniconda.sh -b -p /opt/conda && \
     rm miniconda.sh && \
+    # 配置conda使用清华镜像源
+    /opt/conda/bin/conda config --add channels https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/free/ && \
+    /opt/conda/bin/conda config --add channels https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/main/ && \
+    /opt/conda/bin/conda config --set show_channel_urls yes && \
     # 初始化conda
     /opt/conda/bin/conda init bash && \
     /opt/conda/bin/conda config --set always_yes yes --set changeps1 no && \
-    /opt/conda/bin/conda update -n base -c defaults conda && \
+    # 更新conda（使用国内镜像）
+    /opt/conda/bin/conda update -n base -c https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/main/ conda && \
+    # 配置pip使用国内镜像
+    mkdir -p /root/.pip && \
+    echo '[global]' > /root/.pip/pip.conf && \
+    echo 'index-url = https://pypi.tuna.tsinghua.edu.cn/simple' >> /root/.pip/pip.conf && \
+    echo 'trusted-host = pypi.tuna.tsinghua.edu.cn' >> /root/.pip/pip.conf && \
     # 创建符号链接
     ln -sf /opt/conda/bin/python3.10 /usr/bin/python3 && \
     ln -sf /opt/conda/bin/pip3.10 /usr/bin/pip3 && \
@@ -337,8 +348,8 @@ RUN yum install -y bzip2 wget && \
     echo 'export CONDA_DEFAULT_ENV=base' >> /etc/profile.d/conda.sh && \
     echo 'source /opt/conda/etc/profile.d/conda.sh' >> /root/.bashrc && \
     chmod +x /etc/profile.d/conda.sh && \
-    # 更新pip
-    /opt/conda/bin/python -m pip install --upgrade pip && \
+    # 更新pip（使用国内镜像）
+    /opt/conda/bin/python -m pip install --upgrade pip -i https://pypi.tuna.tsinghua.edu.cn/simple && \
     # 验证安装
     /opt/conda/bin/python --version && \
     which python
