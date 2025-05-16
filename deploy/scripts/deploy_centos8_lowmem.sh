@@ -350,6 +350,16 @@ RUN mkdir -p /root/.pip && \
     echo '[global]' > /root/.pip/pip.conf && \
     echo 'index-url = https://pypi.tuna.tsinghua.edu.cn/simple' >> /root/.pip/pip.conf && \
     echo 'trusted-host = pypi.tuna.tsinghua.edu.cn' >> /root/.pip/pip.conf && \
+    # 安装系统构建依赖
+    dnf install -y python3-devel && \
+    # 升级pip
+    pip3 install --upgrade pip setuptools wheel && \
+    # 安装必要的Python依赖
+    pip3 install -r /app/requirements.txt && \
+    # 安装其他可能需要的科学计算库
+    pip3 install numpy pandas scipy matplotlib scikit-learn && \
+    # 清理缓存
+    rm -rf /root/.cache/pip/* /tmp/* /var/tmp/* && \
     # 更新pip
     python -m pip install --upgrade pip && \
     # 验证安装
