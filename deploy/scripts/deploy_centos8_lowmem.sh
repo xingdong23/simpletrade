@@ -312,17 +312,22 @@ RUN chmod +x /tmp/configure_centos_repos.sh && \
 RUN dnf clean all && \
     dnf makecache && \
     dnf install -y epel-release && \
+    # 添加SCL仓库
+    dnf install -y centos-release-scl && \
+    # 安装基础开发工具和Python 3.10
     dnf install -y nginx curl procps net-tools vim wget git gcc gcc-c++ make zlib-devel bzip2 bzip2-devel readline-devel sqlite sqlite-devel openssl-devel tk-devel libffi-devel xz-devel && \
     dnf module install -y nodejs:16 && \
     dnf clean all && \
     # 安装Python 3.10
-    dnf install -y python3.10 python3.10-devel python3.10-pip && \
+    dnf install -y rh-python310 rh-python310-python-devel && \
     # 创建虚拟环境
-    python3.10 -m venv /opt/venv
+    /opt/rh/rh-python310/root/usr/bin/python3.10 -m venv /opt/venv
 
 # 配置环境
 ENV VIRTUAL_ENV=/opt/venv
-ENV PATH="$VIRTUAL_ENV/bin:$PATH"
+ENV PATH="/opt/rh/rh-python310/root/usr/bin:$VIRTUAL_ENV/bin:$PATH"
+ENV LD_LIBRARY_PATH="/opt/rh/rh-python310/root/usr/lib64:$LD_LIBRARY_PATH"
+ENV PKG_CONFIG_PATH="/opt/rh/rh-python310/root/usr/lib64/pkgconfig"
 
 # 配置pip使用国内镜像
 RUN mkdir -p /root/.pip && \
