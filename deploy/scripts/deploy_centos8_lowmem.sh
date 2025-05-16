@@ -317,18 +317,31 @@ RUN dnf clean all && \
     dnf clean all
 
 # 使用Miniconda安装Python 3.10
-RUN cd /tmp && \
-    wget https://repo.anaconda.com/miniconda/Miniconda3-py310_23.3.1-0-Linux-x86_64.sh -O miniconda.sh && \
+RUN yum install -y bzip2 wget && \
+    cd /tmp && \
+    wget --no-check-certificate https://repo.anaconda.com/miniconda/Miniconda3-py310_23.3.1-0-Linux-x86_64.sh -O miniconda.sh && \
     bash miniconda.sh -b -p /opt/conda && \
     rm miniconda.sh && \
-    /opt/conda/bin/conda clean -tipsy && \
-    ln -sf /opt/conda/bin/python /usr/bin/python3 && \
-    ln -sf /opt/conda/bin/pip /usr/bin/pip3 && \
+    # 初始化conda
+    /opt/conda/bin/conda init bash && \
+    /opt/conda/bin/conda config --set always_yes yes --set changeps1 no && \
+    /opt/conda/bin/conda update -n base -c defaults conda && \
+    # 创建符号链接
+    ln -sf /opt/conda/bin/python3.10 /usr/bin/python3 && \
+    ln -sf /opt/conda/bin/pip3.10 /usr/bin/pip3 && \
     ln -sf /usr/bin/python3 /usr/bin/python && \
     ln -sf /usr/bin/pip3 /usr/bin/pip && \
+    # 设置环境变量
     echo 'export PATH="/opt/conda/bin:$PATH"' > /etc/profile.d/conda.sh && \
+    echo 'export CONDA_PREFIX=/opt/conda' >> /etc/profile.d/conda.sh && \
+    echo 'export CONDA_DEFAULT_ENV=base' >> /etc/profile.d/conda.sh && \
+    echo 'source /opt/conda/etc/profile.d/conda.sh' >> /root/.bashrc && \
     chmod +x /etc/profile.d/conda.sh && \
-    /opt/conda/bin/python -m pip install --upgrade pip
+    # 更新pip
+    /opt/conda/bin/python -m pip install --upgrade pip && \
+    # 验证安装
+    /opt/conda/bin/python --version && \
+    which python
 
 # 配置npm和pip镜像源
 RUN npm config set registry https://registry.npmmirror.com && \
