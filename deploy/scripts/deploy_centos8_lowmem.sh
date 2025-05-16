@@ -357,6 +357,8 @@ RUN dnf install -y python3-devel && \
     pip3 install --upgrade pip setuptools wheel && \
     # 安装必要的Python依赖
     pip3 install numpy pandas scipy matplotlib scikit-learn && \
+    # 安装Web框架和服务器
+    pip3 install fastapi uvicorn[standard] && \
     # 清理缓存
     rm -rf /root/.cache/pip/* /tmp/* /var/tmp/*
 
