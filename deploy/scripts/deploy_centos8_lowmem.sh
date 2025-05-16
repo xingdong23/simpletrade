@@ -343,18 +343,11 @@ RUN yum install -y bzip2 wget && \
     echo '[global]' > /root/.pip/pip.conf && \
     echo 'index-url = https://pypi.tuna.tsinghua.edu.cn/simple' >> /root/.pip/pip.conf && \
     echo 'trusted-host = pypi.tuna.tsinghua.edu.cn' >> /root/.pip/pip.conf && \
-    # 创建符号链接（强制覆盖）
-    ln -sf /opt/conda/bin/python3.10 /usr/bin/python3 && \
-    ln -sf /opt/conda/bin/pip3.10 /usr/bin/pip3 && \
-    ln -sf /opt/conda/bin/python3.10 /usr/bin/python && \
-    ln -sf /opt/conda/bin/pip3.10 /usr/bin/pip && \
-    # 确保/usr/local/bin在PATH中靠前
-    echo 'export PATH="/usr/local/bin:/opt/conda/bin:$PATH"' > /etc/profile.d/conda.sh && \
-    # 创建替代命令
-    update-alternatives --install /usr/bin/python3 python3 /opt/conda/bin/python3.10 1 && \
+    # 使用update-alternatives设置Python
     update-alternatives --install /usr/bin/python python /opt/conda/bin/python3.10 1 && \
-    update-alternatives --set python3 /opt/conda/bin/python3.10 && \
-    update-alternatives --set python /opt/conda/bin/python3.10 && \
+    update-alternatives --install /usr/bin/python3 python3 /opt/conda/bin/python3.10 1 && \
+    update-alternatives --install /usr/bin/pip pip /opt/conda/bin/pip3.10 1 && \
+    update-alternatives --install /usr/bin/pip3 pip3 /opt/conda/bin/pip3.10 1 && \
     # 设置环境变量
     echo 'export PATH="/opt/conda/bin:$PATH"' > /etc/profile.d/conda.sh && \
     echo 'export CONDA_PREFIX=/opt/conda' >> /etc/profile.d/conda.sh && \
@@ -372,10 +365,7 @@ RUN yum install -y bzip2 wget && \
     echo "Python path:" && \
     which python && \
     echo "Python3 path:" && \
-    which python3 && \
-    # 列出所有Python可执行文件
-    echo "All Python executables:" && \
-    ls -la /usr/bin/python* /opt/conda/bin/python*
+    which python3
 
 # 配置npm和pip镜像源
 RUN npm config set registry https://registry.npmmirror.com && \
