@@ -349,28 +349,28 @@ ENV LD_LIBRARY_PATH="/usr/local/lib:$LD_LIBRARY_PATH"
 RUN mkdir -p /root/.pip && \
     echo '[global]' > /root/.pip/pip.conf && \
     echo 'index-url = https://pypi.tuna.tsinghua.edu.cn/simple' >> /root/.pip/pip.conf && \
-    echo 'trusted-host = pypi.tuna.tsinghua.edu.cn' >> /root/.pip/pip.conf && \
-    # 安装系统构建依赖
-    dnf install -y python3-devel && \
+    echo 'trusted-host = pypi.tuna.tsinghua.edu.cn' >> /root/.pip/pip.conf
+
+# 安装系统构建依赖和Python包
+RUN dnf install -y python3-devel && \
     # 升级pip
     pip3 install --upgrade pip setuptools wheel && \
     # 安装必要的Python依赖
-    pip3 install -r /app/requirements.txt && \
-    # 安装其他可能需要的科学计算库
     pip3 install numpy pandas scipy matplotlib scikit-learn && \
     # 清理缓存
-    rm -rf /root/.cache/pip/* /tmp/* /var/tmp/* && \
-    # 更新pip
-    python -m pip install --upgrade pip && \
-    # 验证安装
-    echo "Python version:" && \
+    rm -rf /root/.cache/pip/* /tmp/* /var/tmp/*
+
+# 验证安装
+RUN echo "Python version:" && \
     python --version && \
     echo "Python3 version:" && \
     python3 --version && \
     echo "Python path:" && \
     which python && \
     echo "Python3 path:" && \
-    which python3
+    which python3 && \
+    echo "Installed Python packages:" && \
+    pip3 list
 
 # 配置npm和pip镜像源
 RUN npm config set registry https://registry.npmmirror.com && \
