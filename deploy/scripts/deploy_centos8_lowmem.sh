@@ -312,31 +312,38 @@ RUN chmod +x /tmp/configure_centos_repos.sh && \
 RUN dnf clean all && \
     dnf makecache && \
     dnf install -y epel-release && \
-    # 安装基础开发工具
-    dnf install -y nginx curl procps net-tools vim wget git gcc gcc-c++ make zlib-devel bzip2 bzip2-devel readline-devel sqlite sqlite-devel openssl-devel tk-devel libffi-devel xz-devel \
-    bzip2-devel readline-devel sqlite-devel openssl-devel \
-    xz-devel libffi-devel wget tar make && \
+    # 安装编译Python 3.10所需的依赖
+    dnf install -y nginx curl procps net-tools vim wget git gcc gcc-c++ make \
+    zlib-devel bzip2 bzip2-devel readline-devel sqlite sqlite-devel \
+    openssl-devel tk-devel libffi-devel xz-devel wget tar xz && \
     dnf module install -y nodejs:16 && \
     dnf clean all
 
-# 安装pyenv和Python 3.10
-RUN git clone https://gitee.com/mirrors/pyenv.git ~/.pyenv && \
-    echo 'export PYENV_ROOT="$HOME/.pyenv"' >> ~/.bashrc && \
-    echo 'export PATH="$PYENV_ROOT/bin:$PATH"' >> ~/.bashrc && \
-    echo 'eval "$(pyenv init -)"' >> ~/.bashrc && \
-    source ~/.bashrc && \
-    # 使用国内镜像加速下载
-    export PYTHON_BUILD_MIRROR_URL_SKIP_CHECKSUM=1 && \
-    export PYTHON_BUILD_MIRROR_URL="https://mirrors.huaweicloud.com/python/" && \
-    # 安装Python 3.10.0
-    ~/.pyenv/bin/pyenv install 3.10.0 && \
-    ~/.pyenv/bin/pyenv global 3.10.0 && \
+# 下载并编译安装Python 3.10
+RUN cd /tmp && \
+    # 使用华为云镜像下载Python 3.10.0
+    wget https://mirrors.huaweicloud.com/python/3.10.0/Python-3.10.0.tar.xz && \
+    tar xf Python-3.10.0.tar.xz && \
+    cd Python-3.10.0 && \
+    # 配置并编译安装
+    ./configure --enable-optimizations --with-ensurepip=install \
+        --with-system-ffi --with-computed-gotos --enable-loadable-sqlite-extensions \
+        --enable-ipv6 --enable-shared LDFLAGS="-Wl,-rpath /usr/local/lib" && \
+    make -j$(nproc) && \
+    make altinstall && \
+    # 清理临时文件
+    cd /tmp && \
+    rm -rf Python-3.10.0 Python-3.10.0.tar.xz && \
+    # 创建符号链接
+    ln -sf /usr/local/bin/python3.10 /usr/local/bin/python3 && \
+    ln -sf /usr/local/bin/pip3.10 /usr/local/bin/pip3 && \
     # 创建虚拟环境
-    ~/.pyenv/versions/3.10.0/bin/python -m venv /opt/venv
+    python3.10 -m venv /opt/venv
 
 # 配置环境
 ENV VIRTUAL_ENV=/opt/venv
-ENV PATH="/root/.pyenv/versions/3.10.0/bin:$VIRTUAL_ENV/bin:$PATH"
+ENV PATH="/usr/local/bin:$VIRTUAL_ENV/bin:$PATH"
+ENV LD_LIBRARY_PATH="/usr/local/lib:$LD_LIBRARY_PATH"
 
 # 配置pip使用国内镜像
 RUN mkdir -p /root/.pip && \
