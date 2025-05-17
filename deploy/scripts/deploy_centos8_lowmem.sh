@@ -366,6 +366,10 @@ RUN pip3 install --upgrade pip setuptools wheel && \
     pip3 install numpy==1.24.3 pandas==2.0.2 scipy==1.10.1 matplotlib==3.7.1 scikit-learn==1.2.2 && \
     # 量化交易相关
     pip3 install pandas-ta==0.3.14b0 ta==0.10.2 ta-lib==0.4.27 && \
+    # 创建pandas_ta包的符号链接，解决导入问题
+    ln -s /usr/local/lib/python3.10/site-packages/pandas_ta /usr/local/lib/python3.10/site-packages/pandas_ta && \
+    # 验证pandas_ta可以正常导入
+    python3 -c "import pandas_ta as ta; print(f'Successfully imported pandas_ta version: {ta.__version__ if hasattr(ta, "__version__") else "unknown"}')" && \
     # Web框架和服务器
     pip3 install fastapi==0.95.1 uvicorn[standard]==0.21.1 python-multipart==0.0.6 && \
     # 数据库
